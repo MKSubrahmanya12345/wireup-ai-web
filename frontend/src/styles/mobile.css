@@ -1,0 +1,85 @@
+/* ??$$$ FORGE: mobile.css — Mobile-first overrides */
+
+@media (max-width: 768px) {
+  .app-shell {
+    padding-bottom: 60px; /* Space for potential bottom nav */
+  }
+
+  /* Stack columns */
+  .forge-container {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+
+  .forge-sidebar {
+    width: 100% !important;
+    height: 40vh !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .forge-main {
+    width: 100% !important;
+    height: 60vh !important;
+  }
+
+  /* StageNav ribbon */
+  .stage-nav {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+    justify-content: flex-start !important;
+    padding: 0.5rem !important;
+  }
+
+  .stage-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Buttons and interactive elements */
+  .btn-mobile-wide {
+    width: 100%;
+    padding: 0.75rem !important;
+  }
+
+  /* Bottom Navigation */
+  .mobile-bottom-nav {
+    display: flex !important;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    justify-content: space-around;
+    align-items: center;
+    z-index: 1000;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    gap: 4px;
+  }
+
+  .nav-item.active {
+    color: var(--primary);
+  }
+
+  /* Improved touch targets */
+  button, a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Hide scrollbars for cleaner mobile look */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+}
+

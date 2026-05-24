@@ -1,0 +1,26 @@
+/* ??$$$ FORGE: desktop.css — Desktop-only optimizations */
+
+@media (min-width: 769px) {
+  .forge-container {
+    flex-direction: row !important;
+    height: calc(100vh - 52px) !important;
+  }
+
+  .forge-sidebar {
+    width: 380px !important;
+    flex-shrink: 0;
+  }
+
+  .forge-main {
+    flex: 1;
+    overflow: hidden;
+  }
+
+  .stage-nav {
+    justify-content: space-between !important;
+  }
+
+  .mobile-chat-toggle {
+    display: none !important;
+  }
+}
