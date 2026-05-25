@@ -53,7 +53,7 @@ const STATUS_CONFIG: Record<StageStatus, StatusConfig> = {
   locked:     { icon: '🔒', color: '#6b7280', bg: 'transparent',           label: 'Locked',     clickable: false },
 };
 
-export default function StageNav(): JSX.Element {
+export default function StageNav() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,13 +61,9 @@ export default function StageNav(): JSX.Element {
   const { theme } = useThemeStore() as { theme: 'dark' | 'light' };
   const isDark = theme === 'dark';
 
-  const stageStatuses = useProjectStore(
-    (s: ProjectStore) => s.stageStatuses
-  );
+  const stageStatuses = useProjectStore((s) => s.stageStatuses);
 
-  const project = useProjectStore(
-    (s: ProjectStore) => s.project
-  );
+  const project = useProjectStore((s) => s.project);
 
   const currentPath = location.pathname.split('/').pop();
 

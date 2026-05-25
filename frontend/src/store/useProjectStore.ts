@@ -13,19 +13,52 @@ export type StageKey =
 
 export type Project = {
   _id?: string;
+  description?: string;
   bom?: any;
   sketch?: any;
   diagram?: any;
   assemblyLayout?: any;
-  extractedContext?: {
-    board?: any;
-    sensors?: any;
-    outputs?: any;
-    connectivity?: any;
-    power?: any;
-    projectSummary?: any;
-    confidence?: Record<string, number>;
+  // Old code:
+  // messages?: any[];
+  // ideaState?: any;
+  // extractedContext?: { ... };
+  // ??$$$ newer code
+  ideation?: {
+    messages?: Array<{ role: "user" | "model"; content: string; timestamp?: string | Date }>;
+    // ??$$$ Commented out old snapshot per Section 9 instructions
+    // snapshot?: {
+    //   corePurpose?: string;
+    //   computeCore?: string;
+    //   inputs?: string[];
+    //   outputs?: string[];
+    //   communication?: string[];
+    //   power?: string;
+    //   constraints?: string[];
+    //   openQuestions?: string[];
+    // };
+    // ??$$$ Added brief fields per Section 9 instructions
+    brief?: string;
+    objective?: string;
+    compute?: string;
+    phases?: Record<string, string>;
+    constraints?: string;
+    open?: string;
+    thinking?: string;
+    toolTrace?: string;
+    readyForComponents?: boolean;
+    readyAt?: string | Date | null;
+    readinessReason?: string;
+    validatorApproved?: boolean;
+    validatorFeedback?: string;
+    validationAttempts?: number;
   };
+  componentsMessages?: any[];
+  designMessages?: any[];
+  componentsState?: any;
+  designState?: any;
+  meta?: any;
+  wokwiEvidence?: any;
+  generationProfile?: any;
   stageStatus?: Record<StageKey, StageStatus>;
 };
 
@@ -284,33 +317,57 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     );
   },
 
-  ideationReadiness: () => {
-    const ctx = get().project?.extractedContext || {};
-    const fields = [
-      "board",
-      "sensors",
-      "outputs",
-      "connectivity",
-      "power",
-      "projectSummary",
-    ] as const;
-
-    if (ctx.confidence && typeof ctx.confidence === "object") {
-      const vals = fields.map((f) => Number(ctx.confidence?.[f] ?? 0));
-      return Math.round(
-        (vals.reduce((a, b) => a + b, 0) / fields.length) * 100
-      );
-    }
-
-    const filled = fields.filter((f) => {
-      const v = (ctx as any)[f];
-      if (!v) return false;
-      if (Array.isArray(v)) return v.length > 0;
-      return String(v).trim().length > 0;
-    });
-
-    return Math.round((filled.length / fields.length) * 100);
-  },
+  // Old code:
+  // ideationReadiness: () => {
+  //   const ctx = get().project?.extractedContext || {};
+  //   const fields = [
+  //     "board",
+  //     "sensors",
+  //     "outputs",
+  //     "connectivity",
+  //     "power",
+  //     "projectSummary",
+  //   ] as const;
+  // 
+  //   if (ctx.confidence && typeof ctx.confidence === "object") {
+  //     const vals = fields.map((f) => Number(ctx.confidence?.[f] ?? 0));
+  //     return Math.round(
+  //       (vals.reduce((a, b) => a + b, 0) / fields.length) * 100
+  //     );
+  //   }
+  // 
+  //   const filled = fields.filter((f) => {
+  //     const v = (ctx as any)[f];
+  //     if (!v) return false;
+  //     if (Array.isArray(v)) return v.length > 0;
+  //     return String(v).trim().length > 0;
+  //   });
+  // 
+  //   return Math.round((filled.length / fields.length) * 100);
+  // },
+  // ??$$$ Commented out old snapshot-based readiness per Section 9 instructions
+  // ideationReadiness: () => {
+  //   const snap = get().project?.ideation?.snapshot || {};
+  //   const fields = [
+  //     "corePurpose",
+  //     "computeCore",
+  //     "inputs",
+  //     "outputs",
+  //     "communication",
+  //     "power",
+  //     "constraints",
+  //     "openQuestions",
+  //   ];
+  //   const filled = fields.reduce((acc, k) => {
+  //     const v = (snap as any)[k];
+  //     if (!v) return acc;
+  //     if (Array.isArray(v)) return acc + (v.length > 0 ? 1 : 0);
+  //     return acc + (String(v).trim().length > 0 ? 1 : 0);
+  //   }, 0);
+  //   return Math.round((filled / fields.length) * 100);
+  // },
+  // ??$$$ New simplified readiness check per Section 9 instructions
+  ideationReadiness: () => get().project?.ideation?.readyForComponents ? 100 : 0,
 }));
 
 export default useProjectStore;

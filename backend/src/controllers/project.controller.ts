@@ -36,16 +36,19 @@ interface UpdateProjectBody {
 // Helpers
 // ─────────────────────────────────────────────────────────────
 
+// Old code:
+// const isIdeaFinalized = (project: any): boolean => {
+//   return (
+//     Boolean(project?.ideaState?.summary?.trim()) &&
+//     (project?.ideaState?.unknowns?.length ?? 0) === 0
+//   );
+// };
+// ??$$$ newer code
 const isIdeaFinalized = (project: any): boolean => {
-  return (
-    Boolean(project?.ideaState?.summary?.trim()) &&
-    (project?.ideaState?.unknowns?.length ?? 0) === 0
-  );
+  return project?.ideation?.finalized === true;
 };
 
-// ─────────────────────────────────────────────────────────────
-// CREATE PROJECT
-// ─────────────────────────────────────────────────────────────
+// ─── CREATE PROJECT ─────────────────────────────────────────────────────────
 
 export const createProject = async (
   req: AuthRequest,
@@ -58,54 +61,73 @@ export const createProject = async (
       return res.status(401).json({ error: "Unauthorized" });
     }
 
+    // Old code:
+    // const project = await Project.create({
+    //   description,
+    //   owner: req.user._id,
+    //   messages: [{ role: "user", content: description }],
+    //   ideaState: {
+    //     summary: "",
+    //     requirements: [],
+    //     unknowns: [],
+    //   },
+    //   meta: { stage: "ideation" },
+    // });
+    // ??$$$ newer code
+    // ??$$$ Initialize project.ideation with empty messages array so first boot triggers the agent call
     const project = await Project.create({
       description,
       owner: req.user._id,
-      messages: [{ role: "user", content: description }],
-      ideaState: {
-        summary: "",
-        requirements: [],
-        unknowns: [],
+      ideation: {
+        messages: [],
+        brief: "",
+        objective: "",
+        compute: "",
+        phases: {},
+        constraints: "",
+        open: "",
+        thinking: "",
+        toolTrace: "",
+        readyForComponents: false,
+        readyAt: null,
+        readinessReason: "",
+        validatorApproved: false,
+        validatorFeedback: "",
+        validationAttempts: 0
       },
       meta: { stage: "ideation" },
     });
 
-    const ai = await processInput(project, description);
-
-    if (ai.extractedContext) {
-      project.extractedContext = ai.extractedContext;
-    }
-
-    project.ideaState = {
-      summary: ai.summary,
-      requirements: ai.requirements,
-      unknowns: ai.unknowns,
-    };
-
-    project.architectureState = ai.architectureState;
-
-    project.meta.stage = isIdeaFinalized(project) ? "components" : "ideation";
-
+    // Old code:
+    // const ai = await processInput(project, description);
+    // if (ai.extractedContext) {
+    //   project.extractedContext = ai.extractedContext;
+    // }
+    // project.ideaState = {
+    //   summary: ai.summary,
+    //   requirements: ai.requirements,
+    //   unknowns: ai.unknowns,
+    // };
+    // project.architectureState = ai.architectureState;
+    // project.meta.stage = isIdeaFinalized(project) ? "components" : "ideation";
+    // project.generationProfile = buildGenerationProfileFromMeta(
+    //   project.meta || {}
+    // );
+    // project.messages.push({
+    //   role: "ai",
+    //   content: aiReplyCreate,
+    // });
+    // await project.save();
+    // ??$$$ newer code
     project.generationProfile = buildGenerationProfileFromMeta(
       project.meta || {}
     );
-
-    const aiReplyCreate =
-      ai.question ||
-      ai.summary ||
-      "I've analyzed your project. What would you like to refine?";
-
-    project.messages.push({
-      role: "ai",
-      content: aiReplyCreate,
-    });
-
     await project.save();
 
     return res.json({
       projectId: project._id,
-      reply: ai.question,
-      ideaState: project.ideaState,
+      reply: "",
+      ideation: project.ideation,
       architectureState: project.architectureState,
       generationProfile: project.generationProfile,
     });
@@ -182,7 +204,8 @@ export const getIdeationHistory = async (
       return res.status(400).json({ error: "Invalid projectId" });
     }
 
-    const project = await Project.findById(id).select("owner messages");
+    // ??$$$ Select ideation instead of messages
+    const project = await Project.findById(id).select("owner ideation");
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
@@ -192,7 +215,8 @@ export const getIdeationHistory = async (
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    return res.json({ messages: project.messages || [] });
+    // ??$$$ Return ideation messages
+    return res.json({ messages: project.ideation?.messages || [] });
   } catch (err: any) {
     console.error("GET IDEATION HISTORY ERROR:", err);
     return res.status(500).json({ error: err.message });
@@ -339,68 +363,69 @@ export const deleteProject = async (
 // CHAT LOOP
 // ─────────────────────────────────────────────────────────────
 
-export const chatProject = async (
-  req: AuthRequest,
-  res: Response
-) => {
-  try {
-    const { projectId, message } = req.body as ChatBody;
-
-    if (!mongoose.Types.ObjectId.isValid(projectId)) {
-      return res.status(400).json({ error: "Invalid projectId" });
-    }
-
-    const project = await Project.findById(projectId);
-
-    if (!project) {
-      return res.status(404).json({ error: "Project not found" });
-    }
-
-    if (project.owner.toString() !== req.user?._id?.toString()) {
-      return res.status(403).json({ error: "Forbidden" });
-    }
-
-    project.messages.push({
-      role: "user",
-      content: message,
-    });
-
-    const ai = await processInput(project, message);
-
-    project.ideaState = {
-      summary: ai.summary,
-      requirements: ai.requirements,
-      unknowns: ai.unknowns,
-    };
-
-    project.architectureState = ai.architectureState;
-
-    project.meta.stage = isIdeaFinalized(project) ? "components" : "ideation";
-
-    project.generationProfile = buildGenerationProfileFromMeta(
-      project.meta || {}
-    );
-
-    const aiReply =
-      ai.question ||
-      ai.summary ||
-      "I've updated the project context. What's next?";
-
-    project.messages.push({
-      role: "ai",
-      content: aiReply,
-    });
-
-    await project.save();
-
-    return res.json({
-      reply: ai.question,
-      ideaState: project.ideaState,
-      architectureState: project.architectureState,
-      generationProfile: project.generationProfile,
-    });
-  } catch (err: any) {
-    console.error("CHAT PROJECT ERROR:", err);
-    return res.status(500).json({ error: err.message });
-  }
-};
+// Old code:
+// export const chatProject = async (
+//   req: AuthRequest,
+//   res: Response
+// ) => {
+//   try {
+//     const { projectId, message } = req.body as ChatBody;
+// 
+//     if (!mongoose.Types.ObjectId.isValid(projectId)) {
+//       return res.status(400).json({ error: "Invalid projectId" });
+//     }
+// 
+//     const project = await Project.findById(projectId);
+// 
+//     if (!project) {
+//       return res.status(404).json({ error: "Project not found" });
+//     }
+// 
+//     if (project.owner.toString() !== req.user?._id?.toString()) {
+//       return res.status(403).json({ error: "Forbidden" });
+//     }
+// 
+//     project.messages.push({
+//       role: "user",
+//       content: message,
+//     });
+// 
+//     const ai = await processInput(project, message);
+// 
+//     project.ideaState = {
+//       summary: ai.summary,
+//       requirements: ai.requirements,
+//       unknowns: ai.unknowns,
+//     };
+// 
+//     project.architectureState = ai.architectureState;
+// 
+//     project.meta.stage = isIdeaFinalized(project) ? "components" : "ideation";
+// 
+//     project.generationProfile = buildGenerationProfileFromMeta(
+//       project.meta || {}
+//     );
+// 
+//     const aiReply =
+//       ai.question ||
+//       ai.summary ||
+//       "I've updated the project context. What's next?";
+// 
+//     project.messages.push({
+//       role: "ai",
+//       content: aiReply,
+//     });
+// 
+//     await project.save();
+// 
+//     return res.json({
+//       reply: ai.question,
+//       ideaState: project.ideaState,
+//       architectureState: project.architectureState,
+//       generationProfile: project.generationProfile,
+//     });
+//   } catch (err: any) {
+//     console.error("CHAT PROJECT ERROR:", err);
+//     return res.status(500).json({ error: err.message });
+//   }
+// };

@@ -5,7 +5,7 @@ import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-mo
 /**
  * HeroCard: 3D Tilt effect with dynamic spotlight/glare
  */
-function HeroCard({ children, className = "" }) {
+function HeroCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
@@ -42,8 +42,8 @@ function HeroCard({ children, className = "" }) {
 /**
  * Pill: Vibrant status tags
  */
-function Pill({ children, dark = false, color = "indigo" }) {
-  const variants = {
+function Pill({ children, dark = false, color = "indigo" }: { children: React.ReactNode; dark?: boolean; color?: string }) {
+  const variants: Record<string, string> = {
     indigo: dark ? "bg-indigo-500/10 text-indigo-300 border-indigo-500/20" : "bg-indigo-50 text-indigo-600 border-indigo-200",
     emerald: dark ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20" : "bg-emerald-50 text-emerald-600 border-emerald-200",
     amber: dark ? "bg-amber-500/10 text-amber-300 border-amber-500/20" : "bg-amber-50 text-amber-600 border-amber-200",
@@ -59,7 +59,7 @@ function Pill({ children, dark = false, color = "indigo" }) {
 /**
  * Background Decorations: Animated SVG patterns
  */
-const GridBackground = ({ isDark }) => (
+const GridBackground = ({ isDark }: { isDark: boolean }) => (
   <div className="absolute inset-0 -z-10 overflow-hidden">
     <svg className="absolute h-full w-full" xmlns="http://www.w3.org/2000/svg">
       <defs>

@@ -5,11 +5,23 @@ import cors from "cors";
 import "dotenv/config";
 import cookieParser from "cookie-parser";
 import Groq from "groq-sdk";
+// ??$$$
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 import { connectDB } from "./lib/db";
 
 import projectRoutes from "./routes/project.routes";
 import authRoutes from "./routes/auth.route";
+import assemblyRoutes from "./routes/assembly.route";
+import buildRoutes from "./routes/build.route";
+import componentsRoutes from "./routes/components.route";
+import ideationRoutes from "./routes/ideation.route";
+import pipelineRoutes from "./routes/pipeline.route";
+import shoppingRoutes from "./routes/shopping.route";
+import voiceRoutes from "./routes/voice.route";
+// ??$$$ newer code
+import libraryRoutes from "./routes/library.route";
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("[CRITICAL] Unhandled Rejection at:", promise, "reason:", reason);
@@ -42,6 +54,11 @@ app.use(
     origin(origin, callback) {
       if (!origin) return callback(null, true);
 
+      // Check if localhost or 127.0.0.1 with any port
+      if (/^https?:\/\/localhost:\d+$/.test(origin) || /^https?:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+        return callback(null, true);
+      }
+
       if (allowedOrigins.has(origin)) return callback(null, true);
 
       if (origin.endsWith(".vercel.app")) return callback(null, true);
@@ -52,8 +69,9 @@ app.use(
   })
 );
 
+
 app.use(cookieParser());
-app.use(express.json({ limit: "12mb" }));
+app.use(express.json({ limit: "50mb" }));
 
 /**
  * -----------------------
@@ -69,8 +87,17 @@ app.get("/health", (_req: Request, res: Response) => {
  * ROUTES
  * -----------------------
  */
+
 app.use("/api", projectRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/ideation", ideationRoutes);
+app.use("/api/pipeline", pipelineRoutes);
+app.use("/api", componentsRoutes);
+app.use("/api", buildRoutes);
+app.use("/api", assemblyRoutes);
+app.use("/api", shoppingRoutes);
+app.use("/api", voiceRoutes);
+app.use("/api", libraryRoutes);
 
 /**
  * -----------------------
@@ -146,7 +173,7 @@ app.post(
     try {
       const {
         prompt,
-        model = "llama-3.3-70b-versatile",
+        model = "qwen/qwen3-32b",
         apiKey,
         existingObjects = [],
       } = req.body;
@@ -247,6 +274,23 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+// ??$$$
+const httpServer = createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    credentials: true
+  }
+});
+(global as any).io = io;
+
+io.on("connection", (socket) => {
+  console.log(`[socket] Client connected: ${socket.id}`);
+  socket.on("disconnect", () => {
+    console.log(`[socket] Client disconnected: ${socket.id}`);
+  });
+});
+
 /**
  * -----------------------
  * START SERVER
@@ -256,8 +300,8 @@ const startServer = async () => {
   try {
     await connectDB();
 
-    app.listen(port, () => {
-      console.log(`Server is running on port ${port}`);
+    httpServer.listen(port, () => {
+      console.log(`Server (with Socket.IO) is running on port ${port}`);
     });
   } catch (err) {
     console.error("Failed to start server:", err);

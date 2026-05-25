@@ -1,28 +1,22 @@
+// ??$$$ newer code
 import type { ReactNode } from "react";
 import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "./store/useAuthStore.ts";
 
-// ─── Existing pages ─────────────────────────────────────────────
 const HeroPage = lazy(() => import("./pages/HeroPage.tsx"));
 const AuthPage = lazy(() => import("./pages/AuthPage.tsx"));
 const HomePage = lazy(() => import("./pages/HomePage.tsx"));
+const ProjectLayout = lazy(() => import("./components/shared/ProjectLayout.tsx"));
 
-// ─── Project layout ─────────────────────────────────────────────
-const ProjectLayout = lazy(
-  () => import("./components/shared/ProjectLayout.tsx")
-);
-
-// ─── Pipeline pages ─────────────────────────────────────────────
 const IdeationPage = lazy(() => import("./pages/IdeationPage.tsx"));
-//const ComponentsPage = lazy(() => import("./pages/ComponentsPage"));
-//const BuildPage = lazy(() => import("./pages/BuildPage"));
-//const AssemblyPage = lazy(() => import("./pages/AssemblyPage"));
-//const ShoppingPage = lazy(() => import("./pages/ShoppingPage"));
+const ComponentsPage = lazy(() => import("./pages/ComponentsPage.tsx"));
+const BuildPage = lazy(() => import("./pages/BuildPage.tsx"));
+const AssemblyPage = lazy(() => import("./pages/AssemblyPage.tsx"));
+const ShoppingPage = lazy(() => import("./pages/ShoppingPage.tsx"));
+const Simulator3DPage = lazy(() => import("./pages/Simulator3DPage.tsx"));
 
-
-// ─── Loading UI ────────────────────────────────────────────────
 function RouteLoader(): ReactNode {
   return (
     <div className="app-shell page-bg flex items-center justify-center px-4">
@@ -39,7 +33,6 @@ function RouteLoader(): ReactNode {
   );
 }
 
-// ─── App ────────────────────────────────────────────────────────
 function App(): ReactNode {
   const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
 
@@ -81,23 +74,22 @@ function App(): ReactNode {
             element={authUser ? <HomePage /> : <Navigate to="/auth" />}
           />
 
+          <Route
+            path="/test-simulator"
+            element={authUser ? <Simulator3DPage /> : <Navigate to="/auth" />}
+          />
 
           {/* Project pipeline */}
           <Route
             path="/project/:id"
-            element={
-              authUser ? <ProjectLayout /> : <Navigate to="/auth" />
-            }
+            element={authUser ? <ProjectLayout /> : <Navigate to="/auth" />}
           >
-            <Route
-              index
-              element={<Navigate to="ideation" replace />}
-            />
+            <Route index element={<Navigate to="ideation" replace />} />
             <Route path="ideation" element={<IdeationPage />} />
-            {/*<Route path="components" element={<ComponentsPage />} /> */}
-            {/* <Route path="build" element={<BuildPage />} /> */}
-            {/* <Route path="assembly" element={<AssemblyPage />} /> */}
-            {/* <Route path="shopping" element={<ShoppingPage />} /> */} 
+            <Route path="components" element={<ComponentsPage />} />
+            <Route path="build" element={<BuildPage />} />
+            <Route path="assembly" element={<AssemblyPage />} />
+            <Route path="shopping" element={<ShoppingPage />} />
           </Route>
 
           {/* Catch all */}

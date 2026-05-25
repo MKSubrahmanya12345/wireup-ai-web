@@ -9,7 +9,7 @@ import { useThemeStore } from '../../store/useThemeStore';
 import StageNav from './StageNav';
 import ErrorBoundary from './ErrorBoundary';
 
-const STAGE_PREV = {
+const STAGE_PREV: Record<string, string> = {
   components: 'Ideation',
   build: 'Components',
   assembly: 'Build',
@@ -34,8 +34,8 @@ export default function ProjectLayout() {
   }, [id]);
 
   // Determine current stage from URL
-  const currentStage = location.pathname.split('/').pop();
-  const prevStage = STAGE_PREV[currentStage] || null;
+  const currentStage = location.pathname.split('/').pop() || '';
+  const prevStage = STAGE_PREV[currentStage] || undefined;
 
   const handleGoBack = () => {
     if (prevStage) {

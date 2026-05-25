@@ -14,9 +14,34 @@ type IdeationNormalized = {
   extractedContext: Record<string, any>;
   architectureState: Record<string, any>;
 };
+/* old code
+// ??$$$ newer code
 import Groq from "groq-sdk";
 import { getAIContext, getRegistry } from "./registry.services";
 import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
+import { formatWokwiComponentCatalogForPrompt, findUnsupportedPartTypesInText } from "../lib/wokwi-components";
+*/
+/* old code
+// ??$$$
+import Groq from "groq-sdk";
+import { getAIContext, getRegistry } from "./registry.services";
+import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
+import { formatWokwiComponentCatalogForPrompt, findUnsupportedPartTypesInText } from "../lib/wokwi-components";
+import { buildWokwiEvidenceText } from "./wokwi-runner.service";
+*/
+// ??$$$
+import Groq from "groq-sdk";
+import { getAIContext, getRegistry } from "./registry.services";
+import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
+import { formatWokwiComponentCatalogForPrompt, findUnsupportedPartTypesInText } from "../lib/wokwi-components";
+import { buildWokwiEvidenceText } from "./wokwi-runner.service";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+/*
+import Groq from "groq-sdk";
+import { getAIContext, getRegistry } from "./registry.services";
+import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
+*/
 
 const getGroqClient = async (): Promise<any> => {
   return await rotationService.getClient();
@@ -700,6 +725,7 @@ const FALLBACK_MODEL = process.env.GROQ_MODEL_1 || "llama-3.3-70b-versatile"; //
 /*
 COMMON CALL
 */
+/* old code
 const callAI = async (prompt, model = null, retryCount = 0, offset = 0) => { // ??$$$ added offset
   const selectedModel = model || QWEN_MODEL; // ??$$$ default to Qwen
   const groq = await rotationService.getClient(offset); // ??$$$ use offset for key selection
@@ -730,6 +756,68 @@ const callAI = async (prompt, model = null, retryCount = 0, offset = 0) => { // 
       console.warn(`[callAI] Error with ${selectedModel} (status ${err?.status}). Retrying...`);
       
       // If Qwen failed, try the fallback model on the next retry
+      const nextModel = (selectedModel === QWEN_MODEL) ? FALLBACK_MODEL : selectedModel;
+      
+      if (err?.status === 429) {
+        await rotationService.handleRateLimit();
+      }
+      
+      return await callAI(prompt, nextModel, retryCount + 1, offset);
+    }
+    throw err;
+  }
+};
+*/
+// ??$$$
+const callAI = async (prompt, model = null, retryCount = 0, offset = 0) => {
+  const selectedModel = model || QWEN_MODEL;
+  const groq = await rotationService.getClient(offset);
+
+  const baseArgs = {
+    model: selectedModel,
+    messages: [
+      { role: "system", content: "Return ONLY valid JSON. No markdown. No prose. No <think>." },
+      { role: "user", content: prompt }
+    ],
+    temperature: 0.2
+  };
+
+  try {
+    let res;
+    try {
+      res = await groq.chat.completions.create({
+        ...baseArgs,
+        response_format: { type: "json_object" }
+      });
+    } catch {
+      res = await groq.chat.completions.create(baseArgs);
+    }
+    return res.choices[0].message.content.trim();
+  } catch (err) {
+    console.warn(`[callAI] Groq failed for ${selectedModel}:`, err.message || err);
+    
+    // Try Gemini fallback first
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (geminiApiKey) {
+      try {
+        console.log("[callAI] Attempting Gemini fallback...");
+        const genAI = new GoogleGenerativeAI(geminiApiKey);
+        const geminiModel = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction: "Return ONLY valid JSON. No markdown. No prose. No <think>.",
+          generationConfig: { responseMimeType: "application/json" }
+        });
+        const result = await geminiModel.generateContent(prompt);
+        return result.response.text().trim();
+      } catch (geminiErr) {
+        console.error("[callAI] Gemini fallback failed:", geminiErr);
+      }
+    }
+
+    // Handle 429 Rate Limit or Error with Groq
+    if ((err?.status === 429 || err?.status === 400) && retryCount < 3) {
+      console.warn(`[callAI] Error with ${selectedModel} (status ${err?.status}). Retrying Groq...`);
+      
       const nextModel = (selectedModel === QWEN_MODEL) ? FALLBACK_MODEL : selectedModel;
       
       if (err?.status === 429) {
@@ -1348,11 +1436,23 @@ const normalizeGeneratedAssetsOutput = (raw) => {
   };
 };
 
+// Old code:
+// const collectProjectDataText = (project = {}) => {
+//   return [
+//     project?.description || "",
+//     project?.ideaState?.summary || "",
+//     ...(project?.ideaState?.requirements || []),
+//     project?.componentsState?.architecture || "",
+//     ...(project?.componentsState?.components || []),
+//     ...(project?.componentsState?.apiEndpoints || [])
+//   ].join(" ").toLowerCase();
+// };
+// ??$$$ newer code
 const collectProjectDataText = (project = {}) => {
   return [
     project?.description || "",
-    project?.ideaState?.summary || "",
-    ...(project?.ideaState?.requirements || []),
+    project?.ideation?.snapshot?.corePurpose || "",
+    ...(project?.ideation?.snapshot?.constraints || []),
     project?.componentsState?.architecture || "",
     ...(project?.componentsState?.components || []),
     ...(project?.componentsState?.apiEndpoints || [])
@@ -1381,7 +1481,10 @@ const isSimonProjectFromData = (project = {}) => {
 };
 
 const buildSimonGameSketchFromData = (project = {}) => {
-  const title = project?.ideaState?.summary?.trim() || "Simon Game for Arduino with Score display";
+  // Old code:
+  // const title = project?.ideaState?.summary?.trim() || "Simon Game for Arduino with Score display";
+  // ??$$$ newer code
+  const title = project?.ideation?.snapshot?.corePurpose?.trim() || "Simon Game for Arduino with Score display";
 
   return `/**
    ${title}
@@ -2020,7 +2123,10 @@ export const processComponents = async (project, userInput) => {
   // If context alone is > 15000 chars, it might be too big (~3750 tokens).
   if (contextString.length > 15000) {
     // Basic pruning: only keep controllers and components mentioned in ideation/context
-    const mentioned = (project.description + messagesText + JSON.stringify(project.ideaState)).toLowerCase();
+    // Old code:
+    // const mentioned = (project.description + messagesText + JSON.stringify(project.ideaState)).toLowerCase();
+    // ??$$$ newer code
+    const mentioned = (project.description + messagesText + JSON.stringify(project.ideation?.snapshot || {})).toLowerCase();
     registryContext = registryContext.filter(c => 
       c.category === 'controller' || 
       mentioned.includes(c.name.toLowerCase()) ||
@@ -2079,7 +2185,7 @@ OUTPUT STRICT JSON:
 }
 
 IDEA STATE:
-${JSON.stringify(project.ideaState)}
+${JSON.stringify(project.ideation?.snapshot || {})}
 
 CURRENT COMPONENT STATE:
 ${JSON.stringify(project.componentsState)}
@@ -2185,7 +2291,7 @@ LIVE WOKWI CIRCUIT CONTEXT (HARDWARE ONLY):
 ${JSON.stringify(wokwiContext || { connected: false, reason: "No live circuit context" })}
 
 IDEA STATE:
-${JSON.stringify(project.ideaState)}
+${JSON.stringify(project.ideation?.snapshot || {})}
 
 COMPONENT STATE:
 ${JSON.stringify(project.componentsState)}
@@ -2265,7 +2371,7 @@ export const generateWokwiAssetsFromState = async ({ project, userPrompt = "" })
     });
   }
 
-  const ideationContext = JSON.stringify(project?.ideaState || {});
+  const ideationContext = JSON.stringify(project?.ideation?.snapshot || {});
   const componentsContext = JSON.stringify(project?.componentsState || {});
   const ideationMeta = project?.meta || {};
   const ideationMessages = (project?.messages || []).slice(-6).map((m) => `${m.role}: ${m.content}`).join("\n");
@@ -2473,9 +2579,14 @@ const normalizeComponentsOutput = (raw, project, fallbackReply = "I generated co
     reply,
     architectureState: normalizeArchitectureState(raw?.architectureState, {
       project,
-      summary: project?.ideaState?.summary || "",
-      requirements: project?.ideaState?.requirements || [],
-      unknowns: project?.ideaState?.unknowns || []
+      // Old code:
+      // summary: project?.ideaState?.summary || "",
+      // requirements: project?.ideaState?.requirements || [],
+      // unknowns: project?.ideaState?.unknowns || []
+      // ??$$$ newer code
+      summary: project?.ideation?.snapshot?.corePurpose || "",
+      requirements: project?.ideation?.snapshot?.constraints || [],
+      unknowns: project?.ideation?.snapshot?.openQuestions || []
     })
   };
 };
@@ -2506,35 +2617,98 @@ const normalizeDesignOutput = (raw, fallbackReply = "I analyzed the live circuit
 };
 
 const buildSketchOnlyPrompt = (project) => {
-  const ideationContext = JSON.stringify(project?.ideaState || {});
-  const componentsContext = JSON.stringify(project?.componentsState || {});
-  return `
-You are a strict C++ Arduino code generator.
-GOAL: Generate ONLY the sketch.ino file for a Wokwi project.
-MANDATORY OUTPUT FORMAT: Return ONLY the raw C++ code. No markdown fences. No prose.
-HARD RULES:
-- complete Arduino code with setup() and loop().
-- follow this structure: header comment block, include libraries, constants/pins, global state, helper functions, setup, loop.
-- Use pin names that exist in the PROJECT CONTEXT below.
+  // ??$$$ Pull from real ideation fields, not just snapshot (which is often empty)
+  const ideation = project?.ideation || {};
+  const snapshot = ideation?.snapshot || {};
+  const board = project?.generationProfile?.board
+    || snapshot?.computeCore
+    || project?.meta?.board
+    || 'arduino_uno';
+  const language = project?.generationProfile?.language || 'cpp';
 
-PROJECT CONTEXT:
-${ideationContext}
-${componentsContext}
-CURRENT DIAGRAM (MUST MATCH PINS):
-${JSON.stringify(project?.diagram || {})}
+  const ideationContext = {
+    brief: ideation.brief || snapshot.brief || project?.description || '',
+    objective: ideation.objective || snapshot.objective || '',
+    compute: ideation.compute || snapshot.computeCore || board,
+    constraints: ideation.constraints || '',
+    inputs: snapshot.inputs || [],
+    outputs: snapshot.outputs || [],
+    sensors: snapshot.sensors || [],
+    actuators: snapshot.actuators || [],
+    connectivity: snapshot.connectivity || '',
+  };
+
+  const bomContext = (project?.bom || []).map(item => ({
+    key: item.key,
+    name: item.displayName,
+    wokwiType: item.wokwiPartType,
+    purpose: item.purpose,
+    pins: (item.pinConnections || []).map(pc => `${pc.pin} -> ${pc.connectsTo}`),
+  }));
+
+  const pinAssignments = project?.pinAssignments || {};
+  const generationProfile = project?.generationProfile || {};
+
+  return `
+You are a strict C++ Arduino firmware code generator.
+GOAL: Generate ONLY the sketch.ino file for this specific hardware project.
+MANDATORY OUTPUT FORMAT: Return ONLY raw C++ code. No markdown fences. No prose. No explanations.
+HARD RULES:
+- Must have complete void setup() and void loop() functions.
+- Follow this structure: header comment, #include libraries, #define / const int pin constants, global state vars, helper functions, setup(), loop().
+- EVERY pin number MUST come from the BOM PIN CONNECTIONS below. Do not invent random pins.
+- EVERY component MUST be from the BOM COMPONENTS below. Do not invent components.
+- The board is: ${board} (language: ${language})
+
+PROJECT BRIEF:
+${JSON.stringify(ideationContext, null, 2)}
+
+BOM COMPONENTS (use ONLY these components and their pins):
+${JSON.stringify(bomContext, null, 2)}
+
+PIN ASSIGNMENTS:
+${JSON.stringify(pinAssignments, null, 2)}
+
+GENERATION PROFILE:
+${JSON.stringify(generationProfile, null, 2)}
+
+CURRENT DIAGRAM (pin references MUST match diagram connections exactly):
+${JSON.stringify(project?.diagram || {}, null, 2)}
 `;
 };
 
 const buildDiagramOnlyPrompt = (project) => {
-  const ideationContext = JSON.stringify(project?.ideaState || {});
-  const componentsContext = JSON.stringify(project?.componentsState || {});
+  // ??$$$ Pull from real ideation fields, not just snapshot (which is often empty)
+  const ideation = project?.ideation || {};
+  const snapshot = ideation?.snapshot || {};
+  const board = project?.generationProfile?.board
+    || snapshot?.computeCore
+    || project?.meta?.board
+    || 'arduino_uno';
+
+  const ideationContext = {
+    brief: ideation.brief || snapshot.brief || project?.description || '',
+    objective: ideation.objective || snapshot.objective || '',
+    compute: ideation.compute || snapshot.computeCore || board,
+    inputs: snapshot.inputs || [],
+    outputs: snapshot.outputs || [],
+  };
+
+  const bomContext = (project?.bom || []).map(item => ({
+    key: item.key,
+    name: item.displayName,
+    wokwiType: item.wokwiPartType,
+    purpose: item.purpose,
+    pins: (item.pinConnections || []).map(pc => `${pc.pin} -> ${pc.connectsTo}`),
+  }));
+
   const registryContext = getAIContext();
   const generationProfile = project?.generationProfile || buildGenerationProfileFromMeta(project?.meta || {});
 
   return `
 You are a Wokwi diagram architect.
-GOAL: Generate ONLY a valid Wokwi diagram.json file.
-MANDATORY OUTPUT FORMAT: Return ONLY valid JSON matching the exact Wokwi diagram schema.
+GOAL: Generate ONLY a valid Wokwi diagram.json file for this specific hardware project.
+MANDATORY OUTPUT FORMAT: Return ONLY valid JSON matching the exact Wokwi diagram schema. No prose.
 SCHEMA STRUCTURE:
 {
   "version": 1,
@@ -2550,20 +2724,27 @@ SCHEMA STRUCTURE:
 }
 
 HARD RULES:
-- The "parts" array MUST contain a controller (e.g., wokwi-arduino-uno).
-- The "parts" array MUST contain components mentioned in PROJECT CONTEXT.
+- The "parts" array MUST contain the board: ${board}.
+- EVERY part in "parts" MUST come from the BOM COMPONENTS below. No invented components.
+- The "connections" array pins MUST match the CURRENT SKETCH pin usage exactly.
 - You can ONLY use part types from the COMPONENT REGISTRY below.
 - Do NOT use "components" key. Use "parts".
 - Do NOT wrap the JSON in any top-level key like "diagram" or "diagramJson".
-- Ensure pin mapping matches the CURRENT SKETCH exactly.
 
-PROJECT CONTEXT:
-${ideationContext}
-${componentsContext}
-CURRENT SKETCH (MUST MATCH PINS):
-${project?.sketch || "No sketch yet"}
-${JSON.stringify(generationProfile)}
-Registry Info: ${JSON.stringify(registryContext)}
+PROJECT BRIEF:
+${JSON.stringify(ideationContext, null, 2)}
+
+BOM COMPONENTS (use ONLY these components):
+${JSON.stringify(bomContext, null, 2)}
+
+GENERATION PROFILE:
+${JSON.stringify(generationProfile, null, 2)}
+
+CURRENT SKETCH (connections MUST match pins used in this code):
+${project?.sketch || 'No sketch yet'}
+
+COMPONENT REGISTRY (only use part types from this list):
+${JSON.stringify(registryContext, null, 2)}
 `;
 };
 

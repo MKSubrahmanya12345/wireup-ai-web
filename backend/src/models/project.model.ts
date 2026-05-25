@@ -1,10 +1,17 @@
 import mongoose, { Schema, Types, HydratedDocument, Model } from "mongoose";
 import { getRegistry } from "../services/registry.services";
 
-// ─────────────────────────────────────────────────────────────
-// Constants
-// ─────────────────────────────────────────────────────────────
+const STAGE_STATUS_ENUM = [
+  "locked",
+  "ready",
+  "generating",
+  "done",
+  "stale",
+  "error"
+] as const;
 
+
+//might remove i dont know what this is
 const LEGACY_BOARD_SLUGS = [
   "arduino-uno",
   "arduino-nano",
@@ -12,10 +19,6 @@ const LEGACY_BOARD_SLUGS = [
   "raspberry-pi-pico",
   "attiny85",
 ] as const;
-
-// ─────────────────────────────────────────────────────────────
-// Helpers
-// ─────────────────────────────────────────────────────────────
 
 const getAllowedBoardValues = (): (string | null)[] => {
   const registry = getRegistry();
@@ -29,20 +32,186 @@ const getAllowedBoardValues = (): (string | null)[] => {
   return [...new Set([...LEGACY_BOARD_SLUGS, ...registryBoardKeys, null])];
 };
 
-// ─────────────────────────────────────────────────────────────
-// Interfaces
-// ─────────────────────────────────────────────────────────────
+//============================================================
+//============================================================
+//============================================================
+//============================================================
 
+
+//this is an interface for the message, so like user or model
 interface IMessage {
-  role: "user" | "ai";
+  role: "user" | "model";
   content: string;
 }
 
-interface IIdeaState {
-  summary: string;
-  requirements: string[];
-  unknowns: string[];
+const messageSchema = new Schema<IMessage>(
+  {
+    role: {
+      type: String,
+      enum: ["user", "model"],
+      required: true
+    },
+    content: {
+      type: String,
+      required: true
+    },
+  },
+  { _id: false }
+);
+
+export interface IIdeationMessage {
+  role: "user" | "model";
+  content: string;
+  timestamp: Date;
+  // ??$$$ Commented out toolCalls per senior engineer instructions
+  // toolCalls: string;
 }
+
+//============================================================
+//============================================================
+//============================================================
+//============================================================
+
+/* old code
+export interface IIdeation {
+  messages: IIdeationMessage[];
+  brief: string;
+  objective: string;
+  compute: string;
+  phases: Record<string, string>;
+  constraints: string;
+  open: string;
+
+  thinking: string;
+  toolTrace: string;
+
+  readyForComponents: boolean;
+  readyAt: Date | null;
+  readinessReason: string;
+
+  validatorApproved: boolean;
+  validatorFeedback: string;
+
+  validationAttempts: number;
+}
+*/
+// ??$$$
+export interface IIdeation {
+  messages: IIdeationMessage[];
+  brief: string;
+  objective: string;
+  compute: string;
+  phases: Record<string, string>;
+  constraints: string;
+  open: string;
+
+  thinking: string;
+  toolTrace: string;
+
+  readyForComponents: boolean;
+  readyAt: Date | null;
+  readinessReason: string;
+
+  validatorApproved: boolean;
+  validatorFeedback: string;
+
+  validationAttempts: number;
+  snapshot?: any;
+}
+
+const ideationMessageSchema = new Schema<IIdeationMessage>(
+  {
+    role: {
+      type: String,
+      enum: ["user", "model"],
+      required: true
+    },
+    content: {
+      type: String,
+      default: ""
+    },
+    timestamp: {
+      type: Date,
+      default: Date.now
+    }
+    // ??$$$ Commented out toolCalls per senior engineer instructions
+    // toolCalls: {
+    //   type: String,
+    //   default: ""
+    // }
+  },
+  { _id: false }
+);
+
+
+const ideationSchema = new Schema<IIdeation>(
+  {
+    messages: {
+      type: [ideationMessageSchema],
+      default: []
+    },
+
+    brief:       { type: String, default: "" },
+    objective:   { type: String, default: "" },
+    compute:     { type: String, default: "" },
+    phases:      { type: Schema.Types.Mixed, default: () => ({}) },
+    constraints: { type: String, default: "" },
+    open:        { type: String, default: "" },
+
+    thinking: {
+      type: String,
+      default: ""
+    },
+
+    toolTrace: {
+      type: String,
+      default: ""
+    },
+
+    readyForComponents: {
+      type: Boolean,
+      default: false
+    },
+
+    readyAt: {
+      type: Date,
+      default: null
+    },
+
+    readinessReason: {
+      type: String,
+      default: ""
+    },
+
+    validatorApproved: {
+      type: Boolean,
+      default: false
+    },
+
+    validatorFeedback: {
+      type: String,
+      default: ""
+    },
+
+/* old code
+    validationAttempts: {
+      type: Number,
+      default: 0
+    }
+  },
+*/
+// ??$$$
+    validationAttempts: {
+      type: Number,
+      default: 0
+    },
+    snapshot: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
+    }
+  },
+  { _id: false }
+);
 
 interface IArchitectureState {
   summary: string;
@@ -57,57 +226,6 @@ interface IArchitectureState {
   openDecisions: string[];
   updatedAt: Date | null;
 }
-
-interface IGenerationProfile {
-  board: string | null;
-  boardPartType: string;
-  powerSource: string | null;
-  language: "cpp" | "micropython";
-  firmwareTarget: string;
-  simulationTarget: string;
-  runtimeHints: string[];
-  profileVersion: number;
-  lockedAt: Date | null;
-  updatedAt: Date | null;
-}
-
-interface IProject {
-  owner: Types.ObjectId;
-  description: string;
-
-  // ⚠️ IMPORTANT: these were missing before (your controller uses them)
-  ideaState: IIdeaState;
-  architectureState: IArchitectureState;
-  generationProfile: IGenerationProfile;
-
-  meta: {
-    stage: "ideation" | "components" | "build" | "simulation" | "assembly" | "shopping";
-  };
-
-  extractedContext?: string;
-
-  messages: IMessage[];
-  componentsMessages: IMessage[];
-  designMessages: IMessage[];
-
-  wokwiUrl: string;
-  wokwiProjectPath: string;
-}
-
-// Hydrated document type (IMPORTANT FIX)
-export type ProjectDocument = HydratedDocument<IProject>;
-
-// ─────────────────────────────────────────────────────────────
-// Schemas
-// ─────────────────────────────────────────────────────────────
-
-const messageSchema = new Schema<IMessage>(
-  {
-    role: { type: String, enum: ["user", "ai"], required: true },
-    content: { type: String, required: true },
-  },
-  { _id: false }
-);
 
 const architectureStateSchema = new Schema<IArchitectureState>(
   {
@@ -126,51 +244,461 @@ const architectureStateSchema = new Schema<IArchitectureState>(
   { _id: false }
 );
 
+interface IGenerationProfile {
+  board: string | null;
+  boardPartType: string;
+  powerSource: string | null;
+  language: "cpp" | "micropython";
+  firmwareTarget: string;
+  simulationTarget: string;
+  runtimeHints: string[];
+  profileVersion: number;
+  lockedAt: Date | null;
+  updatedAt: Date | null;
+}
+
 const generationProfileSchema = new Schema<IGenerationProfile>(
   {
-    board: { type: String, enum: getAllowedBoardValues(), default: null },
-    boardPartType: { type: String, default: "wokwi-arduino-uno" },
+    board: {
+      type: String,
+      enum: getAllowedBoardValues(),
+      default: null
+    },
+
+    boardPartType: {
+      type: String,
+      default: "wokwi-arduino-uno"
+    },
+
     powerSource: {
       type: String,
       enum: ["usb", "lipo", "9v", "aa-batteries", "unknown", null],
       default: null,
     },
-    language: { type: String, enum: ["cpp", "micropython"], default: "cpp" },
-    firmwareTarget: { type: String, default: "arduino-cpp-sketch-ino" },
-    simulationTarget: { type: String, default: "wokwi-json-ino" },
-    runtimeHints: { type: [String], default: [] },
-    profileVersion: { type: Number, default: 1 },
-    lockedAt: { type: Date, default: null },
-    updatedAt: { type: Date, default: null },
+
+    language: {
+      type: String,
+      enum: ["cpp", "micropython"],
+      default: "cpp"
+    },
+
+    firmwareTarget: {
+      type: String,
+      default: "arduino-cpp-sketch-ino"
+    },
+
+    simulationTarget: {
+      type: String,
+      default: "wokwi-json-ino"
+    },
+
+    runtimeHints: {
+      type: [String],
+      default: []
+    },
+
+    profileVersion: {
+      type: Number,
+      default: 1
+    },
+
+    lockedAt: {
+      type: Date,
+      default: null
+    },
+
+    updatedAt: {
+      type: Date,
+      default: null
+    },
   },
   { _id: false }
 );
 
-// ─────────────────────────────────────────────────────────────
-// Main Schema
-// ─────────────────────────────────────────────────────────────
+interface IBomItem {
+  key: string;
+  wokwiPartType: string;
+  displayName: string;
+  qty: number;
+  purpose: string;
+  pinConnections: Array<{
+    pin: string;
+    connectsTo: string;
+  }>;
+  price: number;
+  storeUrl: string;
+  mpn?: string;
+  partId?: string;
+}
+
+const bomItemSchema = new Schema<IBomItem>(
+  {
+    key: { type: String, default: "" },
+    wokwiPartType: { type: String, default: "" },
+    displayName: { type: String, default: "" },
+    qty: { type: Number, default: 1 },
+    purpose: { type: String, default: "" },
+
+    pinConnections: [
+      {
+        pin: { type: String, default: "" },
+        connectsTo: { type: String, default: "" }
+      }
+    ],
+
+    price: { type: Number, default: 0 },
+    storeUrl: { type: String, default: "" },
+    mpn: { type: String, default: "" },
+    partId: { type: String, default: "" }
+  },
+  { _id: false }
+);
+
+interface ICompilation {
+  hex: string;
+  compilationErrors: any[];
+  warnings: string[];
+  compiledAt: Date | null;
+}
+
+const compilationSchema = new Schema<ICompilation>(
+  {
+    hex: { type: String, default: "" },
+    compilationErrors: {
+      type: [Schema.Types.Mixed] as any,
+      default: []
+    },
+    warnings: { type: [String], default: [] },
+    compiledAt: { type: Date, default: null }
+  },
+  { _id: false }
+);
+
+interface IAssemblyLayout {
+  svgString: string;
+
+  dimensions: {
+    width_mm: number;
+    height_mm: number;
+    depth_mm: number;
+  };
+
+  componentPositions: any[];
+
+  sizePreference: "pocket" | "desk" | "wall" | "custom";
+
+  warnings: string[];
+
+  generatedAt: Date | null;
+}
+
+const assemblyLayoutSchema = new Schema<IAssemblyLayout>(
+  {
+    svgString: { type: String, default: "" },
+
+    dimensions: {
+      width_mm: { type: Number, default: 0 },
+      height_mm: { type: Number, default: 0 },
+      depth_mm: { type: Number, default: 0 }
+    },
+
+    componentPositions: {
+      type: [Schema.Types.Mixed] as any,
+      default: []
+    },
+
+    sizePreference: {
+      type: String,
+      enum: ["pocket", "desk", "wall", "custom"],
+      default: "pocket"
+    },
+
+    warnings: {
+      type: [String],
+      default: []
+    },
+
+    generatedAt: {
+      type: Date,
+      default: null
+    }
+  },
+  { _id: false }
+);
+
+interface IStageStatus {
+  ideation: string;
+  components: string;
+  build: string;
+  simulation: string;
+  assembly: string;
+  shopping: string;
+}
+
+const stageStatusSchema = new Schema<IStageStatus>(
+  {
+    ideation: {
+      type: String,
+      enum: STAGE_STATUS_ENUM,
+      default: "ready"
+    },
+
+    components: {
+      type: String,
+      enum: STAGE_STATUS_ENUM,
+      default: "locked"
+    },
+
+    build: {
+      type: String,
+      enum: STAGE_STATUS_ENUM,
+      default: "locked"
+    },
+
+    simulation: {
+      type: String,
+      enum: STAGE_STATUS_ENUM,
+      default: "locked"
+    },
+
+    assembly: {
+      type: String,
+      enum: STAGE_STATUS_ENUM,
+      default: "locked"
+    },
+
+    shopping: {
+      type: String,
+      enum: STAGE_STATUS_ENUM,
+      default: "locked"
+    }
+  },
+  { _id: false }
+);
+
+interface IWokwiEvidenceResult {
+  ok: boolean;
+  command: string;
+  exitCode: number;
+  durationMs: number;
+  stdoutTail: string;
+  stderrTail: string;
+  serialTail: string;
+  summary: string;
+  metadata: any;
+  ranAt: Date;
+}
+
+const wokwiEvidenceResultSchema = new Schema<IWokwiEvidenceResult>(
+  {
+    ok: { type: Boolean, default: false },
+    command: { type: String, default: "" },
+    exitCode: { type: Number, default: 0 },
+    durationMs: { type: Number, default: 0 },
+    stdoutTail: { type: String, default: "" },
+    stderrTail: { type: String, default: "" },
+    serialTail: { type: String, default: "" },
+    summary: { type: String, default: "" },
+    metadata: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
+    },
+    ranAt: {
+      type: Date,
+      default: Date.now
+    }
+  },
+  { _id: false }
+);
+
+interface IWokwiEvidence {
+  lastLint: IWokwiEvidenceResult | null;
+  lastRun: IWokwiEvidenceResult | null;
+  lastScenario: IWokwiEvidenceResult | null;
+  lastSerialCapture: IWokwiEvidenceResult | null;
+  updatedAt: Date | null;
+}
+
+const wokwiEvidenceSchema = new Schema<IWokwiEvidence>(
+  {
+    lastLint: {
+      type: wokwiEvidenceResultSchema,
+      default: null
+    },
+
+    lastRun: {
+      type: wokwiEvidenceResultSchema,
+      default: null
+    },
+
+    lastScenario: {
+      type: wokwiEvidenceResultSchema,
+      default: null
+    },
+
+    lastSerialCapture: {
+      type: wokwiEvidenceResultSchema,
+      default: null
+    },
+
+    updatedAt: {
+      type: Date,
+      default: null
+    }
+  },
+  { _id: false }
+);
+
+interface IProjectAiState {
+  summary: string;
+  hardwarePath: string;
+  files: string[];
+  notes: string[];
+  lastContextAt: Date | null;
+}
+
+const projectAiStateSchema = new Schema<IProjectAiState>(
+  {
+    summary: { type: String, default: "" },
+    hardwarePath: { type: String, default: "" },
+    files: { type: [String], default: [] },
+    notes: { type: [String], default: [] },
+    lastContextAt: { type: Date, default: null }
+  },
+  { _id: false }
+);
+
+interface IProject {
+  owner: Types.ObjectId;
+  description: string;
+
+  ideation: IIdeation;
+
+  architectureState: IArchitectureState;
+
+  generationProfile: IGenerationProfile;
+
+  meta: {
+    stage:
+      | "ideation"
+      | "components"
+      | "build"
+      | "simulation"
+      | "assembly"
+      | "shopping";
+
+    board?: string | null;
+    powerSource?: string | null;
+    language?: string;
+    componentCount?: number;
+    detectedAt?: Date | null;
+    agentLock?: string | null;
+  };
+
+  bom: IBomItem[];
+
+  pinAssignments: Record<string, any>;
+
+  sketch: string;
+
+  diagram: any;
+
+  lastCompilation: ICompilation;
+
+  assemblyLayout: IAssemblyLayout;
+
+  stageStatus: IStageStatus;
+
+  // ??$$$ Commented out global messages in favor of stage-specific messages
+  // messages: IMessage[];
+
+  componentsMessages: IMessage[];
+
+  designMessages: IMessage[];
+
+  projectAiMessages: IMessage[];
+
+  projectAiState: IProjectAiState;
+
+  wokwiUrl: string;
+
+  wokwiProjectPath: string;
+
+  wokwiEvidence: IWokwiEvidence;
+}
+
+export type ProjectDocument = HydratedDocument<IProject>;
 
 const projectSchema = new Schema<IProject>(
   {
-    owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
-    description: { type: String, required: true },
+    owner: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true
+    },
 
-    wokwiUrl: { type: String, default: "" },
-    wokwiProjectPath: { type: String, default: "" },
+    description: {
+      type: String,
+      required: true
+    },
 
-    messages: { type: [messageSchema], default: [] },
-    componentsMessages: { type: [messageSchema], default: [] },
-    designMessages: { type: [messageSchema], default: [] },
+    wokwiUrl: {
+      type: String,
+      default: ""
+    },
 
-    // FIXED: avoid empty object default (causes TS inference issues)
-    ideaState: {
-      summary: { type: String, default: "" },
-      requirements: { type: [String], default: [] },
-      unknowns: { type: [String], default: [] },
+    wokwiProjectPath: {
+      type: String,
+      default: ""
+    },
+
+    // ??$$$ Commented out global messages schema in favor of stage-specific messages
+    // messages: {
+    //   type: [messageSchema],
+    //   default: []
+    // },
+
+    componentsMessages: {
+      type: [messageSchema],
+      default: []
+    },
+
+    designMessages: {
+      type: [messageSchema],
+      default: []
+    },
+
+    projectAiMessages: {
+      type: [messageSchema],
+      default: []
+    },
+
+    ideation: {
+      type: ideationSchema,
+
+      // ??$$$ Updated default structure according to Section 7 guidelines
+      default: () => ({
+        messages: [],
+        brief: "",
+        objective: "",
+        compute: "",
+        phases: {},
+        constraints: "",
+        open: "",
+        thinking: "",
+        toolTrace: "",
+        readyForComponents: false,
+        readyAt: null,
+        readinessReason: "",
+        validatorApproved: false,
+        validatorFeedback: "",
+        validationAttempts: 0
+      })
     },
 
     architectureState: {
       type: architectureStateSchema,
+
       default: () => ({
         summary: "",
         pattern: "",
@@ -188,6 +716,7 @@ const projectSchema = new Schema<IProject>(
 
     generationProfile: {
       type: generationProfileSchema,
+
       default: () => ({
         board: null,
         boardPartType: "wokwi-arduino-uno",
@@ -199,27 +728,263 @@ const projectSchema = new Schema<IProject>(
         profileVersion: 1,
         lockedAt: null,
         updatedAt: null,
-    }),
+      }),
     },
 
     meta: {
       stage: {
         type: String,
-        enum: ["ideation", "components", "build", "simulation", "assembly", "shopping"],
+        enum: [
+          "ideation",
+          "components",
+          "build",
+          "simulation",
+          "assembly",
+          "shopping"
+        ],
         default: "ideation",
       },
+
+      board: {
+        type: String,
+        enum: getAllowedBoardValues(),
+        default: null
+      },
+
+      powerSource: {
+        type: String,
+        enum: ["usb", "lipo", "9v", "aa-batteries", "unknown", null],
+        default: null
+      },
+
+      language: {
+        type: String,
+        enum: ["cpp", "micropython"],
+        default: "cpp"
+      },
+
+      componentCount: {
+        type: Number,
+        default: 0
+      },
+
+      detectedAt: {
+        type: Date,
+        default: null
+      },
+
+      agentLock: {
+        type: String,
+        default: null
+      }
     },
 
-    extractedContext: { type: String, default: "" },
+    projectAiState: {
+      type: projectAiStateSchema,
+
+      default: () => ({
+        summary: "",
+        hardwarePath: "",
+        files: [],
+        notes: [],
+        lastContextAt: null
+      })
+    },
+
+    wokwiEvidence: {
+      type: wokwiEvidenceSchema,
+
+      default: () => ({
+        lastLint: null,
+        lastRun: null,
+        lastScenario: null,
+        lastSerialCapture: null,
+        updatedAt: null
+      })
+    },
+
+    bom: {
+      type: [bomItemSchema],
+      default: []
+    },
+
+    pinAssignments: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
+    },
+
+    sketch: {
+      type: String,
+      default: ""
+    },
+
+    diagram: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
+    },
+
+    lastCompilation: {
+      type: compilationSchema,
+
+      default: () => ({
+        hex: "",
+        compilationErrors: [],
+        warnings: [],
+        compiledAt: null
+      })
+    },
+
+    assemblyLayout: {
+      type: assemblyLayoutSchema,
+
+      default: () => ({
+        svgString: "",
+        dimensions: {
+          width_mm: 0,
+          height_mm: 0,
+          depth_mm: 0
+        },
+        componentPositions: [],
+        sizePreference: "pocket",
+        warnings: [],
+        generatedAt: null
+      })
+    },
+
+    stageStatus: {
+      type: stageStatusSchema,
+
+      default: () => ({
+        ideation: "ready",
+        components: "locked",
+        build: "locked",
+        simulation: "locked",
+        assembly: "locked",
+        shopping: "locked"
+      })
+    }
   },
   { timestamps: true }
 );
 
-// ─────────────────────────────────────────────────────────────
-// Model
-// ─────────────────────────────────────────────────────────────
+/* old code
+// ??$$$ sanitize legacy message roles before validation
+projectSchema.pre("validate", function (next) {
+  const sanitizeMessages = (msgs: any[]) => {
+    if (!Array.isArray(msgs)) return;
+    for (const m of msgs) {
+      if (m && m.role === "ai") {
+        m.role = "model";
+      }
+    }
+  };
+  sanitizeMessages(this.componentsMessages);
+  sanitizeMessages(this.designMessages);
+  sanitizeMessages(this.projectAiMessages);
+  if (this.ideation && Array.isArray(this.ideation.messages)) {
+    sanitizeMessages(this.ideation.messages);
+  }
+  next();
+});
+*/
+/* old code
+// ??$$$
+projectSchema.pre("validate", function (this: any, next: any) {
+  const sanitizeMessages = (msgs: any[]) => {
+    if (!Array.isArray(msgs)) return;
+    for (const m of msgs) {
+      if (m && m.role === "ai") {
+        m.role = "model";
+      }
+    }
+  };
+  sanitizeMessages(this.componentsMessages);
+  sanitizeMessages(this.designMessages);
+  sanitizeMessages(this.projectAiMessages);
+  if (this.ideation && Array.isArray(this.ideation.messages)) {
+    sanitizeMessages(this.ideation.messages);
+  }
+  next();
+});
+*/
+/* old code
+// ??$$$
+projectSchema.pre("validate", function (this: any, next: any) {
+  const sanitizeMessages = (msgs: any[]) => {
+    if (!Array.isArray(msgs)) return;
+    for (const m of msgs) {
+      if (m && m.role === "ai") {
+        m.role = "model";
+      }
+    }
+  };
+  sanitizeMessages(this.componentsMessages);
+  sanitizeMessages(this.designMessages);
+  sanitizeMessages(this.projectAiMessages);
+  if (this.ideation && Array.isArray(this.ideation.messages)) {
+    sanitizeMessages(this.ideation.messages);
+  }
+  if (typeof next === "function") {
+    next();
+  }
+});
+*/
+// ??$$$
+projectSchema.pre("validate", function (this: any, next: any) {
+  const sanitizeMessages = (msgs: any[]) => {
+    if (!Array.isArray(msgs)) return;
+    for (const m of msgs) {
+      if (m && m.role === "ai") {
+        m.role = "model";
+      }
+    }
+  };
+  sanitizeMessages(this.componentsMessages);
+  sanitizeMessages(this.designMessages);
+  sanitizeMessages(this.projectAiMessages);
+  if (this.ideation && Array.isArray(this.ideation.messages)) {
+    sanitizeMessages(this.ideation.messages);
+  }
+
+  // Derive snapshot from ideation brief fields for downstream compatibility
+  if (this.ideation) {
+    const inputs: string[] = [];
+    const outputs: string[] = [];
+    const phases = this.ideation.phases || {};
+    for (const [phaseName, phaseContent] of Object.entries(phases)) {
+      const content = String(phaseContent || "");
+      if (!content) continue;
+      const upperPhase = phaseName.toUpperCase();
+      if (upperPhase.includes("SENSING") || upperPhase.includes("INPUT")) {
+        inputs.push(content);
+      } else if (upperPhase.includes("MOTOR") || upperPhase.includes("DISPLAY") || upperPhase.includes("OUTPUT")) {
+        outputs.push(content);
+      } else {
+        if (content.toLowerCase().includes("sensor") || content.toLowerCase().includes("read")) {
+          inputs.push(content);
+        } else {
+          outputs.push(content);
+        }
+      }
+    }
+
+    this.ideation.snapshot = {
+      corePurpose: this.ideation.objective || "",
+      computeCore: this.ideation.compute || "",
+      constraints: this.ideation.constraints ? [this.ideation.constraints] : [],
+      openQuestions: this.ideation.open ? [this.ideation.open] : [],
+      inputs,
+      outputs
+    };
+  }
+
+  if (typeof next === "function") {
+    next();
+  }
+});
 
 const Project: Model<IProject> =
-  mongoose.models.Project || mongoose.model<IProject>("Project", projectSchema);
+  mongoose.models.Project ||
+  mongoose.model<IProject>("Project", projectSchema);
 
 export default Project;
