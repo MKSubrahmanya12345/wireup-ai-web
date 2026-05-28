@@ -3,6 +3,7 @@
 // Runs in background — never blocks BOM response to frontend
 import Part from "../models/part.model";
 import { searchSnapEDA, getPinMetadata, SnapEdaPin } from "./snapeda.service";
+import { cacheModelLocally } from "./modelConversion.service";
 
 const PIN_CACHE_TTL_DAYS = 30;
 
@@ -11,6 +12,72 @@ function isPinCacheValid(pinsCachedAt: Date | null | undefined): boolean {
   if (!pinsCachedAt) return false;
   const ageMs = Date.now() - new Date(pinsCachedAt).getTime();
   return ageMs < PIN_CACHE_TTL_DAYS * 24 * 60 * 60 * 1000;
+}
+
+// ??$$$ newer code — get fallback standard pins for popular components
+function getFallbackPins(mpn: string): any[] {
+  const norm = mpn.toUpperCase();
+  
+  if (norm.includes("ESP8266") || norm.includes("NODEMCU")) {
+    const pinNames = [
+      "A0", "GND", "VU", "S3", "S2", "S1", "SC", "SO", "SK", "GND", "3V3", "EN", "RST", "GND", "VIN",
+      "D0", "D1", "D2", "D3", "D4", "3V3", "GND", "D5", "D6", "D7", "D8", "RX", "TX", "GND", "3V3"
+    ];
+    return pinNames.map((name, idx) => ({
+      id: name,
+      name: name,
+      x_mm: idx * 2.54,
+      y_mm: 0,
+      z_mm: 0,
+      type: name.includes("GND") ? "gnd" : (name.includes("3V") || name.includes("V") ? "power" : "digital")
+    }));
+  }
+  
+  if (norm.includes("LCD") || norm.includes("1602") || norm.includes("16X2")) {
+    const pinNames = ["GND", "VCC", "SDA", "SCL"];
+    return pinNames.map((name, idx) => ({
+      id: name,
+      name: name,
+      x_mm: idx * 2.54,
+      y_mm: 0,
+      z_mm: 0,
+      type: name === "GND" ? "gnd" : (name === "VCC" ? "power" : "digital")
+    }));
+  }
+  
+  if (norm.includes("TMP36") || norm.includes("TEMPERATURE") || norm.includes("TMP35") || norm.includes("TMP37") || norm.includes("LM35")) {
+    const pinNames = ["VCC", "SIG", "GND"];
+    return pinNames.map((name, idx) => ({
+      id: name,
+      name: name,
+      x_mm: idx * 2.54,
+      y_mm: 0,
+      z_mm: 0,
+      type: name === "GND" ? "gnd" : (name === "VCC" ? "power" : "analog")
+    }));
+  }
+  
+  if (norm.includes("LED")) {
+    return [
+      { id: "A", name: "A", x_mm: 0, y_mm: 0, z_mm: 0, type: "digital" },
+      { id: "C", name: "C", x_mm: 2.54, y_mm: 0, z_mm: 0, type: "gnd" }
+    ];
+  }
+  
+  if (norm.includes("RESISTOR") || norm.includes("RES")) {
+    return [
+      { id: "1", name: "1", x_mm: 0, y_mm: 0, z_mm: 0, type: "digital" },
+      { id: "2", name: "2", x_mm: 10, y_mm: 0, z_mm: 0, type: "digital" }
+    ];
+  }
+  
+  // Generic fallback: a simple chip with 8 pins
+  return [
+    { id: "VCC", name: "VCC", x_mm: 0, y_mm: 0, z_mm: 0, type: "power" },
+    { id: "GND", name: "GND", x_mm: 2.54, y_mm: 0, z_mm: 0, type: "gnd" },
+    { id: "IO1", name: "IO1", x_mm: 5.08, y_mm: 0, z_mm: 0, type: "digital" },
+    { id: "IO2", name: "IO2", x_mm: 7.62, y_mm: 0, z_mm: 0, type: "digital" }
+  ];
 }
 
 // ??$$$ Resolve pins for a single BOM item
@@ -41,16 +108,40 @@ export async function resolvePins(
 
     // Step 3: Search SnapEDA for snapedaId
     const snapResult = await searchSnapEDA(mpn);
-    if (!snapResult?.snapedaId) {
-      console.warn(`[PinResolver] No SnapEDA match for MPN: "${mpn}"`);
-      return [];
+    let pins: any[] = [];
+    let snapedaId = "";
+    if (snapResult && snapResult.snapedaId) {
+      snapedaId = snapResult.snapedaId;
+      // Step 4: Fetch pin metadata
+      pins = await getPinMetadata(snapedaId);
     }
 
-    // Step 4: Fetch pin metadata
-    const pins = await getPinMetadata(snapResult.snapedaId);
     if (!pins.length) {
-      console.warn(`[PinResolver] No pins returned from SnapEDA for snapedaId: ${snapResult.snapedaId}`);
-      return [];
+      console.warn(`[PinResolver] No pins returned from SnapEDA for ${mpn}. Using fallback standard pins.`);
+      pins = getFallbackPins(mpn);
+    }
+
+    // Also download & cache GLB model locally if not already cached
+    let glbUrl = part?.glbUrl || "";
+    if (!glbUrl) {
+      const lowercaseMpn = mpn.toLowerCase();
+      let sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
+      if (lowercaseMpn.includes("arduino-uno") || lowercaseMpn.includes("uno")) {
+        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
+      } else if (lowercaseMpn.includes("esp8266") || lowercaseMpn.includes("nodemcu")) {
+        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
+      } else if (lowercaseMpn.includes("led")) {
+        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/led.glb";
+      } else if (lowercaseMpn.includes("resistor")) {
+        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/resistor.glb";
+      } else if (lowercaseMpn.includes("lcd")) {
+        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
+      }
+      try {
+        glbUrl = await cacheModelLocally(mpn, sourceUrl);
+      } catch (err) {
+        glbUrl = sourceUrl;
+      }
     }
 
     // Step 5: Save to MongoDB Part document
@@ -58,15 +149,16 @@ export async function resolvePins(
       { mpn },
       {
         $set: {
-          snapedaId: snapResult.snapedaId,
+          snapedaId,
           pins,
+          glbUrl,
           pinsCachedAt: new Date()
         }
       },
       { upsert: false } // only update existing parts, never create phantom parts
     );
 
-    console.log(`[PinResolver] Resolved ${pins.length} pins for "${mpn}" via SnapEDA`);
+    console.log(`[PinResolver] Resolved ${pins.length} pins for "${mpn}" via SnapEDA/Fallback`);
 
     // Step 6: Emit WebSocket event
     if (io) {

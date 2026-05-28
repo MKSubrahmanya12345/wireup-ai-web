@@ -2,14 +2,33 @@
 // ??$$$ 3D Simulator Production Engine - Unified Interaction Model
 import React, { Suspense, useState, useRef, useMemo, useEffect, useImperativeHandle, forwardRef } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { OrbitControls, Environment, PerspectiveCamera, Html, QuadraticBezierLine, Grid, GizmoHelper, GizmoViewport, useCursor, PivotControls } from "@react-three/drei";
+import { OrbitControls, Environment, PerspectiveCamera, Html, QuadraticBezierLine, Grid, GizmoHelper, GizmoViewport, useCursor, PivotControls, useGLTF } from "@react-three/drei";
+
+// ??$$$ newer code — ErrorBoundary to catch model loading errors
+class ErrorBoundary extends React.Component {
+  state = { hasError: false };
+  static getDerivedStateFromError() { return { hasError: true }; }
+  componentDidCatch(err) { console.error("GLTF load error:", err); }
+  render() {
+    if (this.state.hasError) return this.props.fallback;
+    return this.props.children;
+  }
+}
+
+// ??$$$ newer code — GLTFComponent for rendering loaded 3D models
+const GLTFComponent = ({ url }) => {
+  const { scene } = useGLTF(url);
+  const clonedScene = useMemo(() => scene.clone(), [scene]);
+  return <primitive object={clonedScene} />;
+}
 import * as THREE from "three";
 import { motion, AnimatePresence } from "framer-motion";
 import { useThemeStore } from "../store/useThemeStore";
 import { useSimulatorStore } from "../store/useSimulatorStore";
-import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Box, Plus, Zap, Trash2, Cpu, Lightbulb, Move, ZoomIn, ZoomOut, Target, X, Eye, Undo2, Redo2, Download, Upload } from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, Box, Plus, Zap, Trash2, Cpu, Lightbulb, Move, ZoomIn, ZoomOut, Target, X, Eye, Undo2, Redo2, Download, Upload, Save } from "lucide-react";
 import { axiosInstance } from "../lib/axios";
+import toast from "react-hot-toast";
 
 // --- Global Registry ---
 const nodeRefs = {}; 
@@ -41,7 +60,7 @@ const LEDMesh = ({ color = "#ef4444" }) => (
 
 // --- Draggable Component ---
 
-const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelected, def }, ref) => {
+const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelected, def, glbUrl }, ref) => {
   const groupRef = useRef();
   const { mode, activeWiringSource } = useSimulatorStore(s => s.transient);
   const livePos = useSimulatorStore(s => s.transient.livePositions[id]);
@@ -144,13 +163,32 @@ const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelecte
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => setHovered(false)}
       >
-        {type === "ARDUINO_UNO" && <ArduinoUnoMesh />}
-        {type === "LED" && <LEDMesh />}
-        {type === "RESISTOR" && (
-          <group rotation={[0, 0, Math.PI / 2]}>
-            <mesh><cylinderGeometry args={[0.04, 0.04, 3]} /><meshStandardMaterial color="silver" /></mesh>
-            <mesh><cylinderGeometry args={[0.4, 0.4, 1.5, 12]} /><meshStandardMaterial color="#d2b48c" /></mesh>
-          </group>
+        {glbUrl ? (
+          <ErrorBoundary fallback={
+            <mesh>
+              <boxGeometry args={[4, 0.5, 3]} />
+              <meshStandardMaterial color="#3b82f6" roughness={0.3} />
+            </mesh>
+          }>
+            <GLTFComponent url={glbUrl} />
+          </ErrorBoundary>
+        ) : (
+          <>
+            {type === "ARDUINO_UNO" && <ArduinoUnoMesh />}
+            {type === "LED" && <LEDMesh />}
+            {type === "RESISTOR" && (
+              <group rotation={[0, 0, Math.PI / 2]}>
+                <mesh><cylinderGeometry args={[0.04, 0.04, 3]} /><meshStandardMaterial color="silver" /></mesh>
+                <mesh><cylinderGeometry args={[0.4, 0.4, 1.5, 12]} /><meshStandardMaterial color="#d2b48c" /></mesh>
+              </group>
+            )}
+            {!["ARDUINO_UNO", "LED", "RESISTOR"].includes(type) && (
+              <mesh>
+                <boxGeometry args={[4, 0.5, 3]} />
+                <meshStandardMaterial color="#005d3c" roughness={0.3} />
+              </mesh>
+            )}
+          </>
         )}
 
         {def.pins.map(pin => (
@@ -266,6 +304,8 @@ function InteractionManager() {
 export default function Simulator3DPage() {
   const { theme } = useThemeStore();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const projectId = searchParams.get("projectId");
   const isDark = theme === "dark";
   
   const nodes = useSimulatorStore(s => s.nodes);
@@ -277,11 +317,185 @@ export default function Simulator3DPage() {
   const { mode, selectedNodeId } = useSimulatorStore(s => s.transient);
 
   const [registry, setRegistry] = useState({});
+  const [projectBom, setProjectBom] = useState([]);
+  const [saving, setSaving] = useState(false);
   const orbitRef = useRef();
 
   useEffect(() => {
     axiosInstance.get("/wokwi/registry").then(res => setRegistry(res.data)).catch(console.error);
   }, []);
+
+  // ??$$$ newer code — fetch and populate project nodes and connections on mount
+  useEffect(() => {
+    if (!projectId) return;
+
+    const loadProject = async () => {
+      try {
+        const projectRes = await axiosInstance.get(`/project/${projectId}`);
+        const project = projectRes.data;
+        if (project) {
+          setProjectBom(project.bom || []);
+
+          let diagram = project.diagram;
+          if (typeof diagram === "string") {
+            try {
+              diagram = JSON.parse(diagram);
+            } catch (e) {}
+          }
+          
+          // Fetch registry first to do reverse mapping
+          const registryRes = await axiosInstance.get("/wokwi/registry");
+          const registryData = registryRes.data || {};
+          
+          const newNodes = [];
+          const newConnections = [];
+
+          const hasDiagramParts = diagram && diagram.parts && Array.isArray(diagram.parts) && diagram.parts.length > 0;
+
+          if (hasDiagramParts) {
+            diagram.parts.forEach((p: any, idx: number) => {
+              // Find matching internal key in registry
+              let internalType = p.type;
+              for (const [key, val] of Object.entries(registryData)) {
+                if ((val as any).wokwiType === p.type) {
+                  internalType = key;
+                  break;
+                }
+              }
+
+              // Look up BOM item
+              const bomItem = (project.bom || []).find(b => 
+                b.key.toLowerCase() === p.id.toLowerCase() || 
+                b.key.toLowerCase() === p.type.toLowerCase() ||
+                b.key.toLowerCase() === internalType.toLowerCase()
+              );
+
+              // Position conversion from Wokwi left/top to 3D X/Z coordinates
+              const x = typeof p.left === "number" ? p.left / 10 : (idx % 3) * 15 - 15;
+              const z = typeof p.top === "number" ? p.top / 10 : Math.floor(idx / 3) * 15 - 15;
+              const y = 0.8;
+
+              newNodes.push({
+                id: p.id,
+                type: internalType,
+                position: [x, y, z],
+                rotation: [0, 0, 0],
+                attrs: p.attrs || {},
+                pins: bomItem ? bomItem.pins : [],
+                glbUrl: bomItem ? bomItem.glbUrl : ""
+              });
+            });
+          } else if (project.bom && Array.isArray(project.bom)) {
+            // Auto layout components from project.bom
+            project.bom.forEach((b: any, idx: number) => {
+              const x = (idx % 3) * 20 - 20;
+              const z = Math.floor(idx / 3) * 20 - 20;
+              const y = 0.8;
+
+              newNodes.push({
+                id: b.key,
+                type: b.key,
+                position: [x, y, z],
+                rotation: [0, 0, 0],
+                attrs: {},
+                pins: b.pins || [],
+                glbUrl: b.glbUrl || ""
+              });
+            });
+
+            // Auto connect wires from project.wiring
+            if (project.wiring && Array.isArray(project.wiring)) {
+              project.wiring.forEach((w: any, idx: number) => {
+                const fromStr = w.from;
+                const toStr = w.to;
+                const color = w.color || "green";
+
+                if (fromStr && toStr) {
+                  const [fromNode, fromPin] = fromStr.split(".");
+                  const [toNode, toPin] = toStr.split(".");
+                  if (fromNode && fromPin && toNode && toPin) {
+                    newConnections.push({
+                      id: `wire_${idx}_${Date.now()}`,
+                      from: { nodeId: fromNode, pinId: fromPin },
+                      to: { nodeId: toNode, pinId: toPin },
+                      color
+                    });
+                  }
+                }
+              });
+            }
+          }
+
+          // Load diagram connections if they exist and we didn't populate auto wires
+          if (diagram && diagram.connections && Array.isArray(diagram.connections) && newConnections.length === 0) {
+            diagram.connections.forEach((c: any, idx: number) => {
+              const fromStr = c[0];
+              const toStr = c[1];
+              const color = c[2] || "green";
+
+              if (fromStr && toStr) {
+                const [fromNode, fromPin] = fromStr.split(":");
+                const [toNode, toPin] = toStr.split(":");
+                if (fromNode && fromPin && toNode && toPin) {
+                  newConnections.push({
+                    id: `wire_${idx}_${Date.now()}`,
+                    from: { nodeId: fromNode, pinId: fromPin },
+                    to: { nodeId: toNode, pinId: toPin },
+                    color
+                  });
+                }
+              }
+            });
+          }
+
+          // Update store values
+          useSimulatorStore.setState({
+            nodes: newNodes,
+            connections: newConnections,
+            past: [],
+            future: []
+          });
+        }
+      } catch (err) {
+        console.error("Failed to load project diagram in 3D simulator:", err);
+      }
+    };
+
+    loadProject();
+  }, [projectId]);
+
+  // ??$$$ newer code — save diagram modifications back to backend
+  const saveProjectDiagram = async () => {
+    if (!projectId) return;
+    setSaving(true);
+    try {
+      const diagram = {
+        version: 1,
+        author: "NOVA CORE",
+        editor: "wokwi",
+        parts: nodes.map(n => ({
+          type: registry[n.type]?.wokwiType || n.type,
+          id: n.id,
+          top: n.position[2] * 10,
+          left: n.position[0] * 10,
+          attrs: n.attrs || {}
+        })),
+        connections: connections.map(c => [
+          `${c.from.nodeId}:${c.from.pinId}`,
+          `${c.to.nodeId}:${c.to.pinId}`,
+          c.color || "green", []
+        ])
+      };
+
+      await axiosInstance.put(`/project/${projectId}`, { diagram }, { withCredentials: true });
+      toast.success("Circuit diagram successfully saved to project!");
+    } catch (err) {
+      console.error("Failed to save project diagram:", err);
+      toast.error("Failed to save project diagram.");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleAdd = (type) => {
     const id = `${type}_${Date.now()}`;
@@ -315,18 +529,48 @@ export default function Simulator3DPage() {
     a.click();
   };
 
-  const COMPONENT_DEFS = {
-    ARDUINO_UNO: { 
-      name: "Arduino Uno", scale: 5, 
-      pins: (registry.ARDUINO_UNO?.pins || [
-        { name: "D13" }, { name: "GND" }, { name: "5V" }
-      ]).map((p, i) => ({ 
-        id: p.name, 
-        pos: p.name === "GND" ? [2, 0.8, 8.2] : p.name === "5V" ? [1.2, 0.8, 8.2] : [-6.4 + i*0.8, 0.8, -8.2] 
-      }))
-    },
-    LED: { name: "LED", scale: 3.3, pins: [{ id: "A", pos: [-0.66, -3.9, 0] }, { id: "C", pos: [0.66, -3.9, 0] }] },
-    RESISTOR: { name: "Resistor", scale: 3, pins: [{ id: "1", pos: [-1.5, 0, 0] }, { id: "2", pos: [1.5, 0, 0] }] }
+  const getDefForNode = (node) => {
+    const COMPONENT_DEFS = {
+      ARDUINO_UNO: { 
+        name: "Arduino Uno", scale: 5, 
+        pins: (registry.ARDUINO_UNO?.pins || [
+          { name: "D13" }, { name: "GND" }, { name: "5V" }
+        ]).map((p, i) => ({ 
+          id: p.name, 
+          pos: p.name === "GND" ? [2, 0.8, 8.2] : p.name === "5V" ? [1.2, 0.8, 8.2] : [-6.4 + i*0.8, 0.8, -8.2] 
+        }))
+      },
+      LED: { name: "LED", scale: 3.3, pins: [{ id: "A", pos: [-0.66, -3.9, 0] }, { id: "C", pos: [0.66, -3.9, 0] }] },
+      RESISTOR: { name: "Resistor", scale: 3, pins: [{ id: "1", pos: [-1.5, 0, 0] }, { id: "2", pos: [1.5, 0, 0] }] }
+    };
+
+    if (COMPONENT_DEFS[node.type]) {
+      return COMPONENT_DEFS[node.type];
+    }
+
+    // Dynamic resolution based on node.pins (from MongoDB)
+    const nodePins = node.pins || [];
+    const mappedPins = nodePins.map((p, i) => {
+      if (p.modelPosition) {
+        return { id: p.id || p.name, pos: [p.modelPosition.x, p.modelPosition.y, p.modelPosition.z] };
+      }
+      if (typeof p.x_mm === "number" || typeof p.y_mm === "number") {
+        const x = (p.x_mm || 0) * 0.2;
+        const z = (p.y_mm || 0) * 0.2;
+        const y = (p.z_mm || 0) * 0.2 + 0.5;
+        return { id: p.id || p.name, pos: [x, y, z] };
+      }
+      return { id: p.id || p.name, pos: [-4 + i * 1.5, 0.5, 0] };
+    });
+
+    return {
+      name: node.type.replace(/_/g, " "),
+      scale: node.glbUrl ? 1 : 3,
+      pins: mappedPins.length > 0 ? mappedPins : [
+        { id: "1", pos: [-1.5, 0.5, 0] },
+        { id: "2", pos: [1.5, 0.5, 0] }
+      ]
+    };
   };
 
   return (
@@ -346,13 +590,34 @@ export default function Simulator3DPage() {
           </div>
 
           <section className="space-y-3">
-            <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500">Inventory</h3>
+            <h3 className="text-[9px] font-black uppercase tracking-widest text-gray-500">Project BOM Components</h3>
             <div className="grid grid-cols-1 gap-2">
-              {Object.keys(COMPONENT_DEFS).map(type => (
-                <button key={type} onClick={() => handleAdd(type)} className="flex items-center gap-4 px-5 py-4 rounded-2xl border border-white/5 bg-white/5 hover:bg-blue-500/10 transition-all group">
-                  <div className="p-2 bg-blue-500/10 rounded-lg text-blue-500"><Plus className="w-4 h-4 group-hover:rotate-90 transition-transform"/></div>
-                  <span className="text-[10px] font-black uppercase tracking-wider">{type.replace('_', ' ')}</span>
-                </button>
+              {projectBom.map((item) => (
+                <div key={item.key} className="flex flex-col p-4 rounded-2xl border border-white/5 bg-white/5 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-blue-400">{item.displayName}</span>
+                    <span className="text-[8px] bg-white/10 px-1.5 py-0.5 rounded text-gray-400">Qty: {item.qty}</span>
+                  </div>
+                  <p className="text-[8px] text-gray-400 leading-tight">{item.purpose}</p>
+                  <button 
+                    onClick={() => {
+                      const id = `${item.key}_${Date.now()}`;
+                      addNode({ 
+                        id, 
+                        type: item.key, 
+                        position: [0, 2, 0], 
+                        rotation: [0, 0, 0], 
+                        attrs: {},
+                        pins: item.pins || [],
+                        glbUrl: item.glbUrl || ""
+                      });
+                      useSimulatorStore.getState().setTransient({ selectedNodeId: id, mode: "IDLE" });
+                    }} 
+                    className="flex items-center justify-center gap-2 py-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[9px] font-black uppercase text-blue-400 hover:bg-blue-500/20 transition"
+                  >
+                    <Plus className="w-3 h-3"/> Place in Scene
+                  </button>
+                </div>
               ))}
             </div>
           </section>
@@ -362,6 +627,17 @@ export default function Simulator3DPage() {
               <button onClick={undo} className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase hover:bg-white/10 transition shadow-xl"><Undo2 className="w-3 h-3"/> Undo</button>
               <button onClick={redo} className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/5 border border-white/10 text-[10px] font-bold uppercase hover:bg-white/10 transition shadow-xl"><Redo2 className="w-3 h-3"/> Redo</button>
             </div>
+            {/* ??$$$ newer code — project save action button */}
+            {projectId && (
+              <button 
+                onClick={saveProjectDiagram} 
+                disabled={saving}
+                className="w-full py-3.5 flex items-center justify-center gap-2 text-[10px] font-black uppercase text-emerald-400 hover:text-emerald-300 transition bg-emerald-500/10 border border-emerald-500/20 rounded-xl disabled:opacity-50"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {saving ? "Saving..." : "Save Project Circuit"}
+              </button>
+            )}
             <button onClick={resetCircuit} className="w-full py-3 text-[9px] font-black uppercase text-red-500/30 hover:text-red-500 transition border border-red-500/10 rounded-xl">Hard Reset</button>
           </section>
         </div>
@@ -381,7 +657,7 @@ export default function Simulator3DPage() {
                 key={node.id} 
                 {...node} 
                 ref={el => nodeRefs[node.id] = el}
-                def={COMPONENT_DEFS[node.type] || COMPONENT_DEFS.RESISTOR}
+                def={getDefForNode(node)}
                 isSelected={selectedNodeId === node.id} 
               />
             ))}

@@ -2,6 +2,9 @@
 import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+// ??$$$ newer code
+import fs from "fs";
+import path from "path";
 import rotationService from "../services/keyRotation.service";
 import NewFlowSession from "../models/newFlowSession.model";
 import { runAgent2 } from "../services/newflow.agent";
@@ -33,28 +36,28 @@ You must respond ONLY with a JSON object, without markdown, without backticks:
 // Helper to call LLM for Discovery Agent
 async function callDiscovery(modelName: string, promptText: string): Promise<any> {
   const isGemini = modelName.toLowerCase().includes("gemini");
-  
+
   if (isGemini) {
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new Error("GEMINI_API_KEY is missing in env");
-    
+
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       systemInstruction: AGENT1_SYSTEM_PROMPT
     });
-    
+
     const result = await model.generateContent(promptText);
     const text = result.response.text().trim();
     const clean = text.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
   } else {
     // Map Llama and Qwen models
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    let actualModel = "qwen/qwen3-32b";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
     }
-    
+
     const client = await rotationService.getClient();
     const completion = await client.chat.completions.create({
       model: actualModel,
@@ -65,7 +68,7 @@ async function callDiscovery(modelName: string, promptText: string): Promise<any
       response_format: { type: "json_object" },
       temperature: 0.7
     });
-    
+
     const text = completion.choices[0]?.message?.content?.trim() || "";
     const clean = text.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
@@ -75,7 +78,7 @@ async function callDiscovery(modelName: string, promptText: string): Promise<any
 // 1. POST /api/new-flow/start
 export const startSession = async (req: Request, res: Response) => {
   try {
-    const { idea, model = "meta-llama/llama-4-scout-17b-16e-instruct" } = req.body;
+    const { idea, model = "qwen/qwen3-32b" } = req.body;
     if (!idea) {
       return res.status(400).json({ error: "Original project idea is required." });
     }
@@ -177,6 +180,33 @@ export const proceedSession = async (req: Request, res: Response) => {
     const session = await NewFlowSession.findById(sessionId);
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
+    }
+
+    // ??$$$ old code
+    /*
+    session.phase1Complete = true;
+    await session.save();
+
+    return res.json({
+      success: true,
+      context: session.context
+    });
+    */
+
+    // ??$$$ newer code — compile final context from Q&A history on proceed/skip
+    let promptText = `Original Project Idea: ${session.idea}\n\nQ&A History:\n`;
+    session.qaHistory.forEach((item, index) => {
+      promptText += `${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
+    });
+    promptText += `\nThe user has decided to skip further questions. Please extract and populate the final context object as best as possible from the idea and the Q&A history answered so far. Set "done" to true.`;
+
+    try {
+      const response = await callDiscovery(session.selectedModel, promptText);
+      if (response && response.context) {
+        session.context = response.context;
+      }
+    } catch (e) {
+      console.error("[proceedSession] Failed to run final discovery extraction:", e);
     }
 
     session.phase1Complete = true;
@@ -307,7 +337,7 @@ export const getSessionByProject = async (req: Request, res: Response) => {
       // Create a new session linked to this project
       session = new NewFlowSession({
         owner: userId,
-        selectedModel: "meta-llama/llama-4-scout-17b-16e-instruct",
+        selectedModel: "qwen/qwen3-32b",
         idea: project.description,
         qaHistory: [],
         phase1Complete: true,
@@ -335,5 +365,44 @@ export const getSessionByProject = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("getSessionByProject failed:", err);
     return res.status(500).json({ error: err.message || "Failed to fetch project session." });
+  }
+};
+
+// ??$$$ newer code — Export formulation data to local folder on E:
+export const exportLocalSession = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: "SessionId is required." });
+    }
+
+    const session = await NewFlowSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found." });
+    }
+
+    // Define export path on E: drive
+    const exportDir = `E:\\wireup_formulation_exports\\session_${sessionId}`;
+
+    // Ensure directory exists
+    if (!fs.existsSync(exportDir)) {
+      fs.mkdirSync(exportDir, { recursive: true });
+    }
+
+    // Write individual JSON files
+    fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
+
+    return res.json({
+      success: true,
+      message: `Formulation data successfully exported to local folder.`,
+      exportPath: exportDir
+    });
+  } catch (err: any) {
+    console.error("exportLocalSession failed:", err);
+    return res.status(500).json({ error: err.message || "Failed to export session to local folder." });
   }
 };

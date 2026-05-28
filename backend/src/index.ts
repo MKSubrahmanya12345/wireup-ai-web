@@ -24,6 +24,7 @@ import voiceRoutes from "./routes/voice.route";
 import libraryRoutes from "./routes/library.route";
 // ??$$$ NEW FLOW
 import newflowRoutes from "./routes/newflow.route";
+import partRoutes from "./routes/part.route";
 import { exec as cbExec } from "child_process";
 import { promisify } from "util";
 import { existsSync } from "fs";
@@ -105,8 +106,26 @@ app.use("/api", assemblyRoutes);
 app.use("/api", shoppingRoutes);
 app.use("/api", voiceRoutes);
 app.use("/api", libraryRoutes);
-// ??$$$ NEW FLOW
 app.use("/api", newflowRoutes);
+app.use("/api", partRoutes);
+
+// ??$$$ Serve locally cached 3D models from E: and backend storage folder
+const modelsDir = "E:\\wireup_formulation_exports\\models";
+import fs from "fs";
+if (!fs.existsSync(modelsDir)) {
+  try {
+    fs.mkdirSync(modelsDir, { recursive: true });
+  } catch (e) {}
+}
+app.use("/models", express.static(modelsDir));
+
+const storageModelsDir = path.join(__dirname, "..", "storage", "models");
+if (!fs.existsSync(storageModelsDir)) {
+  try {
+    fs.mkdirSync(storageModelsDir, { recursive: true });
+  } catch (e) {}
+}
+app.use("/models", express.static(storageModelsDir));
 
 // ??$$$ Expose component registry to frontend (used by Simulator3D to get pin defs + component metadata)
 import { getRegistry } from "./services/registry.services";

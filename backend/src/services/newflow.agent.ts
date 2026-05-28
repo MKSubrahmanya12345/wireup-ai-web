@@ -47,7 +47,7 @@ export class GeminiAdapter implements LLMAdapter {
           }]
         };
       }
-      
+
       const role = m.role === "assistant" || m.role === "model" ? "model" : "user";
       const parts: any[] = [];
       if (m.content) {
@@ -92,7 +92,7 @@ export class GroqAdapter implements LLMAdapter {
 
   async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
     const client = await rotationService.getClient();
-    
+
     // Map messages into Groq format
     const groqMessages = [
       { role: "system", content: systemPrompt },
@@ -105,7 +105,7 @@ export class GroqAdapter implements LLMAdapter {
             content: typeof m.content === "string" ? m.content : JSON.stringify(m.content)
           };
         }
-        
+
         const role = m.role === "model" || m.role === "assistant" ? "assistant" : "user";
         const msgObj: any = {
           role,
@@ -178,6 +178,7 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
 
   const io = (global as any).io;
 
+  /* old code
   if (type === "bom") {
     session.bom = Array.isArray(parsedData) ? parsedData : [...(session.bom || []), parsedData];
     await session.save();
@@ -227,6 +228,169 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
     // Let's store the diagram json as a field on session or in milestones. Let's just log it or add support
     if (io) {
       io.to(sessionId).emit("agent2:diagram_update", { diagram: parsedData.diagramJson || parsedData });
+    }
+  }
+  */
+
+  // ??$$$ newer code — Robust saveSessionProgress with shape normalizations and MCU key consistency mapping
+  if (type === "bom") {
+    let bomList = parsedData;
+    if (parsedData && typeof parsedData === "object" && !Array.isArray(parsedData)) {
+      if (Array.isArray(parsedData.components)) {
+        bomList = parsedData.components;
+      } else if (Array.isArray(parsedData.bom)) {
+        bomList = parsedData.bom;
+      } else if (Array.isArray(parsedData.parts)) {
+        bomList = parsedData.parts;
+      }
+    }
+
+    const rawItems = Array.isArray(bomList) ? bomList : [bomList];
+    const normalizedBOM = rawItems.filter(Boolean).map((item: any) => {
+      // Bug 2: Ensure MCU key is always "mcu" (never "brain")
+      let key = item.key || item.id || "";
+      if (key.toLowerCase() === "brain" || key.toLowerCase() === "mcu") {
+        key = "mcu";
+      }
+
+      // Bug 4: Keep partId as the MongoDB _id string. Ensure MPN is stored in mpn.
+      let partId = item.partId || item.id || "";
+      let mpn = item.mpn || item.partId || "";
+
+      // Enforce other required fields to satisfy mongoose schema validation
+      const displayName = item.displayName || item.name || mpn || "Unknown Component";
+      const purpose = item.purpose || item.description || "Auxiliary component";
+      const subsystem = item.subsystem || "Main";
+      const qty = typeof item.qty === "number" ? item.qty : 1;
+      const price = typeof item.price === "number" ? item.price : 0;
+      const interfaces = Array.isArray(item.interfaces) ? item.interfaces : [];
+      const pinConnections = Array.isArray(item.pinConnections)
+        ? item.pinConnections.map((pc: any) => ({
+          pin: pc.pin || "",
+          connectsTo: pc.connectsTo || ""
+        }))
+        : [];
+
+      return {
+        key,
+        partId,
+        mpn,
+        displayName,
+        purpose,
+        qty,
+        price,
+        subsystem,
+        interfaces,
+        pinConnections,
+        glbUrl: item.glbUrl || "",
+        pins: Array.isArray(item.pins) ? item.pins : []
+      };
+    });
+
+    session.bom = normalizedBOM;
+    await session.save();
+    if (io) {
+      io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
+    }
+  } else if (type === "wiring") {
+    // Save wiring list
+    let rawWiring = Array.isArray(parsedData.connections) ? parsedData.connections : parsedData;
+    if (!Array.isArray(rawWiring)) rawWiring = [];
+
+    // Normalize wiring to ensure MCU is mapped to "mcu" instead of "brain"
+    const normalizedWiring = rawWiring.map((c: any) => {
+      let from = c.from || "";
+      let to = c.to || "";
+
+      if (from.startsWith("brain.")) {
+        from = "mcu." + from.substring(6);
+      }
+      if (to.startsWith("brain.")) {
+        to = "mcu." + to.substring(6);
+      }
+
+      return {
+        from,
+        to,
+        net: c.net || `${from}-${to}`,
+        color: c.color || "#000000"
+      };
+    });
+
+    session.wiring = normalizedWiring;
+
+    // Map pin connections to BOM items
+    session.bom.forEach((bomItem) => {
+      const matchingConns = (session.wiring || []).filter((c: any) => c.to.startsWith(bomItem.key));
+      bomItem.pinConnections = matchingConns.map((c: any) => ({
+        pin: c.to.split(".")[1] || "",
+        connectsTo: c.from
+      }));
+    });
+
+    session.markModified("bom");
+    await session.save();
+
+    if (io) {
+      io.to(sessionId).emit("agent2:wiring_update", { wiring: session.wiring });
+      io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
+    }
+  } else if (type === "milestone") {
+    const list = Array.isArray(parsedData) ? parsedData : [parsedData];
+    list.forEach(m => {
+      // Bug 3: Avoid duplication by checking order + subsystem, title, or id
+      const existingIdx = session.milestones.findIndex(em =>
+        em.id === m.id ||
+        em.title === m.title ||
+        (em.order === m.order && em.subsystem === m.subsystem)
+      );
+      if (existingIdx > -1) {
+        session.milestones[existingIdx] = m;
+      } else {
+        session.milestones.push(m);
+      }
+    });
+
+    if (session.milestones.length > 0) {
+      session.milestones.sort((a, b) => a.order - b.order);
+    }
+    await session.save();
+
+    if (io) {
+      io.to(sessionId).emit("agent2:milestone_update", { milestones: session.milestones });
+    }
+  } else if (type === "diagram") {
+    let diagramData = parsedData.diagramJson || parsedData;
+    if (diagramData && typeof diagramData === "object") {
+      // Normalize Wokwi parts and connections to map "brain" to "mcu"
+      if (Array.isArray(diagramData.parts)) {
+        diagramData.parts = diagramData.parts.map((p: any) => {
+          if (p && (p.id === "brain" || p.id === "mcu")) {
+            return { ...p, id: "mcu" };
+          }
+          return p;
+        });
+      }
+      if (Array.isArray(diagramData.connections)) {
+        diagramData.connections = diagramData.connections.map((c: any) => {
+          if (Array.isArray(c)) {
+            return c.map((val: any) => {
+              if (typeof val === "string" && val.startsWith("brain:")) {
+                return "mcu:" + val.substring(6);
+              }
+              return val;
+            });
+          }
+          return c;
+        });
+      }
+    }
+
+    session.diagram = diagramData;
+    await session.save();
+
+    if (io) {
+      io.to(sessionId).emit("agent2:diagram_update", { diagram: session.diagram });
     }
   }
 
@@ -316,7 +480,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     adapter = new GeminiAdapter(geminiKey);
   } else {
     // Map Llama and Qwen models
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    let actualModel = "qwen/qwen3-32b";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
     }
@@ -510,6 +674,35 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
 }
 */
 
+// ??$$$ Helper to extract Groq rate limit retry-after time in seconds from headers or message
+function getRateLimitDelay(err: any): number {
+  if (err.headers) {
+    const retryAfter = err.headers.get?.('retry-after') || err.headers['retry-after'];
+    if (retryAfter) {
+      const sec = parseFloat(retryAfter);
+      if (!isNaN(sec) && sec > 0) return sec;
+    }
+    const resetTokens = err.headers.get?.('x-ratelimit-reset-tokens') || err.headers['x-ratelimit-reset-tokens'];
+    if (resetTokens) {
+      const match = resetTokens.match(/([\d\.]+)\s*s/);
+      if (match) {
+        const sec = parseFloat(match[1]);
+        if (!isNaN(sec) && sec > 0) return sec;
+      }
+    }
+  }
+
+  const msg = err.message || (err.error?.error?.message) || "";
+  const tryAgainMatch = msg.match(/try again in (?:(\d+)m)?([\d\.]+)s/i);
+  if (tryAgainMatch) {
+    const minutes = tryAgainMatch[1] ? parseInt(tryAgainMatch[1], 10) : 0;
+    const seconds = parseFloat(tryAgainMatch[2]);
+    return minutes * 60 + seconds;
+  }
+
+  return 60; // fallback to 60 seconds
+}
+
 // ??$$$ NEW FLOW
 export async function runAgent2(sessionId: string, modelName: string) {
   const session = await NewFlowSession.findById(sessionId);
@@ -520,7 +713,7 @@ export async function runAgent2(sessionId: string, modelName: string) {
   const io = (global as any).io;
 
   const logAndEmit = async (logObj: {
-    type: "thinking" | "tool_call" | "decision" | "error" | "context_received";
+    type: "thinking" | "tool_call" | "decision" | "error" | "context_received" | "rate_limit";
     name?: string;
     status?: "running" | "done" | "failed";
     input?: any;
@@ -543,7 +736,7 @@ export async function runAgent2(sessionId: string, modelName: string) {
   console.log(`[Agent2 Debugger] Loop initialized for session: ${sessionId}`);
   console.log(`[Agent2 Debugger] Model chosen: ${modelName}`);
   console.log(`[Agent2 Debugger] Context received:`, JSON.stringify(session.context));
-  
+
   await logAndEmit({
     type: "context_received",
     text: "AI Received Project Formulation Context.",
@@ -559,6 +752,7 @@ export async function runAgent2(sessionId: string, modelName: string) {
   });
 
   // Build the formulation agent system prompt
+  // ??$$$ newer code — refined system prompt with bug fixes for BOM shape, MCU key, milestone duplication, and partId format
   const systemPrompt = `You are an autonomous hardware engineering agent working on formulating a project.
 Your task is to take the finalized project context and produce:
 1. A finalized Bill of Materials (BOM) using components from the library.
@@ -579,6 +773,10 @@ Work step by step:
 9. Save diagram using save_progress(type="diagram").
 
 Follow these guidelines:
+- CRITICAL: When calling save_progress(type="bom"), the data must be a JSON array of components where each component is a flat object directly containing: key, partId (use the database _id string from get_part_details, NEVER the MPN string), mpn, displayName, purpose, subsystem, qty, price, interfaces, pinConnections. Do NOT wrap under a 'components' key.
+- CRITICAL: The MCU must always use the key 'mcu' everywhere — in the BOM, in generate_wiring, and in generate_diagram_json. Never use 'brain' as a key. The id field in diagram.parts must match the BOM key (which is 'mcu').
+- CRITICAL: Call generate_milestone exactly once per milestone. Do not call it twice. Check the session first to see if a milestone with the same order, title, or subsystem already exists.
+- CRITICAL: The partId field in save_progress for the BOM must be the exact database _id string returned by get_part_details (e.g. '6a13ec800c47f410601cfea7'), not the MPN string.
 - MCU pin layout and wiring must be compatible.
 - All milestones must be step-by-step.
 - You must call save_progress at each step to persist data and update the frontend UI.
@@ -605,7 +803,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     adapter = new GeminiAdapter(geminiKey);
   } else {
     // Map Llama and Qwen models
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    let actualModel = "qwen/qwen3-32b";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
     }
@@ -619,7 +817,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     turns++;
     console.log(`[Agent2 Debugger] Starting turn ${turns}...`);
     console.log(`[Agent2 Debugger] Current message history length: ${messages.length}`);
-    
+
     try {
       const response = await adapter.chat(systemPrompt, messages);
       const text = response.text();
@@ -704,6 +902,44 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
       }
     } catch (err: any) {
       console.error("[Agent2 Debugger] Loop error occurred:", err);
+
+      // ??$$$ newer code
+      const isRateLimit = err.status === 429 ||
+        err.message?.toLowerCase().includes("rate limit") ||
+        err.error?.error?.message?.toLowerCase().includes("rate limit") ||
+        err.error?.error?.code === "rate_limit_exceeded";
+
+      if (isRateLimit) {
+        const delaySeconds = getRateLimitDelay(err);
+        console.warn(`[Agent2 Debugger] Rate limit hit! Rotating API key and waiting ${delaySeconds} seconds before retry...`);
+
+        // 1. Rotate the key
+        await rotationService.handleRateLimit();
+
+        // 2. Log and emit "rate_limit" event to frontend
+        await logAndEmit({
+          type: "rate_limit" as any,
+          text: `Groq Rate Limit Exceeded. Pausing formulation pipeline. Resuming automatically in ${Math.ceil(delaySeconds)} seconds...`,
+          input: { delaySeconds }
+        });
+
+        // 3. Sleep
+        await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+
+        // 4. Decrement turns and retry the current turn
+        turns--;
+        continue;
+      }
+
+      /* old code
+      await logAndEmit({
+        type: "error",
+        text: `Error during agent loop: ${err.message || err}`
+      });
+      break;
+      */
+
+      // ??$$$ newer code
       await logAndEmit({
         type: "error",
         text: `Error during agent loop: ${err.message || err}`
@@ -793,13 +1029,14 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         serialOutput: "",
         completedAt: null,
         simulatable: m.simulatable,
-        dependsOn: idx === 0 ? [] : [session.milestones[idx-1].id],
+        dependsOn: idx === 0 ? [] : [session.milestones[idx - 1].id],
         debugMessages: [],
         requiredLibraries: m.requiredLibraries || []
       })),
       milestonesGenerated: true,
       activeMilestoneId: session.milestones[0]?.id || "",
-      diagram: session.wiring
+      // ??$$$ newer code — map session.diagram (Wokwi format) to Project diagram field
+      diagram: session.diagram || session.wiring
     });
 
     await newProject.save();
@@ -812,7 +1049,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
   session.projectId = projectId;
   session.phase2Complete = true;
   await session.save();
-  
+
   if (io) {
     io.to(sessionId).emit("agent2:complete", { success: true, projectId });
   }

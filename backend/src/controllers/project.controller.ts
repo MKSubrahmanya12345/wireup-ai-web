@@ -1,5 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import Project from "../models/project.model";
+import Part from "../models/part.model";
 import {
   buildGenerationProfileFromMeta,
   processInput,
@@ -178,7 +179,7 @@ export const getProjectById = async (
       return res.status(400).json({ error: "Invalid projectId" });
     }
 
-    const project = await Project.findById(id);
+    const project = await Project.findById(id).lean() as any;
 
     if (!project) {
       return res.status(404).json({ error: "Project not found" });
@@ -186,6 +187,23 @@ export const getProjectById = async (
 
     if (project.owner.toString() !== req.user?._id?.toString()) {
       return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // ??$$$ newer code — Merge pins and glbUrl from Part documents into BOM items
+    if (project.bom && Array.isArray(project.bom)) {
+      project.bom = await Promise.all(project.bom.map(async (item: any) => {
+        try {
+          const partDoc = await Part.findOne({ mpn: item.mpn }).lean() as any;
+          if (partDoc) {
+            return {
+              ...item,
+              pins: partDoc.pins || [],
+              glbUrl: partDoc.glbUrl || item.glbUrl || ""
+            };
+          }
+        } catch (e) {}
+        return item;
+      }));
     }
 
     return res.json(project);

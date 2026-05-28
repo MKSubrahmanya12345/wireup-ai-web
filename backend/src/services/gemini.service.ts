@@ -256,9 +256,9 @@ export const callGeminiIdeation = async (
         content: m.content || ""
       }))
     ];
-    console.log(`[Groq] Call ideation using meta-llama/llama-4-scout-17b-16e-instruct`);
+    console.log(`[Groq] Call ideation using qwen/qwen3-32b`);
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "qwen/qwen3-32b",
       messages: groqMessages,
       temperature: 0.7
     });
@@ -357,9 +357,9 @@ export const callGeminiValidator = async (
   const promptText = brief || "No brief provided.";
   try {
     const groq = await rotationService.getClient();
-    console.log(`[Groq] Call validator using meta-llama/llama-4-scout-17b-16e-instruct`);
+    console.log(`[Groq] Call validator using qwen/qwen3-32b`);
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "qwen/qwen3-32b",
       messages: [
         { role: "system", content: VALIDATOR_SYSTEM_PROMPT },
         { role: "user", content: promptText }
@@ -549,9 +549,9 @@ export const callAI = async (systemInstruction: string, promptText: string): Pro
 export const callAI = async (systemInstruction: string, promptText: string): Promise<string> => {
   try {
     const groq = await rotationService.getClient();
-    console.log(`[Groq] callAI using meta-llama/llama-4-scout-17b-16e-instruct`);
+    console.log(`[Groq] callAI using qwen/qwen3-32b`);
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "qwen/qwen3-32b",
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: promptText }
@@ -639,30 +639,51 @@ Code:
 ${milestone.code}
 \`\`\``;
 
-// ??$$$ newer code - Use Groq llama-scout instead of Gemini for Debug Coach
-/*
-  const geminiApiKey = process.env.GEMINI_API_KEY;
-  if (geminiApiKey && debugMessages.length > 0) {
-    try {
-      const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        systemInstruction
-      });
-      const history = debugMessages.slice(0, -1).map((m: any) => ({
-        role: m.role === "model" ? "model" : "user",
-        parts: [{ text: m.content || "" }]
-      }));
-      const lastMessage = debugMessages[debugMessages.length - 1];
-      const chat = model.startChat({ history });
-      const result = await chat.sendMessage(lastMessage.content || "");
-      return result.response.text().trim();
-    } catch (err) {
-      console.error("Gemini iterative debug coach failed, trying Groq fallback:", err);
+  // ??$$$ newer code - Use Groq llama-scout instead of Gemini for Debug Coach
+  /*
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (geminiApiKey && debugMessages.length > 0) {
+      try {
+        const genAI = new GoogleGenerativeAI(geminiApiKey);
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction
+        });
+        const history = debugMessages.slice(0, -1).map((m: any) => ({
+          role: m.role === "model" ? "model" : "user",
+          parts: [{ text: m.content || "" }]
+        }));
+        const lastMessage = debugMessages[debugMessages.length - 1];
+        const chat = model.startChat({ history });
+        const result = await chat.sendMessage(lastMessage.content || "");
+        return result.response.text().trim();
+      } catch (err) {
+        console.error("Gemini iterative debug coach failed, trying Groq fallback:", err);
+      }
     }
-  }
-
-  // Groq fallback
+  
+    // Groq fallback
+    try {
+      const groq = await rotationService.getClient();
+      const groqMessages = [
+        { role: "system", content: systemInstruction },
+        ...debugMessages.map((m: any) => ({
+          role: m.role === "model" ? "assistant" : "user",
+          content: m.content || ""
+        }))
+      ];
+      const completion = await groq.chat.completions.create({
+        model: "llama-3.3-70b-versatile",
+        messages: groqMessages as any,
+        temperature: 0.5
+      });
+      return completion.choices[0]?.message?.content?.trim() || "";
+    } catch (err) {
+      console.error("Groq iterative debug coach failed:", err);
+      return "Failed to get debugging advice. Check pins and try again.";
+    }
+  };
+  */
   try {
     const groq = await rotationService.getClient();
     const groqMessages = [
@@ -672,30 +693,9 @@ ${milestone.code}
         content: m.content || ""
       }))
     ];
+    console.log(`[Groq] Debug Coach using qwen/qwen3-32b`);
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: groqMessages as any,
-      temperature: 0.5
-    });
-    return completion.choices[0]?.message?.content?.trim() || "";
-  } catch (err) {
-    console.error("Groq iterative debug coach failed:", err);
-    return "Failed to get debugging advice. Check pins and try again.";
-  }
-};
-*/
-  try {
-    const groq = await rotationService.getClient();
-    const groqMessages = [
-      { role: "system", content: systemInstruction },
-      ...debugMessages.map((m: any) => ({
-        role: m.role === "model" ? "assistant" : "user",
-        content: m.content || ""
-      }))
-    ];
-    console.log(`[Groq] Debug Coach using meta-llama/llama-4-scout-17b-16e-instruct`);
-    const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "qwen/qwen3-32b",
       messages: groqMessages as any,
       temperature: 0.5
     });

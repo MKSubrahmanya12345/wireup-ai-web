@@ -829,6 +829,9 @@ interface IProject {
 
   bom: IBomItem[];
 
+  // ??$$$ newer code — wiring array added for formulation exports integration
+  wiring?: any[];
+
   pinAssignments: Record<string, any>;
 
   sketch: string;
@@ -1066,6 +1069,12 @@ const projectSchema = new Schema<IProject>(
     diagram: {
       type: Schema.Types.Mixed,
       default: () => ({})
+    },
+
+    // ??$$$ newer code — wiring field added to Mongoose Project schema
+    wiring: {
+      type: Schema.Types.Mixed,
+      default: []
     },
 
     lastCompilation: {

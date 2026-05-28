@@ -9,7 +9,9 @@ import {
   formulateSession,
   // ??$$$ NEW FLOW
   restartSession,
-  getSessionByProject
+  getSessionByProject,
+  // ??$$$ newer code
+  exportLocalSession
 } from "../controllers/newflow.controller";
 
 const router = Router();
@@ -19,6 +21,8 @@ router.post("/new-flow/answer", protectRoute, answerQuestion);
 router.post("/new-flow/proceed", protectRoute, proceedSession);
 router.post("/new-flow/formulate", protectRoute, formulateSession);
 router.post("/new-flow/restart", protectRoute, restartSession);
+// ??$$$ newer code
+router.post("/new-flow/export-local", protectRoute, exportLocalSession);
 router.get("/new-flow/session/:sessionId", protectRoute, getSession);
 router.get("/new-flow/project-session/:projectId", protectRoute, getSessionByProject);
 

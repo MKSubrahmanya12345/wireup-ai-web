@@ -31,7 +31,10 @@ export interface IProjectContext {
 
 // ??$$$ NEW FLOW
 export interface IAgentLog {
-  type: "thinking" | "tool_call" | "decision" | "error" | "context_received";
+  // ??$$$ old code
+  // type: "thinking" | "tool_call" | "decision" | "error" | "context_received";
+  // ??$$$ newer code
+  type: "thinking" | "tool_call" | "decision" | "error" | "context_received" | "rate_limit";
   name?: string;
   status?: "running" | "done" | "failed";
   input?: any;
@@ -109,6 +112,8 @@ export interface INewFlowSession extends Document {
   bom: INewFlowBomItem[];
   wiring: INewFlowWiring[];
   milestones: INewFlowMilestone[];
+  // ??$$$ newer code
+  diagram?: any;
   phase2Complete: boolean;
   projectId: Types.ObjectId | null;
   createdAt: Date;
@@ -144,7 +149,10 @@ const projectContextSchema = new Schema<IProjectContext>({
 
 // ??$$$ NEW FLOW
 const agentLogSchema = new Schema<IAgentLog>({
-  type: { type: String, enum: ["thinking", "tool_call", "decision", "error", "context_received"], required: true },
+  // ??$$$ old code
+  // type: { type: String, enum: ["thinking", "tool_call", "decision", "error", "context_received"], required: true },
+  // ??$$$ newer code
+  type: { type: String, enum: ["thinking", "tool_call", "decision", "error", "context_received", "rate_limit"], required: true },
   name: { type: String },
   status: { type: String, enum: ["running", "done", "failed"] },
   input: { type: Schema.Types.Mixed },
@@ -215,7 +223,7 @@ const milestoneSchema = new Schema<INewFlowMilestone>({
 
 const newFlowSessionSchema = new Schema<INewFlowSession>({
   owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  selectedModel: { type: String, default: "meta-llama/llama-4-scout-17b-16e-instruct" },
+  selectedModel: { type: String, default: "qwen/qwen3-32b" },
   idea: { type: String, required: true },
   qaHistory: { type: [qaHistorySchema], default: [] },
   context: { type: projectContextSchema, default: () => ({}) },
@@ -224,6 +232,8 @@ const newFlowSessionSchema = new Schema<INewFlowSession>({
   bom: { type: [bomItemSchema], default: [] },
   wiring: { type: [wiringSchema], default: [] },
   milestones: { type: [milestoneSchema], default: [] },
+  // ??$$$ newer code
+  diagram: { type: Schema.Types.Mixed, default: () => ({}) },
   phase2Complete: { type: Boolean, default: false },
   projectId: { type: Schema.Types.ObjectId, ref: "Project", default: null },
   createdAt: { type: Date, default: Date.now }

@@ -3,6 +3,32 @@
 import Part from "../models/part.model";
 import Project from "../models/project.model";
 
+import fs from "fs";
+import path from "path";
+
+// ??$$$ newer code — cache online models locally to E: and return backend serve path
+export async function cacheModelLocally(mpn: string, url: string): Promise<string> {
+  const modelsDir = "E:\\wireup_formulation_exports\\models";
+  try {
+    if (!fs.existsSync(modelsDir)) {
+      fs.mkdirSync(modelsDir, { recursive: true });
+    }
+    const safeMpn = mpn.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const localPath = path.join(modelsDir, `${safeMpn}.glb`);
+
+    console.log(`[modelConversion] Caching model from "${url}" to local disk: "${localPath}"`);
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    fs.writeFileSync(localPath, buffer);
+    console.log(`[modelConversion] Successfully cached model locally for ${mpn}`);
+    return `http://localhost:5000/models/${safeMpn}.glb`;
+  } catch (err: any) {
+    console.error(`[modelConversion] Failed to cache model locally for ${mpn}:`, err.message);
+    return url; // fallback to online url
+  }
+}
+
 /**
  * Trigger background job to fetch and convert 3D models for a project's BOM.
  * This runs in the background and does not block the UI.

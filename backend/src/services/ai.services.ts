@@ -36,6 +36,7 @@ import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
 import { formatWokwiComponentCatalogForPrompt, findUnsupportedPartTypesInText } from "../lib/wokwi-components";
 import { buildWokwiEvidenceText } from "./wokwi-runner.service";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { deriveBOMKey } from "../utils/bom.utils"; // ??$$$
 
 /*
 import Groq from "groq-sdk";
@@ -2575,9 +2576,51 @@ const normalizeComponentsOutput = (raw, project, fallbackReply = "I generated co
     reply = fallbackReply;
   }
 
+  // ??$$$ newer code: Convert components strings to full BOM items by looking them up in the registry
+  const registry = getRegistry();
+  const bom = components.map(compName => {
+    const registryKey = deriveBOMKey(compName);
+    const registryEntry = registry[registryKey];
+    if (registryEntry) {
+      return {
+        key: registryKey,
+        wokwiPartType: registryEntry.wokwiType || "",
+        displayName: compName,
+        qty: 1,
+        purpose: registryEntry.category || "Standard component",
+        pinConnections: [],
+        price: 0,
+        storeUrl: "",
+        glbUrl: registryEntry.gltf || "",
+        pins: (registryEntry.pins || []).map((p: any) => ({
+          id: p.name,
+          name: p.name,
+          x_mm: 0,
+          y_mm: 0,
+          z_mm: 0,
+          type: "digital"
+        }))
+      };
+    } else {
+      return {
+        key: registryKey,
+        wokwiPartType: "",
+        displayName: compName,
+        qty: 1,
+        purpose: "Standard component",
+        pinConnections: [],
+        price: 0,
+        storeUrl: "",
+        glbUrl: "",
+        pins: []
+      };
+    }
+  });
+
   return {
     architecture,
     components,
+    bom, // ??$$$ newer code
     apiEndpoints,
     reply,
     architectureState: normalizeArchitectureState(raw?.architectureState, {

@@ -2,7 +2,10 @@
 // ??$$$ FORGE: BuildPage.tsx — Stage 3: Milestone Runner & Debug Workspace
 // Three-panel: Milestone Sidebar | Code/Simulator Workspace | Test/Debug Coach
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+// ??$$$ old code
+// import { useParams, useNavigate } from 'react-router-dom';
+// ??$$$ newer code
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { axiosInstance } from '../lib/axios';
 import toast from 'react-hot-toast';
 import { useThemeStore } from '../store/useThemeStore';
@@ -15,6 +18,8 @@ const Simulator3D = lazy(() => import('../components/Simulator3D'));
 export default function BuildPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  // ??$$$ newer code
+  const [searchParams] = useSearchParams();
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
 
@@ -71,6 +76,24 @@ export default function BuildPage() {
     milestoneId: '',
     notes: ''
   });
+
+  // ??$$$ old code
+  /*
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    const view = params.get('view');
+    if (tab) setCenterTab(tab);
+    if (view) setSimView(view);
+  }, []);
+  */
+  // ??$$$ newer code - parse query parameters using useSearchParams hook to automatically open 3D simulator on redirect
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    const view = searchParams.get('view');
+    if (tab) setCenterTab(tab);
+    if (view) setSimView(view);
+  }, [searchParams]);
 
   // Load project & milestones on mount
   useEffect(() => {

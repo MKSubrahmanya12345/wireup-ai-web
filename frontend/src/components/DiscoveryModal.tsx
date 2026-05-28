@@ -1,10 +1,67 @@
 // ??$$$ NEW FLOW
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import { axiosInstance } from "../lib/axios";
-import { X, Send, Play, Terminal, Cpu, Database, Layers, CheckCircle, AlertTriangle, RefreshCw } from "lucide-react";
+// ??$$$ old code
+// import { X, Send, Play, Terminal, Cpu, Database, Layers, CheckCircle, AlertTriangle, RefreshCw, EyeOff, Eye } from "lucide-react";
+// ??$$$ newer code
+import { X, Send, Play, Terminal, Cpu, Database, Layers, CheckCircle, AlertTriangle, RefreshCw, EyeOff, Eye, HardDrive, PlayCircle } from "lucide-react";
 import toast from "react-hot-toast";
+
+// ??$$$ NEW FLOW — Beautiful countdown timer component for rate limit pauses
+const RateLimitTimer: React.FC<{ delaySeconds: number; timestamp: string }> = ({ delaySeconds, timestamp }) => {
+  const targetTime = useMemo(() => {
+    const start = timestamp ? new Date(timestamp).getTime() : Date.now();
+    return start + (delaySeconds || 60) * 1000;
+  }, [delaySeconds, timestamp]);
+
+  const [timeLeft, setTimeLeft] = useState(() => Math.max(0, Math.ceil((targetTime - Date.now()) / 1000)));
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((targetTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+      if (remaining <= 0) {
+        clearInterval(timer);
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [targetTime]);
+
+  const percentage = delaySeconds ? (timeLeft / delaySeconds) * 100 : 0;
+
+  return (
+    <div className="p-5 rounded-xl border border-amber-500/20 bg-amber-500/5 text-amber-400 max-w-2xl flex flex-col gap-3">
+      <div className="flex items-center gap-2 font-bold text-xs">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+        </span>
+        <span>Groq API Rate Limit Exceeded — formulation pipeline is temporarily paused</span>
+      </div>
+
+      <div className="flex items-center gap-4 pt-1">
+        <div className="text-xl font-mono font-black tracking-wider text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-lg border border-amber-500/20">
+          {Math.floor(timeLeft / 60)}m {timeLeft % 60}s
+        </div>
+        <div className="flex-1 space-y-1.5">
+          <p className="text-xs text-zinc-300 leading-relaxed">
+            {timeLeft > 0
+              ? "We are waiting for the API reset window to clear. Formulation will automatically resume. Do not close this modal."
+              : "API limit cooldown cleared! Resuming formulation pipeline..."}
+          </p>
+          <div className="h-1.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-amber-500 transition-all duration-1000"
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface DiscoveryModalProps {
   initialIdea?: string;
@@ -13,15 +70,15 @@ interface DiscoveryModalProps {
   onClose: () => void;
 }
 
-export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({ 
-  initialIdea = "", 
-  projectId, 
-  initialPhase, 
-  onClose 
+export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
+  initialIdea = "",
+  projectId,
+  initialPhase,
+  onClose
 }) => {
   const navigate = useNavigate();
   // ??$$$ NEW FLOW
-  const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
+  const [model, setModel] = useState("qwen/qwen3-32b");
   const [phase, setPhase] = useState<1 | 2>(1);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,7 +108,11 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const [bom, setBom] = useState<any[]>([]);
   const [wiring, setWiring] = useState<any[]>([]);
   const [milestones, setMilestones] = useState<any[]>([]);
-  
+  // ??$$$ newer code — Completion & local export states
+  const [isCompleted, setIsCompleted] = useState(false);
+  const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
   const socketRef = useRef<Socket | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
   // ??$$$ NEW FLOW
@@ -81,6 +142,41 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
   // Start discovery session on mount
   // ??$$$ NEW FLOW
+  // ??$$$ old code
+  /*
+  useEffect(() => {
+    const startSession = async () => {
+      setLoading(true);
+      try {
+        if (projectId) {
+          ...
+        } else {
+          // Start brand new session
+          const res = await axiosInstance.post("/new-flow/start", {
+            idea: initialIdea,
+            model
+          });
+          setSessionId(res.data.sessionId);
+          setQuestion(res.data.question);
+          setOptions(res.data.options || []);
+          setContext(res.data.context || {});
+          setShouldAutoFormulate(true);
+          if (res.data.done) {
+            handleProceed();
+          }
+        }
+      } catch (err: any) {
+        toast.error("Failed to initiate agent session.");
+        onClose();
+      } finally {
+        setLoading(false);
+      }
+    };
+    startSession();
+  }, [projectId]);
+  */
+
+  // ??$$$ newer code — start discovery session on mount supporting localStorage caching & restore on reload
   useEffect(() => {
     const startSession = async () => {
       setLoading(true);
@@ -96,7 +192,12 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           setWiring(res.data.wiring || []);
           setMilestones(res.data.milestones || []);
           setLogs(res.data.agentLog || []);
-          
+
+          if (res.data.phase2Complete) {
+            setIsCompleted(true);
+            setCompletedProjectId(projectId);
+          }
+
           if (initialPhase) {
             setPhase(initialPhase);
             if (initialPhase === 2 && (!res.data.agentLog || res.data.agentLog.length === 0)) {
@@ -114,12 +215,50 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             }
           }
         } else {
+          // Try to resume from cached localStorage session first
+          const cachedSessionId = localStorage.getItem("wireup_discovery_session_id");
+          if (cachedSessionId) {
+            try {
+              const res = await axiosInstance.get(`/new-flow/session/${cachedSessionId}`);
+              const ideaMatch = res.data.idea?.trim().toLowerCase() === initialIdea?.trim().toLowerCase();
+              if (ideaMatch) {
+                setSessionId(res.data._id);
+                setQuestion(res.data.question || "");
+                setOptions(res.data.options || []);
+                setContext(res.data.context || {});
+                setBom(res.data.bom || []);
+                setWiring(res.data.wiring || []);
+                setMilestones(res.data.milestones || []);
+                setLogs(res.data.agentLog || []);
+                if (res.data.phase2Complete) {
+                  setIsCompleted(true);
+                  if (res.data.projectId) {
+                    setCompletedProjectId(res.data.projectId);
+                  }
+                }
+                const nextPhase = res.data.phase1Complete ? 2 : 1;
+                setPhase(nextPhase);
+                if (nextPhase === 2 && (!res.data.agentLog || res.data.agentLog.length === 0)) {
+                  setShouldAutoFormulate(true);
+                } else {
+                  setShouldAutoFormulate(false);
+                }
+                setLoading(false);
+                return;
+              }
+            } catch (err) {
+              console.error("Failed to restore cached session:", err);
+              localStorage.removeItem("wireup_discovery_session_id");
+            }
+          }
+
           // Start brand new session
           const res = await axiosInstance.post("/new-flow/start", {
             idea: initialIdea,
             model
           });
           setSessionId(res.data.sessionId);
+          localStorage.setItem("wireup_discovery_session_id", res.data.sessionId);
           setQuestion(res.data.question);
           setOptions(res.data.options || []);
           setContext(res.data.context || {});
@@ -147,7 +286,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       socketRef.current = socket;
 
       socket.emit("join", sessionId);
-      
+
       socket.on("agent2:log", (logItem: any) => {
         setLogs(prev => [...prev, logItem]);
       });
@@ -164,12 +303,24 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
         if (data.milestones) setMilestones(data.milestones);
       });
 
+      // ??$$$ old code
+      /*
       socket.on("agent2:complete", (data: any) => {
         toast.success("Project formulation complete!");
         if (data.projectId) {
-          navigate(`/project/${data.projectId}/build-new`);
+          navigate(`/project/${data.projectId}/build?tab=simulator&view=3d`);
         } else {
           onClose();
+        }
+      });
+      */
+
+      // ??$$$ newer code — Handle socket complete without auto-redirecting
+      socket.on("agent2:complete", (data: any) => {
+        toast.success("Project formulation complete!");
+        setIsCompleted(true);
+        if (data.projectId) {
+          setCompletedProjectId(data.projectId);
         }
       });
 
@@ -217,6 +368,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   };
 
   // Proceed directly to Phase 2 (Skip questions)
+  // ??$$$ old code
+  /*
   const handleProceed = async () => {
     if (submitting || !sessionId) return;
     setSubmitting(true);
@@ -227,6 +380,67 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       toast.error("Failed to skip discovery.");
     } finally {
       setSubmitting(false);
+    }
+  };
+  */
+
+  // ??$$$ newer code — Handle proceed (skip Q&A and auto-start formulation, preserving unsent inputs)
+  const handleProceed = async () => {
+    if (submitting || !sessionId) return;
+    setSubmitting(true);
+    try {
+      // If user typed an answer, submit it first to store as many answered questions as possible
+      if (answerText.trim()) {
+        try {
+          const answerRes = await axiosInstance.post("/new-flow/answer", {
+            sessionId,
+            answer: answerText,
+            currentQuestion: question,
+            currentOptions: options
+          });
+          setQuestion(answerRes.data.question);
+          setOptions(answerRes.data.options || []);
+          setContext(answerRes.data.context || {});
+          setAnswerText("");
+        } catch (e) {
+          console.error("Failed to submit final typed answer before skipping:", e);
+        }
+      }
+      const res = await axiosInstance.post("/new-flow/proceed", { sessionId });
+      if (res.data && res.data.context) {
+        setContext(res.data.context);
+      }
+      setPhase(2);
+      setShouldAutoFormulate(true);
+    } catch (err: any) {
+      toast.error("Failed to skip discovery.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ??$$$ newer code — Export data to local drive E:
+  const handleExportLocal = async () => {
+    if (!sessionId) return;
+    setExporting(true);
+    try {
+      const res = await axiosInstance.post("/new-flow/export-local", { sessionId });
+      toast.success(res.data.message || "Successfully exported to E: drive!");
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || "Failed to export data locally.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // ??$$$ newer code — Go to simulator workspace
+  const handleGoToSimulator = () => {
+    if (completedProjectId) {
+      localStorage.removeItem("wireup_discovery_session_id");
+      onClose();
+      navigate(`/test-simulator?projectId=${completedProjectId}`);
+    } else {
+      onClose();
     }
   };
 
@@ -284,7 +498,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-emerald-500 transition-colors"
               >
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
+                <option value="qwen/qwen3-32b">Groq Llama 4 Scout</option>
                 <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
               </select>
             </div>
@@ -385,7 +599,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                         The AI agent has gathered enough context to formulate this project. You can review the parameters on the right, or initiate the formulation now.
                       </p>
                     </div>
-                    
+
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
                         onClick={() => {
@@ -397,7 +611,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                         <Play className="h-4 w-4" />
                         Proceed to AI Build
                       </button>
-                      
+
                       <button
                         onClick={async () => {
                           if (!sessionId) return;
@@ -575,10 +789,43 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 </button>
               </div>
 
-              <div 
+              <div
                 ref={scrollContainerRef}
                 className="flex-1 overflow-y-auto p-6 space-y-5"
               >
+                {/* ??$$$ newer code — completion actions block */}
+                {isCompleted && (
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-zinc-300 space-y-4 shadow-xl mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-9 w-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                        <CheckCircle className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-zinc-100">Formulation Completed Successfully!</h4>
+                        <p className="text-[11px] text-zinc-400">All components, wiring layouts, and instructions are finalized.</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 pt-3 border-t border-zinc-800/80">
+                      <button
+                        onClick={handleExportLocal}
+                        disabled={exporting}
+                        className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-200 transition-all disabled:opacity-50 active:scale-[0.98]"
+                      >
+                        <HardDrive className="h-3.5 w-3.5 text-emerald-400" />
+                        {exporting ? "Exporting..." : "Export Data to local E:"}
+                      </button>
+                      <button
+                        onClick={handleGoToSimulator}
+                        className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-xs font-bold text-zinc-950 transition-all active:scale-[0.98]"
+                      >
+                        <PlayCircle className="h-3.5 w-3.5" />
+                        Open 3D Simulator (Tool Access)
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {logs.length === 0 && (
                   <div className="flex h-full flex-col items-center justify-center gap-2 text-zinc-500 text-xs italic">
                     <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-700 border-t-transparent" />
@@ -600,7 +847,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                           </div>
                           <span className="text-[10px] text-zinc-500 font-mono">{timestampStr}</span>
                         </div>
-                        
+
                         <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-zinc-800/60">
                           <div>
                             <span className="text-zinc-500 font-semibold">Core Purpose:</span>
@@ -662,7 +909,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                     const isRunning = log.status === "running";
                     const isFailed = log.status === "failed";
                     const isDone = log.status === "done";
-                    
+
                     return (
                       <div key={key} className="flex gap-3 items-start max-w-2xl pl-10">
                         <div className="h-6 w-6 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -673,9 +920,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                             <span className="inline-flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-0.5 font-bold text-emerald-400">
                               {log.name}
                             </span>
-                            <span className={`font-semibold ${
-                              isRunning ? "text-amber-400" : isFailed ? "text-red-400" : "text-zinc-400"
-                            }`}>
+                            <span className={`font-semibold ${isRunning ? "text-amber-400" : isFailed ? "text-red-400" : "text-zinc-400"
+                              }`}>
                               {log.status?.toUpperCase()}
                             </span>
                           </div>
@@ -722,6 +968,17 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                           <span>{timestampStr}</span>
                         </div>
                         <p className="font-sans text-xs">{log.text}</p>
+                      </div>
+                    );
+                  }
+
+                  if (log.type === "rate_limit") {
+                    return (
+                      <div key={key} className="max-w-2xl">
+                        <RateLimitTimer
+                          delaySeconds={log.input?.delaySeconds || 60}
+                          timestamp={log.timestamp}
+                        />
                       </div>
                     );
                   }

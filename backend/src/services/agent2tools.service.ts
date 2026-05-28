@@ -745,7 +745,10 @@ async function executeGenerateWiring(args: any) {
 }
 
 // TOOL 10: generate_milestone
-async function executeGenerateMilestone(args: any) {
+// ??$$$ old code
+// async function executeGenerateMilestone(args: any) {
+// ??$$$ newer code
+async function executeGenerateMilestone(args: any, sessionId?: string) {
   // ??$$$
   // const { title, objective, subsystem, partsInvolved, mcu, wiringSubset, previousMilestones, isFirstMilestone } = args;
 
@@ -758,6 +761,36 @@ async function executeGenerateMilestone(args: any) {
   const partsInvolved = parseIfString(args.partsInvolved);
   const wiringSubset = parseIfString(args.wiringSubset);
   const previousMilestones = parseIfString(args.previousMilestones);
+
+  // ??$$$ newer code — cache check to avoid duplicate milestone generation (Bug 3)
+  if (sessionId) {
+    try {
+      const NewFlowSession = require("../models/newFlowSession.model").default;
+      const session = await NewFlowSession.findById(sessionId);
+      if (session && session.milestones) {
+        const prevCount = previousMilestones ? previousMilestones.length : 0;
+        const order = prevCount + 1;
+        const existing = session.milestones.find((m: any) => 
+          m.title === title || 
+          (m.order === order && m.subsystem === subsystem)
+        );
+        if (existing) {
+          console.log(`[Agent2] Milestone '${title}' or order ${order} for subsystem '${subsystem}' already exists. Returning cached milestone.`);
+          return {
+            code: existing.code,
+            explanation: existing.explanation,
+            expectedOutput: existing.expectedOutput,
+            passCondition: existing.passCondition,
+            commonProblems: existing.commonProblems || [],
+            simulatable: existing.simulatable,
+            requiredLibraries: existing.requiredLibraries || []
+          };
+        }
+      }
+    } catch (e) {
+      console.error("[Agent2] Failed to check for existing milestone:", e);
+    }
+  }
 
   try {
     const groq = await rotationService.getClient();
@@ -1012,7 +1045,10 @@ export async function executeTool(
     case "generate_wiring":
       return executeGenerateWiring(args);
     case "generate_milestone":
-      return executeGenerateMilestone(args);
+      // ??$$$ old code
+      // return executeGenerateMilestone(args);
+      // ??$$$ newer code
+      return executeGenerateMilestone(args, sessionId);
     case "generate_diagram_json":
       return executeGenerateDiagramJson(args);
     case "save_progress":

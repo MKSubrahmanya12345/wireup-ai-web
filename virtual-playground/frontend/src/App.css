@@ -1,0 +1,18 @@
+/* Original App.css styles commented out to prevent layout conflicts with Tailwind
+.counter {
+  font-size: 16px;
+  padding: 5px 10px;
+  ...
+}
+*/
+
+/* ??$$$ */
+/* Custom global utility animations for playground dashboard elements */
+@keyframes signal-pulse {
+  0%, 100% { opacity: 0.2; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.05); }
+}
+
+.pulse-signal {
+  animation: signal-pulse 2s infinite ease-in-out;
+}

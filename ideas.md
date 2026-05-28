@@ -300,3 +300,105 @@ RatePitch=(float)GyroY/65.5;
 58 Serial.print(" Yaw Rate [°/s]= ");
 59 Serial.println(RateYaw);
 60 delay(50);
+
+
+then again not fixing everything together and then fucking it up:
+
+do like test your radio, motors and ESCs
+
+#include <PulsePosition.h>
+2 PulsePositionInput ReceiverInput(RISING);
+3 float ReceiverValue[]={0, 0, 0, 0, 0, 0, 0, 0};
+4 int ChannelNumber=0;
+5 void read_receiver(void){
+6 ChannelNumber = ReceiverInput.available();
+7 if (ChannelNumber > 0) {
+8 for (int i=1; i<=ChannelNumber;i++){
+9 ReceiverValue[i-1]=ReceiverInput.read(i);
+10 }
+11 }
+12 }
+13 void setup() {
+14 Serial.begin(57600);
+15 pinMode(13, OUTPUT);
+16 digitalWrite(13, HIGH);
+17 ReceiverInput.begin(14);
+18 }
+19 void loop() {
+20 read_receiver();
+21 Serial.print("Number of channels: ");
+22 Serial.print(ChannelNumber);
+23 Serial.print(" Roll [µs]: ");
+24 Serial.print(ReceiverValue[0]);
+25 Serial.print(" Pitch [µs]: ");
+26 Serial.print(ReceiverValue[1]);
+27 Serial.print(" Throttle [µs]: ");
+28 Serial.print(ReceiverValue[2]);
+29 Serial.print(" Yaw [µs]: ");
+30 Serial.println(ReceiverValue[3]);
+31 delay(50);
+
+
+now this is just 25% summarise:
+
+i used a book for this:
+
+INDEX:
+
+Project 1
+Concept, parts and programming.................................................8
+PART I: rate mode
+Project 2
+LED control...................................................................................24
+Project 3
+Reading your battery level............................................................28
+Project 4
+Sensing the rotation rate...............................................................34
+Project 5
+Gyroscope calibration...................................................................46
+Project 6
+Take your motors for a spin ........................................................52
+Project 7
+Receiving commands....................................................................58
+Project 8
+Controlling your motors...............................................................66
+Project 9
+Battery management.....................................................................72
+Project 10
+Assembling your quadcopter.......................................................80
+Project 11
+Quadcopter dynamics...................................................................86
+Project 12
+Quadcopter rate control...............................................................90
+Project 13
+The flight controller: rate mode..................................................96
+Contents
+Part II: stabilization mode
+Project 14
+Measuring angles.........................................................................110
+Project 15
+The Kalman filter - one dimension..........................................120
+Project 16
+The flight controller: stabilize mode ........................................130
+Part III: velocity mode
+Project 17
+Measuring altitude .......................................................................142
+Project 18
+Measuring vertical velocity.........................................................154
+Project 19
+The Kalman filter - two dimensions........................................162
+Project 20
+The flight controller: velocity mode.........................................174
+Part IV: quadcopter design and simulation
+Project 21
+Motor and sensor simulation.....................................................190
+Project 22
+Quadcopter dynamics simulation .............................................200
+Project 23
+Quadcopter PID controller.......................................................210
+Project 24
+Estimate the PID values...........
+
+
+OUR Site should adapt very well for such stuff, 
+not just a chat -> components -> build -> shopping, etc
