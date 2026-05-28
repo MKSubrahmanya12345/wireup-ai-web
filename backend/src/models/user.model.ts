@@ -5,6 +5,8 @@ export interface IUser extends Document {
   fullName: string;
   password: string;
   profilePic: string;
+  // ??$$$
+  skillLevel?: "beginner" | "intermediate" | "experienced";
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +30,12 @@ const userSchema = new Schema<IUser>(
     profilePic: {
       type: String,
       default: "",
+    },
+    // ??$$$
+    skillLevel: {
+      type: String,
+      enum: ["beginner", "intermediate", "experienced"],
+      default: "beginner"
     },
   },
   {

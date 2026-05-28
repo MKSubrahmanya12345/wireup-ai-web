@@ -1,5 +1,4 @@
 // @ts-nocheck
-// ??$$$ FORGE: validateSketch.js — Arduino sketch integrity checker
 
 /**
  * validateSketch(sketchCode)

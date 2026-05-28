@@ -171,6 +171,7 @@ export const GROQ_SEARCH_LIBRARY_TOOL = {
 };
 
 // ??$$$ Simplified callGeminiIdeation (Agent 1 - Interviewer, no tools, no projectId parameter)
+/*
 export const callGeminiIdeation = async (
   systemPrompt: string,
   messages: any[]
@@ -240,8 +241,71 @@ export const callGeminiIdeation = async (
 
   throw lastError || new Error("All Groq models failed.");
 };
+*/
+// ??$$$ newer code - Use Groq llama-scout instead of Gemini
+export const callGeminiIdeation = async (
+  systemPrompt: string,
+  messages: any[]
+): Promise<string> => {
+  try {
+    const groq = await rotationService.getClient();
+    const groqMessages: any[] = [
+      { role: "system", content: systemPrompt },
+      ...messages.map((m: any) => ({
+        role: m.role === "model" || m.role === "ai" || m.role === "assistant" ? "assistant" : "user",
+        content: m.content || ""
+      }))
+    ];
+    console.log(`[Groq] Call ideation using meta-llama/llama-4-scout-17b-16e-instruct`);
+    const completion = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: groqMessages,
+      temperature: 0.7
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch (err: any) {
+    console.error("Groq llama-scout ideation failed, trying fallback:", err);
+    if (err?.status === 429) {
+      await rotationService.handleRateLimit();
+    }
+  }
+
+  // Fallback models if llama-scout fails
+  const groq = await rotationService.getClient();
+  const groqMessages: any[] = [
+    { role: "system", content: systemPrompt },
+    ...messages.map((m: any) => ({
+      role: m.role === "model" || m.role === "ai" || m.role === "assistant" ? "assistant" : "user",
+      content: m.content || ""
+    }))
+  ];
+  const modelsToTry = [
+    "llama-3.3-70b-versatile",
+    "llama-3.1-8b-instant"
+  ];
+  let lastError: any = null;
+  for (const modelName of modelsToTry) {
+    try {
+      console.log(`[Groq Fallback] Attempting completion with model: ${modelName}`);
+      let completion = await groq.chat.completions.create({
+        model: modelName,
+        messages: groqMessages,
+        temperature: 0.7
+      });
+      return completion.choices[0]?.message?.content?.trim() || "";
+    } catch (err: any) {
+      console.warn(`[Groq Fallback] Model ${modelName} failed:`, err.message || err);
+      if (err?.status === 429) {
+        await rotationService.handleRateLimit();
+      }
+      lastError = err;
+    }
+  }
+  throw lastError || new Error("All Groq models failed.");
+};
 
 // ??$$$ callGeminiValidator accepts brief string, no snapshot serialization needed
+/*
 export const callGeminiValidator = async (
   brief: string
 ): Promise<{ approved: boolean; problems: string; suggestion: string }> => {
@@ -283,5 +347,452 @@ export const callGeminiValidator = async (
   } catch (err) {
     console.error("Validator Groq fallback failed:", err);
     return { approved: true, problems: "", suggestion: "" };
+  }
+};
+*/
+// ??$$$ newer code - Use Groq llama-scout instead of Gemini for Validator
+export const callGeminiValidator = async (
+  brief: string
+): Promise<{ approved: boolean; problems: string; suggestion: string }> => {
+  const promptText = brief || "No brief provided.";
+  try {
+    const groq = await rotationService.getClient();
+    console.log(`[Groq] Call validator using meta-llama/llama-4-scout-17b-16e-instruct`);
+    const completion = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: [
+        { role: "system", content: VALIDATOR_SYSTEM_PROMPT },
+        { role: "user", content: promptText }
+      ],
+      temperature: 0.3
+    });
+    const raw = completion.choices[0]?.message?.content?.trim() || "";
+    const clean = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch (err: any) {
+    console.error("Groq llama-scout validator failed, trying fallback:", err);
+    if (err?.status === 429) {
+      await rotationService.handleRateLimit();
+    }
+  }
+
+  // Fallback to standard Groq completion
+  try {
+    const groq = await rotationService.getClient();
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: VALIDATOR_SYSTEM_PROMPT },
+        { role: "user", content: promptText }
+      ],
+      temperature: 0.3
+    });
+    const raw = completion.choices[0]?.message?.content?.trim() || "";
+    const clean = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch (err) {
+    console.error("Validator fallback failed:", err);
+    return { approved: true, problems: "", suggestion: "" };
+  }
+};
+
+// ??$$$
+/* old code
+export const MILESTONE_GENERATOR_PROMPT = `You are a curriculum design agent.
+Your job is to generate milestone builds for a MERN stack hardware project builder.
+Analyze the project objective, compute core, BOM list, ideation phases, and the user's skillLevel.
+The user's skillLevel will be one of: "beginner", "intermediate", "experienced".
+
+Break down the project's build phase into sequential or parallel milestones. Each milestone must test a specific subsystem before complete integration.
+
+Rules:
+1. The first milestone (order === 1) MUST have status "ready" and all others MUST have status "locked".
+2. Each milestone must have fields:
+   - "id": a unique string (e.g. "milestone_1", "milestone_2")
+   - "order": number starting from 1
+   - "title": a concise title
+   - "objective": what this milestone builds/tests
+   - "componentsInvolved": array of keys from the BOM
+   - "wiringInstructions": clear step-by-step wiring instructions. For beginners: be very step-by-step and explanatory. For experienced users: be compact and point out pin numbers and voltage specifications directly.
+   - "code": the C++/Arduino sketch or MicroPython code required to run this subsystem. Make sure it compiles, fits the MCU, and includes appropriate comments based on skill level.
+   - "explanation": a concise educational explanation. Adjust details based on skillLevel.
+   - "test": an object containing:
+     - "expectedSerialOutput": expected string printed to Serial monitor (or described output)
+     - "passCondition": what indicates a pass (e.g. "Distance prints correctly every second")
+     - "commonProblems": array of strings listing common troubleshooting steps
+   - "simulatable": boolean. Set to false when the milestone involves physical-only actions (motor spin, RC pairing, sensor physical placement, soldering) that cannot be represented in Wokwi simulation. Set to true for all MCU code + sensor reading milestones that have Wokwi equivalents.
+   - "dependsOn": array of milestone IDs that must be completed before this milestone can be started. E.g. milestone_2 depends on ["milestone_1"].
+   - "debugMessages": empty array []
+
+Respond ONLY with a JSON array containing the list of milestones, nothing else. No markdown, no triple backticks.`;
+*/
+// ??$$$ newer code
+export const MILESTONE_GENERATOR_PROMPT = `You are a curriculum design agent.
+Your job is to generate milestone builds for a MERN stack hardware project builder.
+Analyze the project objective, compute core, BOM list, ideation phases, and the user's skillLevel.
+The user's skillLevel will be one of: "beginner", "intermediate", "experienced".
+
+Break down the project's build phase into sequential or parallel milestones. Each milestone must test a specific subsystem before complete integration.
+
+Rules:
+1. The first milestone (order === 1) MUST have status "ready" and all others MUST have status "locked".
+2. Milestone 1 MUST always be a bare LED blink with zero external dependencies. No libraries. No sensors. No WiFi. Just pinMode and digitalWrite. This verifies the MCU is programmable and running before anything else.
+3. Each milestone must have fields:
+   - "id": a unique string (e.g. "milestone_1", "milestone_2")
+   - "order": number starting from 1
+   - "title": a concise title
+   - "objective": what this milestone builds/tests
+   - "componentsInvolved": array of keys from the BOM
+   - "wiringInstructions": clear step-by-step wiring instructions. For beginners: be very step-by-step and explanatory. For experienced users: be compact and point out pin numbers and voltage specifications directly.
+   - "code": the C++/Arduino sketch or MicroPython code required to run this subsystem. Make sure it compiles, fits the MCU, and includes appropriate comments based on skill level.
+   - "explanation": a concise educational explanation. Adjust details based on skillLevel.
+   - "test": an object containing:
+     - "expectedSerialOutput": expected string printed to Serial monitor (or described output)
+     - "passCondition": what indicates a pass (e.g. "Distance prints correctly every second")
+     - "commonProblems": array of strings listing common troubleshooting steps
+   - "simulatable": boolean. Set to false when the milestone involves physical-only actions (motor spin, RC pairing, sensor physical placement, soldering) that cannot be represented in Wokwi simulation. Set to true for all MCU code + sensor reading milestones that have Wokwi equivalents.
+   - "dependsOn": array of milestone IDs that must be completed before this milestone can be started. E.g. milestone_2 depends on ["milestone_1"].
+   - "debugMessages": empty array []
+   - "requiredLibraries": array of objects declaring libraries for every #include used in the code. Group them as follows:
+     - "name": string. Exact Arduino Library Manager name, or header filename for core libraries (e.g. "WiFi", "Wire", "SPI", "PulsePosition", "BasicLinearAlgebra").
+     - "version": optional string (e.g. "1.0.0", "3.2.0")
+     - "type": "core" | "library_manager" | "manual"
+       - "core": comes built-in with the board core, no install needed (e.g., WiFi.h on esp32, SPI.h, Wire.h).
+       - "library_manager": available in the standard library manager registry (e.g., Adafruit MPU6050, PulsePosition, BasicLinearAlgebra).
+       - "manual": custom library, must be installed manually (provide details).
+     - "installCommand": string. Only required for "manual" type libraries or special commands.
+
+Respond ONLY with a JSON array containing the list of milestones, nothing else. No markdown, no triple backticks.`;
+
+// ??$$$
+export const DEBUG_COACH_PROMPT = `You are a hardware debugging coach.
+A user is stuck on a build milestone. You have:
+1. Milestone title and objective.
+2. The code they compiled.
+3. The expected serial output pattern.
+4. The actual error or problem description they wrote.
+5. The actual serial output they entered.
+
+Review the information and previous message logs. Provide concise, friendly, and highly specific engineering advice to fix the issue. Focus on pin connections, logic errors, missing pull-ups, or bad baud rates. Keep it educational but direct.`;
+
+// ??$$$
+export const MILESTONE_REGENERATE_PROMPT = `You are a hardware firmware code generator.
+Regenerate the code for a specific milestone build task.
+Make sure it compiles and fits the objective.
+Respond with ONLY the raw code, without markdown, without backticks (do not wrap in \`\`\`cpp).`;
+
+// ??$$$
+export const COMPONENT_ISSUE_SYSTEM_PROMPT = `You are a hardware engineering advisor.
+A user has run into a physical component issue during a build milestone.
+Review the milestone context, the target component key, and the user's reported problem.
+Advise them on:
+1. How they can work around it locally, or
+2. If they should swap the component for a better alternative.
+
+Respond with ONLY a JSON object:
+{
+  "recommendSwap": true | false,
+  "alternativeComponent": "suggested component key or name, or empty string",
+  "explanation": "clear engineering explanation of why they can work around it or why they must swap"
+}`;
+
+// ??$$$
+export const SERIAL_VALIDATION_SYSTEM_PROMPT = `You are an automated hardware test grader.
+Compare the actual serial logs observed by the user against the expected serial output pattern and pass conditions.
+Determine if it is a successful pass.
+
+Respond with ONLY a JSON object:
+{
+  "pass": true | false,
+  "confidence": "high" | "medium" | "low",
+  "analysis": "detailed explanation of why the output matches or fails validation",
+  "suggestion": "actionable troubleshooting step if failed, or null if passed"
+}`;
+
+// ??$$$
+/*
+export const callAI = async (systemInstruction: string, promptText: string): Promise<string> => {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (geminiApiKey) {
+    try {
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        systemInstruction
+      });
+      const result = await model.generateContent(promptText);
+      return result.response.text().trim();
+    } catch (err) {
+      console.error("Gemini callAI failed, falling back to Groq:", err);
+    }
+  }
+
+  // Groq fallback
+  try {
+    const groq = await rotationService.getClient();
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: promptText }
+      ],
+      temperature: 0.3
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch (err) {
+    console.error("Groq fallback callAI failed:", err);
+    throw err;
+  }
+};
+*/
+// ??$$$ newer code - Use Groq llama-scout instead of Gemini for callAI
+export const callAI = async (systemInstruction: string, promptText: string): Promise<string> => {
+  try {
+    const groq = await rotationService.getClient();
+    console.log(`[Groq] callAI using meta-llama/llama-4-scout-17b-16e-instruct`);
+    const completion = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: promptText }
+      ],
+      temperature: 0.3
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch (err: any) {
+    console.error("Groq llama-scout callAI failed, trying fallback:", err);
+    if (err?.status === 429) {
+      await rotationService.handleRateLimit();
+    }
+  }
+
+  // Fallback to standard Groq completion
+  try {
+    const groq = await rotationService.getClient();
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: [
+        { role: "system", content: systemInstruction },
+        { role: "user", content: promptText }
+      ],
+      temperature: 0.3
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch (err) {
+    console.error("Groq fallback callAI failed:", err);
+    throw err;
+  }
+};
+
+// ??$$$
+export const callGeminiMilestoneGenerator = async (
+  brief: string,
+  objective: string,
+  compute: string,
+  phases: Record<string, string>,
+  bom: any[],
+  constraints: string,
+  skillLevel: string
+): Promise<any[]> => {
+  const userPrompt = `Project Brief Details:
+Objective: ${objective}
+Compute Brain: ${compute}
+System Brief: ${brief}
+Constraints: ${constraints}
+Phases: ${JSON.stringify(phases, null, 2)}
+Bill of Materials (BOM): ${JSON.stringify(bom.map(b => ({ key: b.key, displayName: b.displayName, qty: b.qty, purpose: b.purpose })), null, 2)}
+User Skill Level: ${skillLevel}
+
+Generate the milestones array.`;
+
+  try {
+    const raw = await callAI(MILESTONE_GENERATOR_PROMPT, userPrompt);
+    const clean = raw.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+    if (Array.isArray(parsed)) {
+      if (parsed.length > 0) {
+        parsed.forEach((m, idx) => {
+          m.status = idx === 0 ? "ready" : "locked";
+        });
+      }
+      return parsed;
+    }
+  } catch (err) {
+    console.error("Milestone generation parsing failed:", err);
+  }
+  return [];
+};
+
+// ??$$$
+export const callGeminiDebugCoachIterative = async (
+  milestone: any,
+  debugMessages: any[]
+): Promise<string> => {
+  const systemInstruction = `${DEBUG_COACH_PROMPT}
+
+Milestone context:
+Title: ${milestone.title}
+Objective: ${milestone.objective}
+Expected Output: ${milestone.test?.expectedSerialOutput}
+Code:
+\`\`\`cpp
+${milestone.code}
+\`\`\``;
+
+// ??$$$ newer code - Use Groq llama-scout instead of Gemini for Debug Coach
+/*
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (geminiApiKey && debugMessages.length > 0) {
+    try {
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        systemInstruction
+      });
+      const history = debugMessages.slice(0, -1).map((m: any) => ({
+        role: m.role === "model" ? "model" : "user",
+        parts: [{ text: m.content || "" }]
+      }));
+      const lastMessage = debugMessages[debugMessages.length - 1];
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessage(lastMessage.content || "");
+      return result.response.text().trim();
+    } catch (err) {
+      console.error("Gemini iterative debug coach failed, trying Groq fallback:", err);
+    }
+  }
+
+  // Groq fallback
+  try {
+    const groq = await rotationService.getClient();
+    const groqMessages = [
+      { role: "system", content: systemInstruction },
+      ...debugMessages.map((m: any) => ({
+        role: m.role === "model" ? "assistant" : "user",
+        content: m.content || ""
+      }))
+    ];
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: groqMessages as any,
+      temperature: 0.5
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch (err) {
+    console.error("Groq iterative debug coach failed:", err);
+    return "Failed to get debugging advice. Check pins and try again.";
+  }
+};
+*/
+  try {
+    const groq = await rotationService.getClient();
+    const groqMessages = [
+      { role: "system", content: systemInstruction },
+      ...debugMessages.map((m: any) => ({
+        role: m.role === "model" ? "assistant" : "user",
+        content: m.content || ""
+      }))
+    ];
+    console.log(`[Groq] Debug Coach using meta-llama/llama-4-scout-17b-16e-instruct`);
+    const completion = await groq.chat.completions.create({
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      messages: groqMessages as any,
+      temperature: 0.5
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch (err: any) {
+    console.error("Groq llama-scout debug coach failed, trying fallback:", err);
+    if (err?.status === 429) {
+      await rotationService.handleRateLimit();
+    }
+  }
+
+  // Fallback to standard Groq completion
+  try {
+    const groq = await rotationService.getClient();
+    const groqMessages = [
+      { role: "system", content: systemInstruction },
+      ...debugMessages.map((m: any) => ({
+        role: m.role === "model" ? "assistant" : "user",
+        content: m.content || ""
+      }))
+    ];
+    const completion = await groq.chat.completions.create({
+      model: "llama-3.3-70b-versatile",
+      messages: groqMessages as any,
+      temperature: 0.5
+    });
+    return completion.choices[0]?.message?.content?.trim() || "";
+  } catch (err) {
+    console.error("Groq fallback debug coach failed:", err);
+    return "Failed to get debugging advice. Check pins and try again.";
+  }
+};
+
+// ??$$$
+export const callGeminiRegenerateMilestoneCode = async (
+  milestone: any,
+  project: any
+): Promise<string> => {
+  const userPrompt = `Project Brief:
+Objective: ${project.ideation?.objective}
+Compute Brain: ${project.ideation?.compute}
+BOM: ${JSON.stringify(project.bom)}
+
+Milestone Title: ${milestone.title}
+Milestone Objective: ${milestone.objective}
+Milestone Components Involved: ${JSON.stringify(milestone.componentsInvolved)}
+Wiring Instructions: ${milestone.wiringInstructions}
+
+Regenerate code for this milestone.`;
+
+  try {
+    const raw = await callAI(MILESTONE_REGENERATE_PROMPT, userPrompt);
+    return raw.replace(/```cpp|```python|```/g, "").trim();
+  } catch (err) {
+    console.error("Regenerate code failed:", err);
+    return milestone.code;
+  }
+};
+
+// ??$$$
+export const callGeminiComponentIssue = async (
+  milestone: any,
+  componentKey: string,
+  problem: string
+): Promise<{ recommendSwap: boolean; alternativeComponent: string; explanation: string }> => {
+  const userPrompt = `Milestone: ${milestone.title} (${milestone.objective})
+Component in question: ${componentKey}
+User reported problem: ${problem}`;
+
+  try {
+    const raw = await callAI(COMPONENT_ISSUE_SYSTEM_PROMPT, userPrompt);
+    const clean = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch (err) {
+    console.error("Component issue analysis failed:", err);
+    return { recommendSwap: false, alternativeComponent: "", explanation: "Error checking component issue." };
+  }
+};
+
+// ??$$$
+export const callGeminiValidateSerial = async (
+  milestone: any,
+  actualOutput: string
+): Promise<{ pass: boolean; confidence: string; analysis: string; suggestion: string | null }> => {
+  const userPrompt = `Milestone Title: ${milestone.title}
+Expected Output Pattern: ${milestone.test?.expectedSerialOutput}
+Pass Condition: ${milestone.test?.passCondition}
+
+Actual Serial Output observed:
+${actualOutput}`;
+
+  try {
+    const raw = await callAI(SERIAL_VALIDATION_SYSTEM_PROMPT, userPrompt);
+    const clean = raw.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } catch (err) {
+    console.error("Serial validation failed:", err);
+    return { pass: false, confidence: "low", analysis: "Error running automated serial validation.", suggestion: "Please review manually." };
   }
 };

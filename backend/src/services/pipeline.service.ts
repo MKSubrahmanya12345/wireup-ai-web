@@ -106,6 +106,13 @@ export const invalidateDownstream = async (projectId, fromStage) => {
     update[`stageStatus.${STAGES[i]}`] = 'stale';
   }
 
+  // ??$$$
+  if (fromIndex <= 1) {
+    update.milestonesGenerated = false;
+    update.milestones = [];
+    update.activeMilestoneId = null;
+  }
+
   if (Object.keys(update).length > 0) {
     await Project.findByIdAndUpdate(projectId, { $set: update });
   }

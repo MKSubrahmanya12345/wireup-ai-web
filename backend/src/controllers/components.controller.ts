@@ -4,6 +4,8 @@ import { processComponents } from "../services/ai.services";
 import { generateArtifactsFromRegistry } from "../services/registry-codegen.service";
 import { deriveBOMKey } from "../utils/bom.utils";
 import { invalidateDownstream } from "../services/pipeline.service"; // ???
+// ??$$$ newer code
+import { getRegistry } from "../services/registry.services";
 
 // Old code:
 // const isIdeaFinalized = (project) => {
@@ -70,6 +72,9 @@ export const initComponents = async (req, res) => {
     } else {
       project.bom = ai.bom;
     }
+
+    // ??$$$ newer code
+    project.bom = distributeComponentsAcrossPhases(project.bom.map(b => b.toObject ? b.toObject() : b), project.ideation?.phases || {});
 
     project.pinAssignments = ai.pinAssignments || project.pinAssignments || {};
 
@@ -147,6 +152,9 @@ export const chatComponents = async (req, res) => {
     const ai = await processComponents(project, message);
 
     project.bom = ai.bom || project.bom || [];
+    // ??$$$ newer code
+    project.bom = distributeComponentsAcrossPhases(project.bom.map(b => b.toObject ? b.toObject() : b), project.ideation?.phases || {});
+
     project.pinAssignments = ai.pinAssignments || project.pinAssignments || {};
 
     project.componentsState = {
@@ -252,6 +260,187 @@ export const updateComponent = async (req, res) => {
     res.json({ success: true, updatedBom: project.bom });
   } catch (err) {
     console.error('UPDATE COMPONENT ERROR:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ??$$$ newer code
+export function distributeComponentsAcrossPhases(bom: any[], phases: Record<string, string>) {
+  if (!bom || bom.length === 0) return bom;
+  
+  // Sort phase keys chronologically (e.g., PHASE_1, PHASE_2, PHASE_3)
+  const phaseKeys = Object.keys(phases || {}).sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, "")) || 0;
+    const numB = parseInt(b.replace(/\D/g, "")) || 0;
+    return numA - numB;
+  });
+
+  if (phaseKeys.length === 0) {
+    return bom.map(item => ({ ...item, phase: "PHASE_1" }));
+  }
+
+  return bom.map(item => {
+    const displayName = String(item.displayName || "").toLowerCase();
+    const purpose = String(item.purpose || "").toLowerCase();
+    const key = String(item.key || "").toLowerCase();
+
+    // 1. If it's a microcontroller/controller board, it must be in the very first phase (PHASE_1)
+    const isMCU = displayName.includes("arduino") || 
+                  displayName.includes("esp32") || 
+                  displayName.includes("board") || 
+                  displayName.includes("pico") || 
+                  displayName.includes("uno") || 
+                  displayName.includes("nano") ||
+                  purpose.includes("controller") ||
+                  purpose.includes("microcontroller") ||
+                  key.includes("board");
+                  
+    if (isMCU) {
+      return { ...item, phase: phaseKeys[0] };
+    }
+
+    // 2. Search phase descriptions for matching keywords
+    for (const phaseKey of phaseKeys) {
+      const desc = String(phases[phaseKey] || "").toLowerCase();
+      const tokens = displayName.split(/[\s_\-]+/).filter(t => t.length > 2);
+      const matchesToken = tokens.some(token => desc.includes(token));
+      
+      if (
+        matchesToken ||
+        (key && desc.includes(key)) ||
+        (item.wokwiPartType && desc.includes(String(item.wokwiPartType).toLowerCase()))
+      ) {
+        return { ...item, phase: phaseKey };
+      }
+    }
+
+    // 3. Fallback matching
+    for (const phaseKey of phaseKeys) {
+      const desc = String(phases[phaseKey] || "").toLowerCase();
+      if (
+        (displayName.includes("sensor") && (desc.includes("sensor") || desc.includes("read") || desc.includes("input"))) ||
+        (displayName.includes("led") && (desc.includes("led") || desc.includes("light") || desc.includes("display") || desc.includes("output"))) ||
+        (displayName.includes("motor") && (desc.includes("motor") || desc.includes("servo") || desc.includes("stepper") || desc.includes("move")))
+      ) {
+        return { ...item, phase: phaseKey };
+      }
+    }
+
+    return { ...item, phase: phaseKeys[0] };
+  });
+}
+
+// ??$$$ newer code
+export const syncWiring = async (req, res) => {
+  try {
+    const { projectId, nodeCoordinates, bomPhases, connections } = req.body;
+
+    if (!projectId) {
+      return res.status(400).json({ error: "projectId is required" });
+    }
+
+    const project = await Project.findById(projectId);
+    if (!project) return res.status(404).json({ error: "Project not found" });
+
+    if (project.owner.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
+    // 1. Update nodeCoordinates
+    if (nodeCoordinates) {
+      project.nodeCoordinates = nodeCoordinates;
+      project.markModified("nodeCoordinates");
+    }
+
+    // 2. Update BOM phases
+    if (bomPhases) {
+      project.bom.forEach((item) => {
+        if (bomPhases[item.key] !== undefined) {
+          item.phase = bomPhases[item.key];
+        }
+      });
+      project.markModified("bom");
+    }
+
+    // 3. Update diagram parts coordinates to match nodeCoordinates
+    if (project.diagram && project.diagram.parts && nodeCoordinates) {
+      project.diagram.parts = project.diagram.parts.map((part) => {
+        const coords = nodeCoordinates[part.id];
+        if (coords) {
+          return {
+            ...part,
+            top: coords.y,
+            left: coords.x,
+            rotate: coords.rotate ?? part.rotate ?? 0
+          };
+        }
+        return part;
+      });
+      project.markModified("diagram");
+    }
+
+    // 4. Update diagram connections and pinConnections in BOM
+    if (connections) {
+      // Clear old pinConnections on BOM items
+      project.bom.forEach((item) => {
+        item.pinConnections = [];
+      });
+
+      // Update diagram connections
+      if (!project.diagram) project.diagram = {};
+      project.diagram.connections = connections;
+      project.markModified("diagram");
+
+      // Rebuild pinConnections for each BOM item from connections
+      connections.forEach(([fromStr, toStr]) => {
+        if (typeof fromStr !== "string" || typeof toStr !== "string") return;
+        const [fromId, fromPin] = fromStr.split(":");
+        const [toId, toPin] = toStr.split(":");
+
+        if (fromId && fromPin && toId && toPin) {
+          const fromItem = project.bom.find((item) => item.key === fromId);
+          if (fromItem) {
+            fromItem.pinConnections.push({
+              pin: fromPin,
+              connectsTo: `${toId}:${toPin}`
+            });
+          }
+
+          const toItem = project.bom.find((item) => item.key === toId);
+          if (toItem) {
+            toItem.pinConnections.push({
+              pin: toPin,
+              connectsTo: `${fromId}:${fromPin}`
+            });
+          }
+        }
+      });
+      project.markModified("bom");
+    }
+
+    // Invalidate downstream stages (build, simulation, assembly, shopping)
+    await invalidateDownstream(projectId, "components");
+
+    await project.save();
+
+    res.json({
+      success: true,
+      bom: project.bom,
+      diagram: project.diagram,
+      nodeCoordinates: project.nodeCoordinates
+    });
+  } catch (err) {
+    console.error("SYNC WIRING ERROR:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// ??$$$ newer code
+export const getRegistryController = async (req, res) => {
+  try {
+    const registry = getRegistry();
+    res.json(registry);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };

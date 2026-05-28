@@ -1,9 +1,6 @@
 // @ts-nocheck
-// ??$$$ FORGE: BuildPage.jsx — Stage 3: Sketch editor + simulator + diagram viewer
-// Three-panel: CodeMirror sketch | SimCanvas/WokwiSimulator | DiagramViewer
-// Compile animation: green pulse on success, shake on error
-// Diff view: before/after on regeneration (simple line diff)
-
+// ??$$$ FORGE: BuildPage.tsx — Stage 3: Milestone Runner & Debug Workspace
+// Three-panel: Milestone Sidebar | Code/Simulator Workspace | Test/Debug Coach
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { axiosInstance } from '../lib/axios';
@@ -11,718 +8,1243 @@ import toast from 'react-hot-toast';
 import { useThemeStore } from '../store/useThemeStore';
 import { useProjectStore } from '../store/useProjectStore';
 import WokwiSimulator from '../components/WokwiSimulator';
-import { useCompiler } from '../hooks/useCompiler';
 import useIsMobile from '../hooks/useIsMobile';
 
 const Simulator3D = lazy(() => import('../components/Simulator3D'));
 
-
-// API removed
-
-// ─── Simple diff highlighter (before/after on sketch lines) ──────────────────
-function DiffView({ before, after, isDark }) {
-  if (!before || !after) return null;
-
-  const beforeLines = before.split('\n');
-  const afterLines = after.split('\n');
-  const maxLen = Math.max(beforeLines.length, afterLines.length);
-
-  const diffs = [];
-  for (let i = 0; i < maxLen; i++) {
-    const a = beforeLines[i];
-    const b = afterLines[i];
-    if (a === b) {
-      diffs.push({ type: 'same', line: b ?? '' });
-    } else if (a === undefined) {
-      diffs.push({ type: 'added', line: b });
-    } else if (b === undefined) {
-      diffs.push({ type: 'removed', line: a });
-    } else {
-      diffs.push({ type: 'removed', line: a });
-      diffs.push({ type: 'added', line: b });
-    }
-  }
-
-  return (
-    <div style={{
-      fontFamily: 'monospace',
-      fontSize: '0.7rem',
-      lineHeight: 1.5,
-      overflowX: 'auto',
-      overflowY: 'auto',
-      maxHeight: '200px',
-      background: isDark ? '#0f172a' : '#f8fafc',
-      borderRadius: '8px',
-      padding: '0.5rem',
-      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-    }}>
-      {diffs.map((d, i) => (
-        <div key={i} style={{
-          background: d.type === 'added'
-            ? (isDark ? 'rgba(34,197,94,0.12)' : '#f0fdf4')
-            : d.type === 'removed'
-              ? (isDark ? 'rgba(239,68,68,0.12)' : '#fef2f2')
-              : 'transparent',
-          color: d.type === 'added'
-            ? '#22c55e'
-            : d.type === 'removed'
-              ? '#ef4444'
-              : (isDark ? '#a3a3a3' : '#555'),
-          paddingLeft: '4px',
-          whiteSpace: 'pre',
-        }}>
-          {d.type === 'added' ? '+ ' : d.type === 'removed' ? '- ' : '  '}{d.line}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Compile error panel ──────────────────────────────────────────────────────
-function CompileErrorPanel({ errors, isDark }) {
-  if (!errors?.length) return null;
-  return (
-    <div style={{
-      background: isDark ? '#1a0606' : '#fff5f5',
-      border: `1px solid ${isDark ? '#7f1d1d' : '#fca5a5'}`,
-      borderRadius: '8px',
-      padding: '0.75rem',
-      marginTop: '0.5rem',
-      maxHeight: '120px',
-      overflowY: 'auto',
-    }}>
-      {errors.map((err, i) => (
-        <div key={i} style={{ fontSize: '0.7rem', color: isDark ? '#f87171' : '#b91c1c', marginBottom: '4px', fontFamily: 'monospace' }}>
-          {err.line ? `Line ${err.line}: ` : ''}{err.message || String(err)}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
 export default function BuildPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
 
-  const { project, updateSketch, refreshStageStatus } = useProjectStore();
+  const {
+    project,
+    generateMilestones,
+    loadMilestones,
+    updateMilestone,
+    compileMilestone,
+    confirmMilestone,
+    failMilestone,
+    skipMilestone,
+    chatDebugCoach,
+    regenerateMilestoneCode,
+    reportComponentIssue,
+    validateSerial,
+    refreshStageStatus
+  } = useProjectStore();
 
-  const [sketch, setSketch] = useState('');
-  const [prevSketch, setPrevSketch] = useState('');
-  const [diagram, setDiagram] = useState(null);
-  const [diagramText, setDiagramText] = useState(''); // ??$$$ editable raw JSON string
-  const [diagramJsonError, setDiagramJsonError] = useState(null); // ??$$$ parse error message
   const [loading, setLoading] = useState(true);
-  const [compileState, setCompileState] = useState('idle'); // idle | success | error
-  const [hexCode, setHexCode] = useState('');
-  const [compileErrors, setCompileErrors] = useState([]);
-  const [showDiff, setShowDiff] = useState(false);
-  const [syncBanner, setSyncBanner] = useState(false);
-  const [activeTab, setActiveTab] = useState('sim'); // sim | diagram
+  const [activeMilestoneId, setActiveMilestoneId] = useState(null);
   const [simView, setSimView] = useState('2d'); // 2d | 3d
-  const [warnings, setWarnings] = useState([]);
-  const [generatingSketch, setGeneratingSketch] = useState(false);
-  const [generatingDiagram, setGeneratingDiagram] = useState(false);
-  const [savingDiagram, setSavingDiagram] = useState(false); // ??$$$
-
-  // ??$$$
-  const [bom, setBom] = useState([]);
-  const [compilingLocal, setCompilingLocal] = useState(false);
-
-  const isMobile = useIsMobile();
-  const [mobileBuildTab, setMobileBuildTab] = useState('editor'); // ??$$$ 'editor' | 'sim' | 'diagram'
+  const [centerTab, setCenterTab] = useState('instructions'); // instructions | code | simulator
   const [registry, setRegistry] = useState({});
+  const [compilingLocal, setCompilingLocal] = useState(false);
+  const [generatingMilestones, setGeneratingMilestones] = useState(false);
 
-
-  const { compile, compiling, lastResult } = useCompiler();
-  const compileButtonRef = useRef(null);
+  // Milestone local code & debounced save
+  const [localCode, setLocalCode] = useState('');
   const saveTimer = useRef(null);
-  const diagramSaveTimer = useRef(null); // ??$$$
 
-  // ??$$$ Keep diagramText in sync whenever diagram object changes (AI gen or load)
-  useEffect(() => {
-    if (diagram) {
-      setDiagramText(JSON.stringify(diagram, null, 2));
-      setDiagramJsonError(null);
-    }
-  }, [diagram]);
+  // Serial validation state
+  const [serialInput, setSerialInput] = useState('');
+  const [validatingSerial, setValidatingSerial] = useState(false);
+  const [validationResult, setValidationResult] = useState(null);
 
-  // Load build artifacts
+  // Debug Coach chat input state
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+  const [chatError, setChatError] = useState(null);
+
+  // Advisor Modal (Wrong component escape hatch)
+  const [advisorModal, setAdvisorModal] = useState({
+    open: false,
+    componentKey: '',
+    problem: '',
+    response: '',
+    loading: false
+  });
+
+  // Skip Modal
+  const [skipModal, setSkipModal] = useState({
+    open: false,
+    milestoneId: '',
+    notes: ''
+  });
+
+  // Load project & milestones on mount
   useEffect(() => {
-    const load = async () => {
+    const init = async () => {
       if (!id) return;
       setLoading(true);
       try {
-        const res = await axiosInstance.get(`/build/${id}`, { withCredentials: true });
-        const { sketch: s = '', diagram: d = {}, bom: b = [], lastCompilation } = res.data;
-        setSketch(s);
-        setPrevSketch(s);
-        setDiagram(d);
-        setBom(b);
-        if (lastCompilation) {
-          if (lastCompilation.hex) {
-            setHexCode(lastCompilation.hex);
-            setCompileState('success');
-          } else if (lastCompilation.compilationErrors?.length > 0) {
-            setCompileErrors(lastCompilation.compilationErrors);
-            setCompileState('error');
-          }
-        }
+        await loadMilestones(id);
       } catch (err) {
-        // Fallback to project store
-        setSketch(project?.sketch || '');
-        setDiagram(project?.diagram || null);
-        setBom(project?.bom || []);
+        console.error("Failed to load milestones:", err);
       } finally {
         setLoading(false);
       }
     };
-    load();
+    init();
     axiosInstance.get("/wokwi/registry").then(res => setRegistry(res.data)).catch(console.error);
-  }, [id, project]);
+  }, [id]);
 
-  // Auto-save sketch with debounce (one-directional sync)
-  const handleSketchChange = useCallback((e) => {
+  // Set initial active milestone
+  useEffect(() => {
+    if (project?.milestones && project.milestones.length > 0) {
+      if (project.activeMilestoneId) {
+        setActiveMilestoneId(project.activeMilestoneId);
+      } else {
+        setActiveMilestoneId(project.milestones[0].id);
+      }
+    }
+  }, [project?.activeMilestoneId, project?.milestones]);
+
+  const milestone = project?.milestones?.find(m => m.id === activeMilestoneId) || project?.milestones?.[0];
+
+  // Sync local code state on milestone change
+  useEffect(() => {
+    if (milestone) {
+      setLocalCode(milestone.code || '');
+      setSerialInput(milestone.serialOutput || '');
+      setValidationResult(null);
+    }
+  }, [milestone?.id]);
+
+  // Handle local code editing with auto-save
+  const handleCodeChange = (e) => {
     const val = e.target.value;
-    setSketch(val);
-    setSyncBanner(val !== prevSketch);
-
+    setLocalCode(val);
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
-      try {
-        await updateSketch(val);
-      } catch {
-        // silent
+      if (milestone) {
+        await updateMilestone(id, milestone.id, { code: val });
       }
-    }, 1500);
-  }, [prevSketch, updateSketch]);
+    }, 1200);
+  };
 
-  // Compile to hex using backend POST /api/build/compile with Hexi compiler fallback
-  const handleCompile = async () => {
-    if (compilingLocal || compiling) return;
+  /* old code
+  // Compile milestone code
+  const handleCompileMilestone = async () => {
+    if (!milestone) return;
     setCompilingLocal(true);
-    setCompileErrors([]);
-    setHexCode('');
-
     try {
-      // First save the current sketch
-      await axiosInstance.post('/build/sync', {
-        projectId: id,
-        sketch,
-        diagram
-      }, { withCredentials: true });
-
-      // Try backend compiler
-      console.log("[BuildPage] Initiating backend compilation...");
-      const res = await axiosInstance.post('/build/compile', { projectId: id }, { withCredentials: true });
-      if (res.data?.success) {
-        setCompileState('success');
-        setHexCode('hex');
-        if (compileButtonRef.current) {
-          compileButtonRef.current.style.animation = 'compilePulse 0.5s ease';
-          setTimeout(() => {
-            if (compileButtonRef.current) compileButtonRef.current.style.animation = '';
-          }, 600);
-        }
-        await refreshStageStatus();
-        toast.success('Compiled successfully on server!');
+      // Save code first
+      await updateMilestone(id, milestone.id, { code: localCode });
+      const result = await compileMilestone(id, milestone.id);
+      if (result?.success) {
+        toast.success("Compiled successfully!");
       } else {
-        const errors = res.data?.errors || [];
-        const isCliError = errors.some(e => 
-          String(e).includes('arduino-cli') || 
-          String(e).includes('spawn') || 
-          String(e).includes('not found') || 
-          String(e).includes('ENOENT') ||
-          String(e).includes('executable')
-        );
-
-        if (isCliError) {
-          console.warn("[BuildPage] Backend CLI compiler unavailable. Falling back to Cloud compiler...");
-          const result = await compile(sketch, diagram);
-          if (result.success) {
-            setHexCode(result.hex);
-            setCompileState('success');
-            if (compileButtonRef.current) {
-              compileButtonRef.current.style.animation = 'compilePulse 0.5s ease';
-              setTimeout(() => {
-                if (compileButtonRef.current) compileButtonRef.current.style.animation = '';
-              }, 600);
-            }
-            await refreshStageStatus();
-            toast.success('Compiled successfully via cloud compiler!');
-          } else {
-            setCompileErrors(result.errors);
-            setCompileState('error');
-            if (compileButtonRef.current) {
-              compileButtonRef.current.style.animation = 'compileShake 0.3s ease';
-              setTimeout(() => {
-                if (compileButtonRef.current) compileButtonRef.current.style.animation = '';
-              }, 400);
-            }
-            toast.error('Cloud compilation failed');
-          }
-        } else {
-          setCompileErrors(errors);
-          setCompileState('error');
-          if (compileButtonRef.current) {
-            compileButtonRef.current.style.animation = 'compileShake 0.3s ease';
-            setTimeout(() => {
-              if (compileButtonRef.current) compileButtonRef.current.style.animation = '';
-            }, 400);
-          }
-          toast.error('Compilation failed — check errors below');
-        }
+        toast.error("Compilation failed. Check terminal.");
       }
     } catch (err) {
-      console.warn("[BuildPage] Backend compiler exception. Falling back to Cloud compiler...", err);
-      const result = await compile(sketch, diagram);
-      if (result.success) {
-        setHexCode(result.hex);
-        setCompileState('success');
-        if (compileButtonRef.current) {
-          compileButtonRef.current.style.animation = 'compilePulse 0.5s ease';
-          setTimeout(() => {
-            if (compileButtonRef.current) compileButtonRef.current.style.animation = '';
-          }, 600);
-        }
-        await refreshStageStatus();
-        toast.success('Compiled successfully via cloud compiler!');
+      toast.error("Compilation request failed.");
+    } finally {
+      setCompilingLocal(false);
+    }
+  };
+  */
+  // ??$$$ newer code - Compile milestone with auto debug coach pre-fill and manual libs validation checks
+  const handleCompileMilestone = async () => {
+    if (!milestone) return;
+    setCompilingLocal(true);
+    try {
+      // Save code first
+      await updateMilestone(id, milestone.id, { code: localCode });
+      const result = await compileMilestone(id, milestone.id);
+      if (result?.success) {
+        toast.success("Compiled successfully!");
       } else {
-        setCompileErrors(result.errors);
-        setCompileState('error');
-        if (compileButtonRef.current) {
-          compileButtonRef.current.style.animation = 'compileShake 0.3s ease';
-          setTimeout(() => {
-            if (compileButtonRef.current) compileButtonRef.current.style.animation = '';
-          }, 400);
-        }
-        toast.error('Cloud compilation failed: ' + err.message);
+        toast.error("Compilation failed. Check terminal.");
+        const compileErrStr = result?.errors?.join("\n") || "Compilation failed.";
+        setChatInput(`I ran into a compilation error:\n${compileErrStr}`);
+        toast.success("Error details pre-filled in Debug Coach input! Ask Coach for help.");
+      }
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.error;
+      if (errMsg === 'manual_libs_required') {
+        toast.error("Manual libraries installation required. Please check instructions.");
+      } else {
+        toast.error(err?.response?.data?.message || "Compilation request failed.");
+        const compileErrStr = err?.response?.data?.error || err?.message || "Compilation failed.";
+        setChatInput(`I ran into a compilation error:\n${compileErrStr}`);
       }
     } finally {
       setCompilingLocal(false);
     }
   };
 
-  const handleGenSketch = async () => {
-    if (generatingSketch) return;
-    setGeneratingSketch(true);
+  // ??$$$ newer code - handle manual libraries acknowledgement trigger
+  const handleAcknowledgeManualLibs = async () => {
+    if (!milestone) return;
     try {
-      setPrevSketch(sketch);
-      const res = await axiosInstance.post(`/build/generate-sketch`, { projectId: id }, { withCredentials: true });
-      setSketch(res.data?.sketch || sketch);
-      setWarnings(res.data?.warnings || []);
-      setShowDiff(true);
-      toast.success('Sketch generated!');
+      await updateMilestone(id, milestone.id, { manualLibsAcknowledged: true });
+      toast.success("Acknowledged manual library installation.");
+      // Trigger compile
+      handleCompileMilestone();
     } catch (err) {
-      toast.error(err?.response?.data?.error || 'Sketch generation failed');
-    } finally {
-      setGeneratingSketch(false);
+      toast.error("Failed to acknowledge manual library installation.");
     }
   };
 
-  const handleGenDiagram = async () => {
-    if (generatingDiagram) return;
-    setGeneratingDiagram(true);
+  // Skip milestone
+  const handleConfirmSkip = async () => {
+    if (!skipModal.milestoneId) return;
     try {
-      const res = await axiosInstance.post(`/build/generate-diagram`, { projectId: id }, { withCredentials: true });
-      setDiagram(res.data?.diagram || diagram);
-      setWarnings(res.data?.warnings || []);
-      toast.success('Diagram generated!');
-    } catch (err) {
-      toast.error(err?.response?.data?.error || 'Diagram generation failed');
-    } finally {
-      setGeneratingDiagram(false);
+      const res = await skipMilestone(id, skipModal.milestoneId, skipModal.notes);
+      toast.success("Milestone skipped.");
+      setSkipModal({ open: false, milestoneId: '', notes: '' });
+      if (res?.allComplete) {
+        toast.success("All milestones completed! Advancing to simulation.");
+        navigate(`/project/${id}/simulation`);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Failed to skip milestone.");
     }
   };
 
-  const compileButtonColor = () => {
-    if (compileState === 'success') return '#22c55e';
-    if (compileState === 'error') return '#ef4444';
-    return '#2563eb';
+  // Confirm manual verification
+  const handleConfirmMilestone = async () => {
+    if (!milestone) return;
+    try {
+      const res = await confirmMilestone(id, milestone.id, serialInput, "Manually confirmed pass");
+      toast.success("Milestone verified and completed!");
+      if (res?.allComplete) {
+        toast.success("Congratulations! All milestones completed.");
+        navigate(`/project/${id}/simulation`);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Verification failed. Check dependencies.");
+    }
   };
+
+  // Report manual failure
+  const handleReportFailure = async () => {
+    if (!milestone) return;
+    try {
+      const res = await failMilestone(id, milestone.id, serialInput, "Serial log did not match expected pattern.");
+      toast.error("Milestone marked failed. Debug Coach is active.");
+      setCenterTab('instructions');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "Fail registration failed.");
+    }
+  };
+
+  // Validate serial telemetry using AI Agent
+  const handleValidateSerial = async () => {
+    if (!milestone || !serialInput.trim()) return;
+    setValidatingSerial(true);
+    setValidationResult(null);
+    try {
+      const result = await validateSerial(id, milestone.id, serialInput);
+      setValidationResult(result);
+      if (result?.success) {
+        toast.success("AI Validation Passed!");
+        // Auto pass on AI success
+        const res = await confirmMilestone(id, milestone.id, serialInput, "Validated automatically via AI Serial Validator");
+        if (res?.allComplete) {
+          navigate(`/project/${id}/simulation`);
+        }
+      } else {
+        toast.error("AI Validation Failed. Check feedback.");
+        await failMilestone(id, milestone.id, serialInput, `Validation Failed: ${result?.feedback}`);
+      }
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || "AI validation failed.");
+    } finally {
+      setValidatingSerial(false);
+    }
+  };
+
+  // Chat with Debug Coach
+  const handleSendChat = async (e) => {
+    e.preventDefault();
+    if (!milestone || !chatInput.trim() || sendingChat) return;
+    setSendingChat(true);
+    setChatError(null);
+    const msg = chatInput;
+    setChatInput('');
+    try {
+      await chatDebugCoach(id, milestone.id, msg);
+    } catch (err: any) {
+      setChatError("Failed to send chat. Please try again.");
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
+  // Submit Wrong Component escape hatch
+  const handleReportComponentIssue = async () => {
+    if (!advisorModal.componentKey || !advisorModal.problem.trim()) return;
+    setAdvisorModal(prev => ({ ...prev, loading: true }));
+    try {
+      const res = await reportComponentIssue(id, milestone.id, advisorModal.componentKey, advisorModal.problem);
+      setAdvisorModal(prev => ({ ...prev, response: res?.advice || 'No advice received', loading: false }));
+    } catch (err) {
+      toast.error("Failed to fetch advice.");
+      setAdvisorModal(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  const handleRegenerateCode = async () => {
+    if (!milestone) return;
+    if (!confirm("Are you sure you want to regenerate? This will overwrite your current code edits for this milestone.")) return;
+    try {
+      await regenerateMilestoneCode(id, milestone.id);
+      toast.success("Code regenerated successfully!");
+    } catch (err) {
+      toast.error("Regeneration failed.");
+    }
+  };
+
+  // Global Overlay if milestones are not generated yet
+  if (!project?.milestonesGenerated || !project?.milestones || project.milestones.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 'calc(100vh - 52px)',
+        background: isDark ? '#141414' : '#f5f5f5',
+        color: isDark ? '#f1f3f9' : '#1a1a1a',
+        padding: '2rem',
+        textAlign: 'center',
+      }}>
+        {generatingMilestones && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0, 0, 0, 0.75)',
+            backdropFilter: 'blur(10px)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+            color: '#fff',
+          }}>
+            <div style={{
+              width: '48px',
+              height: '48px',
+              border: '4px solid rgba(255,255,255,0.1)',
+              borderTopColor: '#3b82f6',
+              borderRadius: '50%',
+              animation: 'spin 1s linear infinite',
+              marginBottom: '1.25rem',
+            }} />
+            <p style={{ fontWeight: 600, fontSize: '1.1rem' }}>Generating your build milestones...</p>
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </div>
+        )}
+        <div style={{
+          background: isDark ? 'rgba(30, 41, 59, 0.4)' : 'rgba(255, 255, 255, 0.8)',
+          backdropFilter: 'blur(16px)',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+          borderRadius: '24px',
+          padding: '3rem 2rem',
+          maxWidth: '480px',
+          boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+        }}>
+          <span style={{ fontSize: '3.5rem', display: 'block', marginBottom: '1.5rem' }}>🎯</span>
+          <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '1rem' }}>Milestone-Based Build Runner</h2>
+          <p style={{ fontSize: '0.9rem', color: isDark ? '#94a3b8' : '#64748b', lineHeight: 1.6, marginBottom: '2rem' }}>
+            We'll break down your physical project into structured, step-by-step verification milestones customized to your skill level.
+          </p>
+          <button
+            onClick={async () => {
+              setGeneratingMilestones(true);
+              try {
+                await generateMilestones(id);
+                toast.success('Milestones generated successfully!');
+              } catch (err: any) {
+                toast.error(err?.response?.data?.error || 'Milestone generation failed. Please try again.');
+              } finally {
+                setGeneratingMilestones(false);
+              }
+            }}
+            disabled={generatingMilestones}
+            style={{
+              padding: '0.875rem 2rem',
+              borderRadius: '12px',
+              background: '#2563eb',
+              color: '#fff',
+              fontWeight: 700,
+              border: 'none',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)',
+            }}
+          >
+            {generatingMilestones ? 'Generating Milestones...' : 'Start Generating'}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="forge-build-container" style={{
+    <div style={{
       display: 'flex',
-      flexDirection: 'column',
       width: '100%',
       height: 'calc(100vh - 52px)',
-      position: 'relative',
-      background: isDark ? '#141414' : '#f5f5f5',
-      color: isDark ? '#f1f3f9' : '#1a1a1a',
+      background: isDark ? '#0d0e12' : '#f8fafc',
+      color: isDark ? '#e2e8f0' : '#1e293b',
       fontFamily: "'Outfit', 'Inter', sans-serif",
       overflow: 'hidden',
     }}>
-
       <style>{`
-        @keyframes compilePulse {
-          0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.7); }
-          70%  { box-shadow: 0 0 0 14px rgba(34,197,94,0); }
-          100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+        ::-webkit-scrollbar {
+          width: 6px;
+          height: 6px;
         }
-        @keyframes compileShake {
-          0%,100% { transform: translateX(0); }
-          20% { transform: translateX(-6px); }
-          40% { transform: translateX(6px); }
-          60% { transform: translateX(-4px); }
-          80% { transform: translateX(4px); }
+        ::-webkit-scrollbar-track {
+          background: transparent;
         }
-        .mobile-tab-btn {
-          flex: 1;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          gap: 4px;
-          border: none;
-          background: none;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          border-radius: 12px;
-          margin: 4px;
+        ::-webkit-scrollbar-thumb {
+          background: ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'};
+          border-radius: 4px;
         }
-        .mobile-tab-btn.active {
-          background: ${isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.08)'};
-          color: #3b82f6 !important;
+        .tab-btn {
+          padding: 0.5rem 1rem;
+          font-weight: 600;
+          font-size: 0.8rem;
+          border-bottom: 2px solid transparent;
+          color: ${isDark ? '#94a3b8' : '#64748b'};
+          cursor: pointer;
+          transition: all 0.2s;
         }
-        .glass-nav {
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          background: ${isDark ? 'rgba(20, 20, 20, 0.8)' : 'rgba(255, 255, 255, 0.8)'};
+        .tab-btn.active {
+          color: #3b82f6;
+          border-bottom-color: #3b82f6;
         }
       `}</style>
 
+      {/* ── Panel 1: Milestone Sidebar (25%) ────────────────────────────────── */}
+      <div style={{
+        width: '25%',
+        minWidth: '280px',
+        borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        background: isDark ? '#111216' : '#fff',
+      }}>
+        <div style={{ padding: '1.25rem', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` }}>
+          <p style={{ fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: '#3b82f6', margin: 0 }}>
+            Curriculum Runner
+          </p>
+          <h2 style={{ fontSize: '1rem', fontWeight: 800, margin: '4px 0 0' }}>Build Milestones</h2>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {project.milestones.map((m) => {
+            const isActive = m.id === activeMilestoneId;
+            const isLocked = m.status === 'locked';
+            const isCompleted = m.status === 'passed';
+            const isFailed = m.status === 'failed';
+            const isReady = m.status === 'ready' || m.status === 'in_progress';
 
-      {/* Sync / Pin Warnings banner */}
-      {(syncBanner || warnings.length > 0) && (
+            let statusIcon = '⚪';
+            let statusColor = '#64748b';
+            if (isLocked) { statusIcon = '🔒'; statusColor = '#475569'; }
+            else if (isCompleted) { statusIcon = '✅'; statusColor = '#22c55e'; }
+            else if (isFailed) { statusIcon = '❌'; statusColor = '#ef4444'; }
+            else if (isReady) { statusIcon = '🔵'; statusColor = '#3b82f6'; }
+
+            return (
+              <button
+                key={m.id}
+                onClick={() => {
+                  setActiveMilestoneId(m.id);
+                  setCenterTab('instructions');
+                }}
+                style={{
+                  width: '100%',
+                  textAlign: 'left',
+                  padding: '0.875rem 1rem',
+                  borderRadius: '12px',
+                  background: isActive 
+                    ? (isDark ? 'rgba(59, 130, 246, 0.15)' : 'rgba(59, 130, 246, 0.05)')
+                    : 'transparent',
+                  border: `1px solid ${isActive 
+                    ? '#3b82f6' 
+                    : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)')}`,
+                  cursor: 'pointer',
+                  opacity: isLocked ? 0.6 : 1,
+                  transition: 'all 0.2s',
+                }}
+              >
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: '0.9rem' }}>{statusIcon}</span>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 700, color: statusColor }}>
+                        Step {m.order}
+                      </span>
+                      {m.simulatable ? (
+                        <span style={{ fontSize: '0.6rem', background: '#3b82f620', color: '#3b82f6', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>SIM</span>
+                      ) : (
+                        <span style={{ fontSize: '0.6rem', background: '#fb923c20', color: '#ea580c', padding: '1px 4px', borderRadius: '4px', fontWeight: 600 }}>PHYSICAL</span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: '0.8rem', fontWeight: 600, margin: '4px 0 0', color: isDark ? '#e2e8f0' : '#1e293b' }}>
+                      {m.title}
+                    </p>
+                    {isLocked && m.dependsOn?.length > 0 && (
+                      <span style={{ fontSize: '0.65rem', color: '#64748b', display: 'block', marginTop: '4px' }}>
+                        Requires step {project.milestones.find(dm => dm.id === m.dependsOn[0])?.order || m.dependsOn[0]}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ── Panel 2: Center Workspace (50%) ────────────────────────────────── */}
+      <div style={{
+        width: '50%',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+        background: isDark ? '#0d0e12' : '#f8fafc',
+      }}>
+        {/* Workspace Tab Header */}
         <div style={{
-          padding: '0.4rem 1.25rem',
-          background: warnings.length > 0 ? (isDark ? '#451a03' : '#fff7ed') : (isDark ? '#1e3a5f' : '#eff6ff'),
-          borderBottom: `1px solid ${warnings.length > 0 ? (isDark ? '#92400e' : '#fed7aa') : (isDark ? '#1d4ed8' : '#bfdbfe')}`,
+          padding: '0 1rem',
+          height: '48px',
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          fontSize: '0.75rem',
+          background: isDark ? '#111216' : '#fff',
         }}>
-          <span style={{ color: warnings.length > 0 ? (isDark ? '#fbbf24' : '#9a3412') : (isDark ? '#93c5fd' : '#1d4ed8'), fontWeight: 600 }}>
-            {warnings.length > 0 
-              ? `⚠ Pin Sync Warning: ${warnings[0]} ${warnings.length > 1 ? `(+${warnings.length - 1} more)` : ''}`
-              : '⚡ Sketch edited — diagram may be out of sync. Recompile to verify.'}
-          </span>
-          <button onClick={() => { setSyncBanner(false); setWarnings([]); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: isDark ? '#fbbf24' : '#1d4ed8' }}>✕</button>
-        </div>
-      )}
-
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', gap: '0', flexDirection: isMobile ? 'column' : 'row' }}>
-
-        {/* ── Left Pane (40%): Sketch Editor + Terminal ─────────────────────────────────────── */}
-        <div style={{
-          width: isMobile ? '100%' : '40%',
-          minWidth: isMobile ? '100%' : '350px',
-          display: (isMobile && mobileBuildTab !== 'editor') ? 'none' : 'flex',
-          flexDirection: 'column',
-          borderRight: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-          background: isDark ? '#0f172a' : '#fff',
-          height: '100%',
-        }}>
-          {/* Sketch Header */}
-          <div style={{
-            padding: '0.625rem 1rem',
-            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: isDark ? '#0a1628' : '#f9fafb',
-          }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: isDark ? '#6b7280' : '#9ca3af' }}>
-              Firmware (sketch.ino)
-            </span>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={handleGenSketch} disabled={generatingSketch} style={{
-                padding: '0.2rem 0.625rem', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 600,
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
-                background: 'transparent', color: isDark ? '#a3a3a3' : '#555', cursor: generatingSketch ? 'not-allowed' : 'pointer',
-              }}>
-                {generatingSketch ? 'Generating…' : '✨ AI Gen Sketch'}
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button className={`tab-btn ${centerTab === 'instructions' ? 'active' : ''}`} onClick={() => setCenterTab('instructions')}>
+              📖 Instructions
+            </button>
+            <button className={`tab-btn ${centerTab === 'code' ? 'active' : ''}`} onClick={() => setCenterTab('code')}>
+              📝 Code Editor
+            </button>
+            {milestone?.simulatable && (
+              <button className={`tab-btn ${centerTab === 'simulator' ? 'active' : ''}`} onClick={() => setCenterTab('simulator')}>
+                📐 Simulator
               </button>
-              <button
-                ref={compileButtonRef}
-                onClick={handleCompile}
-                disabled={compilingLocal || compiling || !sketch}
-                style={{
-                  padding: '0.2rem 0.75rem', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 700,
-                  background: compileButtonColor(),
-                  color: '#fff', border: 'none', cursor: (compilingLocal || compiling || !sketch) ? 'not-allowed' : 'pointer',
-                  transition: 'background 0.2s',
-                }}
-              >
-                {compilingLocal || compiling ? 'Compiling…' : compileState === 'success' ? '✓ Compiled' : compileState === 'error' ? '✕ Error' : '▶ Compile'}
-              </button>
-            </div>
-          </div>
-
-          {/* Editor Container */}
-          <div style={{ flex: 1, position: 'relative', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            {loading ? (
-              <div style={{ flex: 1, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {Array.from({ length: 15 }).map((_, i) => (
-                  <div key={i} style={{
-                    height: '13px', borderRadius: '4px',
-                    width: `${40 + Math.random() * 55}%`,
-                    background: isDark
-                      ? 'linear-gradient(90deg,#1e293b 25%,#253347 50%,#1e293b 75%)'
-                      : 'linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%)',
-                    backgroundSize: '200% 100%',
-                    animation: 'shimmer 1.4s infinite',
-                  }} />
-                ))}
-              </div>
-            ) : (
-              <textarea
-                value={sketch}
-                onChange={handleSketchChange}
-                spellCheck={false}
-                style={{
-                  flex: 1,
-                  padding: '1rem',
-                  fontFamily: '"Fira Code", "Cascadia Code", monospace',
-                  fontSize: '0.8rem',
-                  lineHeight: 1.65,
-                  background: isDark ? '#0f172a' : '#fff',
-                  color: isDark ? '#e2e8f0' : '#1e293b',
-                  border: 'none',
-                  outline: 'none',
-                  resize: 'none',
-                  tabSize: 2,
-                  width: '100%',
-                }}
-              />
             )}
           </div>
-
-          {/* Terminal / Output Panel (Errors / Warnings) */}
-          <div style={{
-            height: '180px',
-            borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-            background: isDark ? '#0b0f19' : '#f8fafc',
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: '120px',
-          }}>
-            <div style={{
-              padding: '0.4rem 1rem',
-              background: isDark ? '#070a13' : '#f1f5f9',
-              borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-            }}>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, color: isDark ? '#64748b' : '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Compilation Terminal
-              </span>
-              <span style={{
-                fontSize: '0.6rem',
-                fontWeight: 600,
-                color: compileState === 'success' ? '#22c55e' : compileState === 'error' ? '#ef4444' : '#64748b',
-              }}>
-                {compileState === 'success' ? 'SUCCESS' : compileState === 'error' ? 'FAILED' : 'IDLE'}
-              </span>
-            </div>
-            <div style={{
-              flex: 1,
-              padding: '0.75rem 1rem',
-              overflowY: 'auto',
-              fontFamily: '"Fira Code", "Cascadia Code", monospace',
-              fontSize: '0.75rem',
-              color: isDark ? '#94a3b8' : '#334155',
-              lineHeight: 1.5,
-            }}>
-              {compileErrors.length > 0 ? (
-                compileErrors.map((err, i) => (
-                  <div key={i} style={{ color: '#ef4444', marginBottom: '4px' }}>
-                    {err.line ? `[Line ${err.line}] ` : ''}{err.message || String(err)}
-                  </div>
-                ))
-              ) : compileState === 'success' ? (
-                <div style={{ color: '#22c55e' }}>
-                  Firmware compiled successfully! Binary size: {hexCode ? `${(hexCode.length / 1024).toFixed(1)} KB` : 'Unknown'}
-                  <br />
-                  Ready to deploy onto target hardware simulator.
-                </div>
-              ) : (
-                <div style={{ color: isDark ? '#475569' : '#94a3b8' }}>
-                  No output. Click "Compile" to build the sketch.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── Right Pane (60%): 3D Simulator Interface ───────────────────────────────────────── */}
-        <div style={{
-          width: isMobile ? '100%' : '60%',
-          display: (isMobile && mobileBuildTab === 'editor') ? 'none' : 'flex',
-          flexDirection: 'column',
-          background: isDark ? '#0a0a0a' : '#f0f0f0',
-          height: '100%',
-        }}>
-          {/* Simulator Header */}
-          <div style={{
-            padding: '0.625rem 1rem',
-            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            background: isDark ? '#141414' : '#fff',
-          }}>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <span style={{ fontSize: '0.7rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: isDark ? '#6b7280' : '#9ca3af' }}>
-                3D CAD Environment (Simulate)
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button onClick={handleGenDiagram} disabled={generatingDiagram} style={{
-                padding: '0.2rem 0.625rem', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 600,
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
-                background: 'transparent', color: isDark ? '#a3a3a3' : '#555', cursor: generatingDiagram ? 'not-allowed' : 'pointer',
-              }}>
-                {generatingDiagram ? 'Generating…' : '✨ AI Gen Diagram'}
-              </button>
-              <button 
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {centerTab === 'simulator' && (
+              <button
                 onClick={() => setSimView(simView === '2d' ? '3d' : '2d')}
                 style={{
-                  padding: '0.2rem 0.625rem', borderRadius: '6px', fontSize: '0.65rem', fontWeight: 700,
-                  background: '#2563eb', color: '#fff', border: 'none', cursor: 'pointer'
+                  padding: '0.25rem 0.5rem',
+                  borderRadius: '6px',
+                  background: '#3b82f6',
+                  color: '#fff',
+                  border: 'none',
+                  fontSize: '0.7rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
                 }}
               >
                 {simView === '2d' ? '🚀 Enter 3D' : '📐 Switch to 2D'}
               </button>
-            </div>
+            )}
+            <button
+              onClick={() => setSkipModal({ open: true, milestoneId: milestone.id, notes: '' })}
+              style={{
+                padding: '0.25rem 0.5rem',
+                borderRadius: '6px',
+                background: 'transparent',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                color: isDark ? '#94a3b8' : '#475569',
+                fontSize: '0.7rem',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              ⏭ Skip
+            </button>
           </div>
+        </div>
 
-          {/* Canvas area */}
-          <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-            {diagram ? (
-              simView === '2d' ? (
-                <WokwiSimulator
-                  hexCode={hexCode || 'hex'} // allow running even with fallback compile string
-                  diagramJson={diagram}
-                  sketchCode={sketch}
-                  projectId={id}
-                />
-              ) : (
-                <Suspense fallback={<div className="h-full w-full bg-black flex items-center justify-center text-white font-black animate-pulse uppercase tracking-[0.2em]">Initializing 3D Engine...</div>}>
-                   <Simulator3D 
-                     diagram={diagram} 
-                     hexCode={hexCode} 
-                     registry={registry}
-                     bom={bom}
-                     projectId={id}
-                     onDiagramChange={async (newDiagram) => {
-                       setDiagram(newDiagram);
-                       try {
-                         await axiosInstance.post('/build/sync', {
-                           projectId: id,
-                           sketch,
-                           diagram: newDiagram
-                         }, { withCredentials: true });
-                       } catch (e) {
-                         console.warn('Background diagram sync failed', e);
-                       }
-                     }}
-                   />
-                </Suspense>
-              )
-            ) : (
+        {/* Tab Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', position: 'relative', minHeight: 0 }}>
+          {centerTab === 'instructions' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              {/* ??$$$ Manual Library Installation Warning Card */}
+              {milestone.requiredLibraries?.some(lib => lib.type === 'manual') && (
+                <div style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid #ef4444',
+                  padding: '1.25rem',
+                  borderRadius: '16px',
+                  color: isDark ? '#fca5a5' : '#b91c1c'
+                }}>
+                  <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', fontWeight: 800 }}>⚠️ Manual Library Installation Required</h3>
+                  <p style={{ margin: 0, fontSize: '0.8rem', lineHeight: 1.5 }}>
+                    This milestone requires standard/third-party library dependencies that must be manually installed in your Arduino IDE or local CLI environment.
+                  </p>
+                  <ul style={{ margin: '8px 0 0 16px', padding: 0, fontSize: '0.75rem', fontFamily: 'monospace' }}>
+                    {milestone.requiredLibraries.filter(lib => lib.type === 'manual').map((lib, idx) => (
+                      <li key={idx} style={{ marginBottom: '4px' }}>
+                        <strong>{lib.name}</strong>: {lib.installCommand || `arduino-cli lib install "${lib.name}"`}
+                      </li>
+                    ))}
+                  </ul>
+                  <div style={{ marginTop: '1rem', display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <button
+                      onClick={handleAcknowledgeManualLibs}
+                      disabled={milestone.manualLibsAcknowledged}
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        background: milestone.manualLibsAcknowledged ? '#4b5563' : '#ef4444',
+                        color: '#fff',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        cursor: milestone.manualLibsAcknowledged ? 'default' : 'pointer'
+                      }}
+                    >
+                      {milestone.manualLibsAcknowledged ? '✓ Libraries Acknowledged' : 'I have installed these libraries'}
+                    </button>
+                    {milestone.manualLibsAcknowledged && (
+                      <span style={{ fontSize: '0.7rem', color: '#22c55e', fontWeight: 600 }}>Ready to compile!</span>
+                    )}
+                  </div>
+                </div>
+              )}
               <div style={{
-                height: '100%',
+                background: isDark ? 'rgba(30, 41, 59, 0.3)' : '#fff',
+                padding: '1.25rem',
+                borderRadius: '16px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+              }}>
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', fontWeight: 800 }}>Objective</h3>
+                <p style={{ margin: 0, fontSize: '0.825rem', lineHeight: 1.6, color: isDark ? '#94a3b8' : '#475569' }}>
+                  {milestone.objective}
+                </p>
+              </div>
+
+              <div style={{
+                background: isDark ? 'rgba(30, 41, 59, 0.3)' : '#fff',
+                padding: '1.25rem',
+                borderRadius: '16px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+              }}>
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', fontWeight: 800 }}>Wiring Instructions</h3>
+                <p style={{ margin: 0, fontSize: '0.825rem', lineHeight: 1.6, whiteSpace: 'pre-wrap', color: isDark ? '#94a3b8' : '#475569' }}>
+                  {milestone.wiringInstructions}
+                </p>
+              </div>
+
+              <div style={{
+                background: isDark ? 'rgba(30, 41, 59, 0.3)' : '#fff',
+                padding: '1.25rem',
+                borderRadius: '16px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+              }}>
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', fontWeight: 800 }}>Expected Telemetry Output</h3>
+                <div style={{
+                  background: isDark ? '#070a13' : '#f1f5f9',
+                  padding: '0.75rem',
+                  borderRadius: '8px',
+                  fontFamily: 'monospace',
+                  fontSize: '0.75rem',
+                  color: isDark ? '#38bdf8' : '#0369a1',
+                  border: `1px solid ${isDark ? '#0284c730' : '#bae6fd'}`,
+                  marginBottom: '0.5rem'
+                }}>
+                  {milestone.test?.expectedSerialOutput}
+                </div>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: isDark ? '#94a3b8' : '#64748b' }}>
+                  <strong>Pass Condition:</strong> {milestone.test?.passCondition}
+                </p>
+              </div>
+
+              <div style={{
+                background: isDark ? 'rgba(30, 41, 59, 0.3)' : '#fff',
+                padding: '1.25rem',
+                borderRadius: '16px',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+              }}>
+                <h3 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', fontWeight: 800 }}>Components Involved</h3>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {milestone.componentsInvolved?.map((c) => (
+                    <span key={c} style={{
+                      background: isDark ? '#1e293b' : '#e2e8f0',
+                      color: isDark ? '#e2e8f0' : '#1e293b',
+                      fontSize: '0.7rem',
+                      padding: '4px 8px',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                    }}>{c}</span>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setAdvisorModal({ open: true, componentKey: milestone.componentsInvolved?.[0] || '', problem: '', response: '', loading: false })}
+                  style={{
+                    marginTop: '1rem',
+                    background: 'transparent',
+                    border: '1px dashed #ef4444',
+                    color: '#ef4444',
+                    padding: '0.5rem 1rem',
+                    borderRadius: '8px',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    width: '100%',
+                  }}
+                >
+                  ⚠️ Wrong component? Ask Component Advisor Escape Hatch
+                </button>
+              </div>
+            </div>
+          )}
+
+          {centerTab === 'code' && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '380px' }}>
+              <div style={{
+                padding: '0.5rem',
+                background: isDark ? '#0b0f19' : '#f1f5f9',
+                borderRadius: '8px 8px 0 0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                borderBottom: 'none'
+              }}>
+                <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 700 }}>sketch.ino</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={handleRegenerateCode}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: '#ef4444',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🔄 Regenerate AI Code
+                  </button>
+                  <button
+                    onClick={handleCompileMilestone}
+                    disabled={compilingLocal}
+                    style={{
+                      padding: '0.25rem 0.75rem',
+                      background: '#22c55e',
+                      color: '#fff',
+                      borderRadius: '4px',
+                      border: 'none',
+                      fontSize: '0.7rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {compilingLocal ? 'Compiling...' : '▶ Compile'}
+                  </button>
+                </div>
+              </div>
+              
+              {/* ??$$$ Required Libraries Status Badge List */}
+              {milestone.requiredLibraries && milestone.requiredLibraries.length > 0 && (
+                <div style={{
+                  padding: '8px 12px',
+                  background: isDark ? 'rgba(30, 41, 59, 0.4)' : '#f8fafc',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                  borderBottom: 'none',
+                  fontSize: '0.75rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px'
+                }}>
+                  <div style={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#475569' }}>Required Libraries:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {milestone.requiredLibraries.map((lib, idx) => {
+                      let icon = '✓';
+                      let color = '#22c55e';
+                      let statusText = 'installed';
+                      if (lib.type === 'core') {
+                        statusText = 'built-in';
+                      } else if (lib.type === 'library_manager') {
+                        const hasNoFileError = milestone.compilationErrors?.some(e => e.includes(lib.name) || e.includes("No such file or directory"));
+                        if (hasNoFileError) {
+                          icon = '⬇';
+                          color = '#fb923c';
+                          statusText = 'installing...';
+                        } else {
+                          statusText = 'installed';
+                        }
+                      } else if (lib.type === 'manual') {
+                        icon = '⚠';
+                        color = '#fb7185';
+                        statusText = milestone.manualLibsAcknowledged ? 'acknowledged' : 'manual install required';
+                      }
+                      return (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isDark ? '#1e293b' : '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+                          <span style={{ color, fontWeight: 800 }}>{icon}</span>
+                          <span style={{ fontWeight: 600 }}>{lib.name}</span>
+                          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>({statusText})</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <textarea
+                value={localCode}
+                onChange={handleCodeChange}
+                spellCheck={false}
+                style={{
+                  flex: 1,
+                  minHeight: '260px',
+                  background: isDark ? '#070a13' : '#fff',
+                  color: isDark ? '#e2e8f0' : '#1e293b',
+                  fontFamily: '"Fira Code", monospace',
+                  fontSize: '0.8rem',
+                  lineHeight: 1.6,
+                  padding: '1rem',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                  outline: 'none',
+                  resize: 'none',
+                }}
+              />
+              <div style={{
+                height: '140px',
+                background: '#000000', // ??$$$ pure black terminal
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                borderTop: 'none',
+                borderRadius: '0 0 8px 8px',
                 display: 'flex',
                 flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: isDark ? '#3f3f3f' : '#9ca3af',
-                gap: '0.75rem',
-                padding: '2rem',
-                textAlign: 'center',
               }}>
-                <span style={{ fontSize: '2.5rem' }}>📐</span>
-                <p style={{ fontSize: '0.9rem', fontWeight: 600 }}>No circuit diagram yet</p>
-                <p style={{ fontSize: '0.8rem', maxWidth: '260px' }}>
-                  Click "✨ AI Gen Diagram" to generate your circuit layout.
-                </p>
+                <div style={{ padding: '4px 8px', background: '#111111', fontSize: '0.65rem', color: '#ffffff', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
+                  Compiler Output Terminal
+                </div>
+                <div style={{ flex: 1, padding: '8px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.7rem', color: '#ffffff' }}>
+                  {milestone.compilationErrors?.length > 0 ? (
+                    milestone.compilationErrors.map((err, idx) => (
+                      <div key={idx} style={{ color: '#ff3333' }}>{err}</div> // ??$$$ bright red error text
+                    ))
+                  ) : milestone.compiledHex ? (
+                    <div style={{ color: '#22c55e' }}>✓ Compilation successful. Firmware ready for Wokwi Simulation.</div>
+                  ) : (
+                    <div style={{ color: '#888888' }}>Idle. Click Compile to test the code.</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {centerTab === 'simulator' && milestone?.simulatable && (
+            <div style={{ height: '100%', minHeight: '380px', background: '#000', borderRadius: '12px', overflow: 'hidden' }}>
+              {project?.diagram && Object.keys(project.diagram).length > 0 ? (
+                simView === '2d' ? (
+                  <WokwiSimulator
+                    hexCode={milestone.compiledHex || ''}
+                    diagramJson={project.diagram}
+                    sketchCode={milestone.code || ''}
+                    projectId={id}
+                  />
+                ) : (
+                  <Suspense fallback={<div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#fff', fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Initializing 3D CAD...</div>}>
+                    <Simulator3D
+                      diagram={project.diagram}
+                      hexCode={milestone.compiledHex}
+                      registry={registry}
+                      bom={project.bom || []}
+                      projectId={id}
+                      onDiagramChange={async (newDiagram) => {
+                        // Background update diagram if needed
+                      }}
+                    />
+                  </Suspense>
+                )
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '0.8rem' }}>
+                  No diagram layout configured.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Panel 3: Test & Debug Coach (25%) ───────────────────────────────── */}
+      <div style={{
+        width: '25%',
+        minWidth: '280px',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        background: isDark ? '#111216' : '#fff',
+      }}>
+        {/* Validation / Serial Grading */}
+        <div style={{
+          padding: '1.25rem',
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px',
+        }}>
+          <h3 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800 }}>Serial Output Grading</h3>
+          <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b' }}>Paste hardware serial logs below to validate:</p>
+          <textarea
+            value={serialInput}
+            onChange={(e) => setSerialInput(e.target.value)}
+            placeholder="[Serial Monitor Logs...]"
+            style={{
+              width: '100%',
+              height: '60px',
+              fontFamily: 'monospace',
+              fontSize: '0.7rem',
+              padding: '6px',
+              borderRadius: '8px',
+              background: isDark ? '#070a13' : '#f8fafc',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+              color: isDark ? '#e2e8f0' : '#1e293b',
+              resize: 'none',
+            }}
+          />
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              onClick={handleValidateSerial}
+              disabled={validatingSerial || !serialInput.trim()}
+              style={{
+                flex: 1,
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                background: '#3b82f6',
+                color: '#fff',
+                border: 'none',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {validatingSerial ? 'Grading...' : '🔍 Validate'}
+            </button>
+            <button
+              onClick={handleConfirmMilestone}
+              style={{
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                background: '#22c55e',
+                color: '#fff',
+                border: 'none',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Pass
+            </button>
+            <button
+              onClick={handleReportFailure}
+              style={{
+                padding: '0.4rem 0.75rem',
+                borderRadius: '8px',
+                background: '#ef4444',
+                color: '#fff',
+                border: 'none',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Fail
+            </button>
+          </div>
+
+          {validationResult && (
+            <div style={{
+              marginTop: '8px',
+              padding: '8px',
+              borderRadius: '8px',
+              background: validationResult.success ? '#22c55e15' : '#ef444415',
+              border: `1px solid ${validationResult.success ? '#22c55e30' : '#ef444430'}`,
+              fontSize: '0.75rem',
+            }}>
+              <div style={{ fontWeight: 700, color: validationResult.success ? '#22c55e' : '#ef4444', marginBottom: '4px' }}>
+                {validationResult.success ? 'Success!' : 'Validation Issue'}
+              </div>
+              <p style={{ margin: 0, color: isDark ? '#d1d5db' : '#374151' }}>{validationResult.feedback}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Debug Coach Chat Panel */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ padding: '0.75rem 1.25rem', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800 }}>Debug Coach AI</span>
+            <span style={{ fontSize: '0.6rem', color: '#22c55e', background: '#22c55e20', padding: '2px 6px', borderRadius: '4px' }}>Online</span>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {milestone?.debugMessages && milestone.debugMessages.length > 0 ? (
+              milestone.debugMessages.map((msg, index) => {
+                const isUser = msg.role === 'user';
+                return (
+                  <div key={index} style={{
+                    alignSelf: isUser ? 'flex-end' : 'flex-start',
+                    maxWidth: '85%',
+                    background: isUser ? '#3b82f6' : (isDark ? '#1e293b' : '#f1f5f9'),
+                    color: isUser ? '#fff' : (isDark ? '#e2e8f0' : '#1e293b'),
+                    padding: '0.625rem 0.875rem',
+                    borderRadius: isUser ? '14px 14px 2px 14px' : '14px 14px 14px 2px',
+                    fontSize: '0.75rem',
+                    lineHeight: 1.45,
+                    border: isUser ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                  }}>
+                    <div style={{ fontSize: '0.6rem', opacity: 0.6, marginBottom: '2px', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>{isUser ? 'You' : 'Coach'}</span>
+                      <span>{msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                    </div>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', fontSize: '0.75rem', textAlign: 'center', padding: '1rem' }}>
+                Having issues building this step? Describe the problem below to start chatting with the Coach.
               </div>
             )}
           </div>
+
+          {chatError && (
+            <div style={{ padding: '4px 12px', background: '#ef444420', color: '#ef4444', fontSize: '0.7rem' }}>
+              {chatError}
+            </div>
+          )}
+
+          <form onSubmit={handleSendChat} style={{ padding: '0.75rem', borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`, display: 'flex', gap: '8px' }}>
+            <input
+              type="text"
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              placeholder="Ask the coach for help..."
+              disabled={sendingChat}
+              style={{
+                flex: 1,
+                padding: '0.5rem 0.75rem',
+                borderRadius: '8px',
+                background: isDark ? '#070a13' : '#f1f5f9',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}`,
+                color: isDark ? '#e2e8f0' : '#1e293b',
+                fontSize: '0.75rem',
+                outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={sendingChat || !chatInput.trim()}
+              style={{
+                padding: '0.5rem 1rem',
+                borderRadius: '8px',
+                background: '#3b82f6',
+                color: '#fff',
+                border: 'none',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              {sendingChat ? '...' : 'Send'}
+            </button>
+          </form>
         </div>
       </div>
 
-      {/* Mobile Tab Switcher */}
-      {isMobile && (
-        <div className="glass-nav" style={{
-          height: '72px',
-          borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-          display: 'flex',
-          padding: '0 8px',
-          zIndex: 100,
-          position: 'fixed',
-          bottom: '68px',
-          left: '12px',
-          right: '12px',
-          borderRadius: '20px',
-          boxShadow: isDark ? '0 8px 32px rgba(0,0,0,0.4)' : '0 8px 32px rgba(0,0,0,0.1)',
-        }}>
-          {[
-            { key: 'editor', label: 'Sketch', icon: '📝' },
-            { key: 'sim', label: 'Simulator', icon: '⚡' },
-            { key: 'diagram', label: 'Circuit', icon: '📐' }
-          ].map(t => (
+      {/* ── Advisor Modal (Component Advisor escape hatch) ──────────────────── */}
+      {advisorModal.open && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setAdvisorModal(prev => ({ ...prev, open: false }))}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: isDark ? '#111216' : '#fff',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+              borderRadius: '20px', padding: '1.5rem',
+              width: '100%', maxWidth: '520px',
+              display: 'flex', flexDirection: 'column', gap: '1rem',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Component Advisor Escape Hatch</h3>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Select Component:</label>
+              <select
+                value={advisorModal.componentKey}
+                onChange={e => setAdvisorModal(prev => ({ ...prev, componentKey: e.target.value }))}
+                style={{
+                  padding: '0.5rem',
+                  borderRadius: '8px',
+                  background: isDark ? '#070a13' : '#f1f5f9',
+                  color: isDark ? '#e2e8f0' : '#1e293b',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                }}
+              >
+                {milestone.componentsInvolved?.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b' }}>Describe the Issue / Compatibility Problem:</label>
+              <textarea
+                value={advisorModal.problem}
+                onChange={e => setAdvisorModal(prev => ({ ...prev, problem: e.target.value }))}
+                placeholder="E.g., I don't have this component, can I swap it with another sensor? Or is this I2C pin layout correct?"
+                style={{
+                  width: '100%',
+                  height: '80px',
+                  padding: '8px',
+                  borderRadius: '8px',
+                  background: isDark ? '#070a13' : '#f1f5f9',
+                  color: isDark ? '#e2e8f0' : '#1e293b',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                  fontSize: '0.75rem',
+                  resize: 'none',
+                }}
+              />
+            </div>
+
             <button
-              key={t.key}
-              onClick={() => setMobileBuildTab(t.key)}
-              className={`mobile-tab-btn ${mobileBuildTab === t.key ? 'active' : ''}`}
-              style={{ color: isDark ? '#94a3b8' : '#64748b' }}
+              onClick={handleReportComponentIssue}
+              disabled={advisorModal.loading || !advisorModal.problem.trim()}
+              style={{
+                padding: '0.625rem',
+                borderRadius: '10px',
+                background: '#ef4444',
+                color: '#fff',
+                fontWeight: 700,
+                border: 'none',
+                fontSize: '0.8rem',
+                cursor: 'pointer',
+              }}
             >
-              <span style={{ fontSize: '1.2rem' }}>{t.icon}</span>
-              <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase' }}>{t.label}</span>
+              {advisorModal.loading ? 'Asking AI Advisor...' : 'Ask AI Advisor'}
             </button>
-          ))}
+
+            {advisorModal.response && (
+              <div style={{
+                maxHeight: '160px', overflowY: 'auto',
+                padding: '0.75rem', borderRadius: '8px',
+                background: isDark ? 'rgba(255,255,255,0.03)' : '#f8fafc',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                fontSize: '0.75rem', lineHeight: 1.5,
+              }}>
+                <div style={{ fontWeight: 800, marginBottom: '4px' }}>Advisor Suggestion:</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{advisorModal.response}</div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '0.5rem' }}>
+              <button
+                onClick={() => {
+                  setAdvisorModal(prev => ({ ...prev, open: false }));
+                  navigate(`/project/${id}/components`);
+                }}
+                style={{
+                  flex: 1, padding: '0.5rem', borderRadius: '8px',
+                  background: '#2563eb', color: '#fff', border: 'none',
+                  fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer',
+                }}
+              >
+                ↩ Swap Components on BOM Page
+              </button>
+              <button
+                onClick={() => setAdvisorModal(prev => ({ ...prev, open: false }))}
+                style={{
+                  padding: '0.5rem 1rem', borderRadius: '8px',
+                  background: 'transparent', color: isDark ? '#a3a3a3' : '#555',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                  fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ── Bottom: Action bar ─────────────────────────────────────────── */}
+      {/* ── Skip Modal ──────────────────────────────────────────────────────── */}
+      {skipModal.open && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(0,0,0,0.7)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setSkipModal(prev => ({ ...prev, open: false }))}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: isDark ? '#111216' : '#fff',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+              borderRadius: '20px', padding: '1.5rem',
+              width: '100%', maxWidth: '420px',
+              display: 'flex', flexDirection: 'column', gap: '1rem',
+              boxShadow: '0 20px 40px rgba(0,0,0,0.3)',
+            }}
+          >
+            <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800 }}>Skip Milestone</h3>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}>Provide a reason or notes for bypassing this step:</p>
+            <textarea
+              value={skipModal.notes}
+              onChange={e => setSkipModal(prev => ({ ...prev, notes: e.target.value }))}
+              placeholder="Why are you skipping? E.g., 'Already verified physical wiring' or 'No simulator equivalent needed'."
+              style={{
+                width: '100%',
+                height: '80px',
+                padding: '8px',
+                borderRadius: '8px',
+                background: isDark ? '#070a13' : '#f1f5f9',
+                color: isDark ? '#e2e8f0' : '#1e293b',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                fontSize: '0.75rem',
+                resize: 'none',
+              }}
+            />
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleConfirmSkip}
+                style={{
+                  flex: 1, padding: '0.625rem', borderRadius: '10px',
+                  background: '#3b82f6', color: '#fff', fontWeight: 700, border: 'none',
+                  fontSize: '0.8rem', cursor: 'pointer',
+                }}
+              >
+                Confirm Skip
+              </button>
+              <button
+                onClick={() => setSkipModal(prev => ({ ...prev, open: false }))}
+                style={{
+                  padding: '0.625rem 1rem', borderRadius: '10px',
+                  background: 'transparent', color: isDark ? '#a3a3a3' : '#555',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                  fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      <div className="glass-nav" style={{
-        padding: '0.75rem 1.25rem',
-        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        zIndex: 90,
-      }}>
-
-        <p style={{ fontSize: '0.75rem', color: isDark ? '#6b7280' : '#9ca3af' }}>
-          {hexCode ? `✓ Hex ready (${(hexCode.length / 1024).toFixed(1)} KB)` : 'Not compiled yet'}
-        </p>
-        <button
-          onClick={() => navigate(`/project/${id}/assembly`)}
-          disabled={!hexCode}
-          style={{
-            padding: '0.5rem 1.25rem',
-            borderRadius: '10px',
-            background: hexCode ? '#22c55e' : (isDark ? '#1f1f1f' : '#e5e7eb'),
-            color: hexCode ? '#fff' : (isDark ? '#3f3f3f' : '#9ca3af'),
-            fontWeight: 700,
-            fontSize: '0.8125rem',
-            border: 'none',
-            cursor: hexCode ? 'pointer' : 'not-allowed',
-          }}
-        >
-          Continue to Assembly →
-        </button>
-
-      </div>
     </div>
   );
 }
-

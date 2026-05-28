@@ -11,6 +11,43 @@ export type StageKey =
   | "assembly"
   | "shopping";
 
+// ??$$$
+export type DebugMessage = {
+  role: "user" | "model";
+  content: string;
+  timestamp: string | Date;
+};
+
+// ??$$$
+export type MilestoneTest = {
+  expectedSerialOutput: string;
+  passCondition: string;
+  commonProblems: string[];
+};
+
+// ??$$$
+export type Milestone = {
+  id: string;
+  order: number;
+  title: string;
+  objective: string;
+  componentsInvolved: string[];
+  wiringInstructions: string;
+  code: string;
+  explanation: string;
+  test: MilestoneTest;
+  status: "locked" | "ready" | "in_progress" | "passed" | "failed";
+  userConfirmed: boolean;
+  userNotes: string;
+  compiledHex: string;
+  compilationErrors: any[];
+  serialOutput: string;
+  completedAt: string | Date | null;
+  simulatable: boolean;
+  dependsOn: string[];
+  debugMessages: DebugMessage[];
+};
+
 export type Project = {
   _id?: string;
   description?: string;
@@ -18,6 +55,12 @@ export type Project = {
   sketch?: any;
   diagram?: any;
   assemblyLayout?: any;
+  // ??$$$ newer code
+  nodeCoordinates?: any;
+  // ??$$$ Milestones
+  milestones?: Milestone[];
+  milestonesGenerated?: boolean;
+  activeMilestoneId?: string | null;
   // Old code:
   // messages?: any[];
   // ideaState?: any;
@@ -83,10 +126,30 @@ type ProjectState = {
   ) => Promise<any>;
   clearProject: () => void;
 
+  // ??$$$ newer code
+  syncWiring: (
+    nodeCoordinates: any,
+    bomPhases: any,
+    connections: any
+  ) => Promise<void>;
+
   isStageUnlocked: (stage: StageKey) => boolean;
   isStageComplete: (stage: StageKey) => boolean;
   hasDownstreamStale: (stage: StageKey) => boolean;
   ideationReadiness: () => number;
+
+  // ??$$$ Milestones actions
+  generateMilestones: (projectId: string) => Promise<void>;
+  loadMilestones: (projectId: string) => Promise<void>;
+  updateMilestone: (projectId: string, milestoneId: string, updates: Partial<Milestone>) => Promise<void>;
+  compileMilestone: (projectId: string, milestoneId: string) => Promise<any>;
+  confirmMilestone: (projectId: string, milestoneId: string, serialOutput: string, notes: string) => Promise<any>;
+  failMilestone: (projectId: string, milestoneId: string, serialOutput: string, problem: string) => Promise<any>;
+  skipMilestone: (projectId: string, milestoneId: string, notes: string) => Promise<any>;
+  chatDebugCoach: (projectId: string, milestoneId: string, message: string) => Promise<any>;
+  regenerateMilestoneCode: (projectId: string, milestoneId: string) => Promise<void>;
+  reportComponentIssue: (projectId: string, milestoneId: string, componentKey: string, problem: string) => Promise<any>;
+  validateSerial: (projectId: string, milestoneId: string, actualOutput: string) => Promise<any>;
 };
 
 const DEFAULT_STAGES: Record<StageKey, StageStatus> = {
@@ -208,6 +271,47 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       await get().refreshStageStatus();
     } catch (err) {
       console.error("[useProjectStore] updateBOM error:", err);
+      throw err;
+    }
+  },
+
+  // ??$$$ newer code
+  syncWiring: async (nodeCoordinates, bomPhases, connections) => {
+    const { projectId } = get();
+    if (!projectId) return;
+
+    try {
+      const res = await axiosInstance.post(
+        `/components/sync-wiring`,
+        { projectId, nodeCoordinates, bomPhases, connections },
+        { withCredentials: true }
+      );
+
+      set((state) => ({
+        project: state.project
+          ? {
+              ...state.project,
+              bom: res.data?.bom ?? state.project.bom,
+              diagram: res.data?.diagram ?? state.project.diagram,
+              nodeCoordinates: res.data?.nodeCoordinates ?? state.project.nodeCoordinates,
+            }
+          : state.project,
+      }));
+
+      set((state) => ({
+        stageStatuses: {
+          ...state.stageStatuses,
+          build: "stale",
+          simulation: "stale",
+          assembly: "stale",
+          shopping: "stale",
+        },
+      }));
+
+      await get().refreshStageStatus();
+      return res.data; // ??$$$ newer code
+    } catch (err) {
+      console.error("[useProjectStore] syncWiring error:", err);
       throw err;
     }
   },
@@ -368,6 +472,145 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   // },
   // ??$$$ New simplified readiness check per Section 9 instructions
   ideationReadiness: () => get().project?.ideation?.readyForComponents ? 100 : 0,
+
+  // ??$$$ Milestones actions
+  generateMilestones: async (projectId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/generate`, {}, { withCredentials: true });
+      set((state) => ({
+        isLoading: false,
+        project: state.project ? { 
+          ...state.project, 
+          milestones: res.data.milestones, 
+          milestonesGenerated: true, 
+          activeMilestoneId: res.data.activeMilestoneId 
+        } : null
+      }));
+    } catch (err: any) {
+      set({ isLoading: false, error: err?.response?.data?.error || "Failed to generate milestones" });
+      throw err;
+    }
+  },
+
+  loadMilestones: async (projectId) => {
+    try {
+      const res = await axiosInstance.get(`/build/${projectId}/milestones`, { withCredentials: true });
+      set((state) => ({
+        project: state.project ? { 
+          ...state.project, 
+          milestones: res.data.milestones, 
+          activeMilestoneId: res.data.activeMilestoneId 
+        } : null
+      }));
+    } catch (err) {
+      console.error("Failed to load milestones", err);
+    }
+  },
+
+  updateMilestone: async (projectId, milestoneId, updates) => {
+    try {
+      const res = await axiosInstance.put(`/build/${projectId}/milestones/${milestoneId}`, updates, { withCredentials: true });
+      set((state) => {
+        if (!state.project || !state.project.milestones) return {};
+        const updated = state.project.milestones.map(m => m.id === milestoneId ? res.data : m);
+        return {
+          project: { ...state.project, milestones: updated }
+        };
+      });
+    } catch (err) {
+      console.error("Failed to update milestone", err);
+    }
+  },
+
+  compileMilestone: async (projectId, milestoneId) => {
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/compile`, {}, { withCredentials: true });
+      await get().loadMilestones(projectId);
+      return res.data;
+    } catch (err: any) {
+      console.error("Compile milestone failed", err);
+      return { success: false, errors: [err?.response?.data?.error || "Compile failed"] };
+    }
+  },
+
+  confirmMilestone: async (projectId, milestoneId, serialOutput, notes) => {
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/confirm`, { serialOutput, notes }, { withCredentials: true });
+      await get().loadMilestones(projectId);
+      await get().refreshStageStatus();
+      return res.data;
+    } catch (err) {
+      console.error("Confirm milestone failed", err);
+      throw err;
+    }
+  },
+
+  failMilestone: async (projectId, milestoneId, serialOutput, problem) => {
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/fail`, { serialOutput, problem }, { withCredentials: true });
+      await get().loadMilestones(projectId);
+      return res.data;
+    } catch (err) {
+      console.error("Fail milestone action failed", err);
+      throw err;
+    }
+  },
+
+  skipMilestone: async (projectId, milestoneId, notes) => {
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/skip`, { notes }, { withCredentials: true });
+      await get().loadMilestones(projectId);
+      await get().refreshStageStatus();
+      return res.data;
+    } catch (err) {
+      console.error("Skip milestone failed", err);
+      throw err;
+    }
+  },
+
+  chatDebugCoach: async (projectId, milestoneId, message) => {
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/debug/chat`, { message }, { withCredentials: true });
+      await get().loadMilestones(projectId);
+      return res.data;
+    } catch (err) {
+      console.error("Debug chat failed", err);
+      throw err;
+    }
+  },
+
+  regenerateMilestoneCode: async (projectId, milestoneId) => {
+    set({ isLoading: true });
+    try {
+      await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/regenerate`, {}, { withCredentials: true });
+      await get().loadMilestones(projectId);
+      set({ isLoading: false });
+    } catch (err) {
+      set({ isLoading: false });
+      console.error("Regenerate milestone code failed", err);
+    }
+  },
+
+  reportComponentIssue: async (projectId, milestoneId, componentKey, problem) => {
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/component-issue`, { componentKey, problem }, { withCredentials: true });
+      return res.data;
+    } catch (err) {
+      console.error("Component issue report failed", err);
+      throw err;
+    }
+  },
+
+  validateSerial: async (projectId, milestoneId, actualOutput) => {
+    try {
+      const res = await axiosInstance.post(`/build/${projectId}/milestones/${milestoneId}/validate-serial`, { actualOutput }, { withCredentials: true });
+      return res.data;
+    } catch (err) {
+      console.error("Validate serial failed", err);
+      throw err;
+    }
+  },
 }));
 
 export default useProjectStore;

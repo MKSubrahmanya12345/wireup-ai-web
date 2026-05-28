@@ -159,13 +159,16 @@ function SwapModal({ item, onClose, onSwap, isDark }) {
 }
 
 // ─── Main page ────────────────────────────────────────────────────────────────
+// ??$$$ newer code
+import { InteractiveNodeGraph } from '../components/InteractiveNodeGraph';
+
 export default function ComponentsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
 
-  const { project, updateBOM, refreshStageStatus } = useProjectStore();
+  const { project, updateBOM, refreshStageStatus, syncWiring, generateMilestones } = useProjectStore();
 
   const [bom, setBom] = useState([]);
   const [pinAssignments, setPinAssignments] = useState({});
@@ -175,6 +178,25 @@ export default function ComponentsPage() {
   const [staleWarning, setStaleWarning] = useState(false);
   const [mobileTab, setMobileTab] = useState('bom'); // ??$$$ 'bom' or 'pins'
   const isMobile = useIsMobile();
+  // ??$$$
+  const [generatingMilestones, setGeneratingMilestones] = useState(false);
+
+  // ??$$$ newer code
+  const [viewMode, setViewMode] = useState<'list' | 'visual'>('visual');
+  const [selectedPhase, setSelectedPhase] = useState('PHASE_1');
+
+  const phases = project?.ideation?.phases || { "PHASE_1": "Initial Setup" };
+  const phaseKeys = Object.keys(phases).sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, "")) || 0;
+    const numB = parseInt(b.replace(/\D/g, "")) || 0;
+    return numA - numB;
+  });
+
+  useEffect(() => {
+    if (phaseKeys.length > 0 && !phaseKeys.includes(selectedPhase)) {
+      setSelectedPhase(phaseKeys[0]);
+    }
+  }, [project?.ideation?.phases]);
 
 
   useEffect(() => {
@@ -226,8 +248,20 @@ export default function ComponentsPage() {
     }
   };
 
-  const handleContinueToBuild = () => {
-    navigate(`/project/${id}/build`);
+  // ??$$$
+  const handleContinueToBuild = async () => {
+    setGeneratingMilestones(true);
+    try {
+      await generateMilestones(id);
+      toast.success('Milestones generated successfully!');
+      navigate(`/project/${id}/build`);
+    } catch (err: any) {
+      console.error("Failed to generate milestones:", err);
+      toast.error(err?.response?.data?.error || "Failed to generate milestones. Navigating to retry.");
+      navigate(`/project/${id}/build`);
+    } finally {
+      setGeneratingMilestones(false);
+    }
   };
 
   const board = project?.generationProfile?.board || project?.ideation?.snapshot?.computeCore || '';
@@ -241,6 +275,33 @@ export default function ComponentsPage() {
       background: isDark ? '#141414' : '#f5f5f5',
       overflow: 'hidden',
     }}>
+      {/* ??$$$ Milestone Generator Loading Overlay */}
+      {generatingMilestones && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(0, 0, 0, 0.75)',
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          color: '#fff',
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid rgba(255,255,255,0.1)',
+            borderTopColor: '#3b82f6',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+            marginBottom: '1.25rem',
+          }} />
+          <p style={{ fontWeight: 600, fontSize: '1.1rem', letterSpacing: '0.02em' }}>Generating your build milestones...</p>
+          <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+        </div>
+      )}
 
       <style>{`@keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }`}</style>
 
@@ -255,165 +316,326 @@ export default function ComponentsPage() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
+          zIndex: 40,
         }}>
-          <span>⚠ Component changed — Build and Assembly are now stale. Regenerate them.</span>
+          <span>⚠ Component or wiring changed — Build and Assembly are now stale. Regenerate them.</span>
           <button onClick={() => setStaleWarning(false)} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: '1rem' }}>✕</button>
         </div>
       )}
 
-      <div style={{ 
-        flex: 1, 
-        display: 'flex', 
-        flexDirection: isMobile ? 'column' : 'row',
-        overflow: 'hidden', 
-        gap: '1rem', 
-        padding: '1rem' 
+      {/* ??$$$ newer code: View Mode Toggle */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0.75rem 1.25rem',
+        background: isDark ? '#1a1a1a' : '#fff',
+        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+        zIndex: 30,
       }}>
-        {/* ── Left: BOM table ───────────────────────────────────────── */}
-        <div className="forge-main" style={{
-          flex: 2,
-          display: (isMobile && mobileTab !== 'bom') ? 'none' : 'flex',
-          background: isDark ? '#1a1a1a' : '#fff',
-          borderRadius: '16px',
-          border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-          flexDirection: 'column',
-          overflow: 'hidden',
-        }}>
-
-          <div style={{
-            padding: '0.875rem 1.25rem',
-            borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-          }}>
-            <div>
-              <p style={{ fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
-                Stage 2
-              </p>
-              <h1 style={{ fontSize: '1rem', fontWeight: 700, margin: '2px 0 0', color: isDark ? '#e5e5e5' : '#1a1a1a' }}>
-                Bill of Materials
-              </h1>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {hasData && (
-                <span style={{ fontSize: '0.75rem', color: isDark ? '#6b7280' : '#9ca3af' }}>
-                  {bom.length} component{bom.length !== 1 ? 's' : ''}
-                </span>
-              )}
-              <button
-                onClick={handleRegenerateBOM}
-                disabled={loadingBOM}
-                style={{
-                  padding: '0.4rem 0.75rem',
-                  borderRadius: '6px',
-                  background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                  color: isDark ? '#e2e8f0' : '#1e293b',
-                  fontSize: '0.75rem',
-                  fontWeight: 600,
-                  cursor: loadingBOM ? 'not-allowed' : 'pointer',
-                }}
-              >
-                {loadingBOM ? 'Generating...' : '🔄 Gen BOM'}
-              </button>
-            </div>
-          </div>
-
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: isDark ? '#1a1a1a' : '#f9fafb' }}>
-                  {['Component', 'Qty', 'Purpose', 'Price', ''].map(h => (
-                    <th key={h} style={{
-                      padding: '10px 16px',
-                      textAlign: 'left',
-                      fontSize: '0.65rem',
-                      fontWeight: 700,
-                      letterSpacing: '0.12em',
-                      textTransform: 'uppercase',
-                      color: isDark ? '#6b7280' : '#9ca3af',
-                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {loadingBOM
-                  ? Array.from({ length: 5 }).map((_, i) => <SkeletonBOMRow key={i} isDark={isDark} />)
-                  : bom.map((item, i) => (
-                    <tr key={i} style={{
-                      borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-                    }}>
-                      <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: isDark ? '#e5e5e5' : '#1a1a1a' }}>
-                        {item.displayName || item.key || '—'}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: isDark ? '#a3a3a3' : '#555' }}>
-                        {item.qty ?? 1}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: isDark ? '#a3a3a3' : '#555', maxWidth: '240px' }}>
-                        {item.purpose || '—'}
-                      </td>
-                      <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#22c55e', fontWeight: 600 }}>
-                        {item.price ? `₹${item.price}` : '—'}
-                      </td>
-                      <td style={{ padding: '12px 16px' }}>
-                        <button
-                          onClick={() => setSwapItem(item)}
-                          style={{
-                            padding: '0.25rem 0.625rem',
-                            borderRadius: '8px',
-                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
-                            background: 'transparent',
-                            color: isDark ? '#a3a3a3' : '#555',
-                            fontSize: '0.7rem',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          Swap
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                }
-              </tbody>
-            </table>
-
-            {!loadingBOM && bom.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '3rem', color: isDark ? '#4a4a4a' : '#9ca3af', fontSize: '0.875rem' }}>
-                <p style={{ marginBottom: '1rem' }}>No components were generated automatically.</p>
-                <button 
-                  onClick={handleRegenerateBOM}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    borderRadius: '8px',
-                    background: '#2563eb',
-                    color: '#fff',
-                    border: 'none',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  Retry BOM Generation
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Right: Pin assignment ──────────────────────────────────── */}
-        <div className="forge-sidebar" style={{ 
-          width: isMobile ? '100%' : '260px', 
-          minWidth: isMobile ? '100%' : '220px',
-          display: (isMobile && mobileTab !== 'pins') ? 'none' : 'block'
-        }}>
-          <PinAssignmentCard board={board} pinAssignments={pinAssignments} isDark={isDark} />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setViewMode('visual')}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: viewMode === 'visual' ? '#2563eb' : 'transparent',
+              color: viewMode === 'visual' ? '#fff' : (isDark ? '#a3a3a3' : '#555'),
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            🔌 Visual Wiring Graph
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            style={{
+              padding: '0.5rem 1rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: viewMode === 'list' ? '#2563eb' : 'transparent',
+              color: viewMode === 'list' ? '#fff' : (isDark ? '#a3a3a3' : '#555'),
+              fontWeight: 600,
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+            }}
+          >
+            📋 Bill of Materials (List)
+          </button>
         </div>
       </div>
 
+      {/* ??$$$ newer code: Render Visual Graph or List View */}
+      {viewMode === 'visual' ? (
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          overflow: 'hidden',
+        }}>
+          {/* Left Sidebar: Phases list */}
+          <div style={{
+            width: isMobile ? '100%' : '260px',
+            borderRight: isMobile ? 'none' : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            borderBottom: isMobile ? `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}` : 'none',
+            background: isDark ? '#111216' : '#fcfcfc',
+            display: 'flex',
+            flexDirection: 'column',
+            overflowY: 'auto',
+            padding: '1.25rem',
+            gap: '12px',
+          }}>
+            <div style={{ marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af' }}>
+                Build Sequence
+              </span>
+              <h2 style={{ fontSize: '0.95rem', fontWeight: 700, color: isDark ? '#e5e5e5' : '#1a1a1a', margin: '4px 0 0 0' }}>
+                Ideation Phases
+              </h2>
+            </div>
+            {phaseKeys.map((phaseKey) => {
+              const isActive = selectedPhase === phaseKey;
+              const phaseNum = phaseKey.replace(/\D/g, "");
+              return (
+                <button
+                  key={phaseKey}
+                  onClick={() => setSelectedPhase(phaseKey)}
+                  style={{
+                    width: '100%',
+                    textAlign: 'left',
+                    padding: '0.875rem 1rem',
+                    borderRadius: '10px',
+                    cursor: 'pointer',
+                    background: isActive 
+                      ? (isDark ? '#2b1c12' : '#fdf6f0') 
+                      : (isDark ? '#1a1c23' : '#f4f5f7'),
+                    border: `1px solid ${isActive 
+                      ? (isDark ? '#f97316' : '#fdba74') 
+                      : (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)')}`,
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <span style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '18px',
+                      height: '18px',
+                      borderRadius: '50%',
+                      fontSize: '9px',
+                      fontWeight: 800,
+                      background: isActive ? '#f97316' : '#4b5563',
+                      color: '#fff'
+                    }}>
+                      {phaseNum}
+                    </span>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      color: isActive ? '#f97316' : (isDark ? '#a3a3a3' : '#4b5563')
+                    }}>
+                      Phase {phaseNum}
+                    </span>
+                  </div>
+                  <p style={{
+                    fontSize: '0.75rem',
+                    color: isDark ? '#d1d5db' : '#374151',
+                    margin: 0,
+                    lineHeight: '1.4',
+                    fontWeight: 500
+                  }}>
+                    {phases[phaseKey]}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
 
-      {/* ── Bottom: Generate CTA ───────────────────────────────────── */}
+          {/* Canvas center workspace */}
+          <div style={{ flex: 1, padding: '1rem', overflow: 'hidden' }}>
+            <InteractiveNodeGraph
+              projectId={id || ""}
+              bom={bom}
+              diagram={project?.diagram || {}}
+              selectedPhase={selectedPhase}
+              nodeCoordinates={project?.nodeCoordinates || {}}
+              phases={phases}
+              onSave={async (coords, bomPhases, conns) => {
+                try {
+                  const data = await syncWiring(coords, bomPhases, conns);
+                  if (data?.bom) {
+                    setBom(data.bom);
+                  } else {
+                    setBom(project?.bom || bom);
+                  }
+                  setStaleWarning(true);
+                  toast.success("Wiring layout and phases synchronized!");
+                } catch (err) {
+                  toast.error("Failed to save visual wiring schema.");
+                }
+              }}
+            />
+          </div>
+        </div>
+      ) : (
+        <div style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row',
+          overflow: 'hidden', 
+          gap: '1rem', 
+          padding: '1rem' 
+        }}>
+          {/* Left: BOM table */}
+          <div className="forge-main" style={{
+            flex: 2,
+            display: (isMobile && mobileTab !== 'bom') ? 'none' : 'flex',
+            background: isDark ? '#1a1a1a' : '#fff',
+            borderRadius: '16px',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+            flexDirection: 'column',
+            overflow: 'hidden',
+          }}>
+
+            <div style={{
+              padding: '0.875rem 1.25rem',
+              borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}>
+              <div>
+                <p style={{ fontSize: '0.65rem', letterSpacing: '0.14em', textTransform: 'uppercase', fontWeight: 700, color: isDark ? '#6b7280' : '#9ca3af', margin: 0 }}>
+                  Stage 2
+                </p>
+                <h1 style={{ fontSize: '1rem', fontWeight: 700, margin: '2px 0 0', color: isDark ? '#e5e5e5' : '#1a1a1a' }}>
+                  Bill of Materials
+                </h1>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {hasData && (
+                  <span style={{ fontSize: '0.75rem', color: isDark ? '#6b7280' : '#9ca3af' }}>
+                    {bom.length} component{bom.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                <button
+                  onClick={handleRegenerateBOM}
+                  disabled={loadingBOM}
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    borderRadius: '6px',
+                    background: isDark ? 'rgba(255,255,255,0.05)' : '#f3f4f6',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    color: isDark ? '#e2e8f0' : '#1e293b',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    cursor: loadingBOM ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {loadingBOM ? 'Generating...' : '🔄 Gen BOM'}
+                </button>
+              </div>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: isDark ? '#1a1a1a' : '#f9fafb' }}>
+                    {['Component', 'Qty', 'Purpose', 'Price', ''].map(h => (
+                      <th key={h} style={{
+                        padding: '10px 16px',
+                        textAlign: 'left',
+                        fontSize: '0.65rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.12em',
+                        textTransform: 'uppercase',
+                        color: isDark ? '#6b7280' : '#9ca3af',
+                        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                      }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loadingBOM
+                    ? Array.from({ length: 5 }).map((_, i) => <SkeletonBOMRow key={i} isDark={isDark} />)
+                    : bom.map((item, i) => (
+                      <tr key={i} style={{
+                        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
+                      }}>
+                        <td style={{ padding: '12px 16px', fontSize: '0.875rem', fontWeight: 600, color: isDark ? '#e5e5e5' : '#1a1a1a' }}>
+                          {item.displayName || item.key || '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: isDark ? '#a3a3a3' : '#555' }}>
+                          {item.qty ?? 1}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '0.8125rem', color: isDark ? '#a3a3a3' : '#555', maxWidth: '240px' }}>
+                          {item.purpose || '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px', fontSize: '0.875rem', color: '#22c55e', fontWeight: 600 }}>
+                          {item.price ? `₹${item.price}` : '—'}
+                        </td>
+                        <td style={{ padding: '12px 16px' }}>
+                          <button
+                            onClick={() => setSwapItem(item)}
+                            style={{
+                              padding: '0.25rem 0.625rem',
+                              borderRadius: '8px',
+                              border: `1px solid ${isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.12)'}`,
+                              background: 'transparent',
+                              color: isDark ? '#a3a3a3' : '#555',
+                              fontSize: '0.7rem',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Swap
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  }
+                </tbody>
+              </table>
+
+              {!loadingBOM && bom.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '3rem', color: isDark ? '#4a4a4a' : '#9ca3af', fontSize: '0.875rem' }}>
+                  <p style={{ marginBottom: '1rem' }}>No components were generated automatically.</p>
+                  <button 
+                    onClick={handleRegenerateBOM}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      borderRadius: '8px',
+                      background: '#2563eb',
+                      color: '#fff',
+                      border: 'none',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Retry BOM Generation
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right: Pin assignment */}
+          <div className="forge-sidebar" style={{ 
+            width: isMobile ? '100%' : '260px', 
+            minWidth: isMobile ? '100%' : '220px',
+            display: (isMobile && mobileTab !== 'pins') ? 'none' : 'block'
+          }}>
+            <PinAssignmentCard board={board} pinAssignments={pinAssignments} isDark={isDark} />
+          </div>
+        </div>
+      )}
+
+      {/* Bottom: Generate CTA */}
       <div style={{
         padding: '0.875rem 1.25rem',
         borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
@@ -422,6 +644,7 @@ export default function ComponentsPage() {
         justifyContent: 'flex-end',
         gap: '1rem',
         alignItems: 'center',
+        zIndex: 20,
       }}>
         {generating && (
           <p style={{ fontSize: '0.8rem', color: isDark ? '#6b7280' : '#9ca3af' }}>

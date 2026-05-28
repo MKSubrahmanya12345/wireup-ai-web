@@ -684,7 +684,10 @@ const recoverGeneratedAssetsFromText = (text = "") => {
     .map((match) => String(match?.[1] || "").trim())
     .filter(Boolean);
 
-  recoveredSketch = codeBlocks.find((block) => hasValidSketchEntryPoints(block)) || "";
+  // ??$$$ hasValidSketchEntryPoints was undefined — replaced with inline regex check
+  recoveredSketch = codeBlocks.find((block) =>
+    /void\s+setup\s*\(\s*\)/i.test(block) && /void\s+loop\s*\(\s*\)/i.test(block)
+  ) || "";
 
   if (!recoveredSketch) {
     const setupIndex = cleaned.search(/void\s+setup\s*\(/i);

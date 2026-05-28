@@ -341,7 +341,7 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
   useEffect(() => {
     if (!projectId) return;
     const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
-    console.log(`[Simulator3D] Connecting to Socket.io at: ${socketUrl}`);
+    // ??$$$ Removed noisy console.log from here — was logging on every projectId change
     const socket = io(socketUrl);
 
     socket.on("model:ready", (data) => {
@@ -367,7 +367,8 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
     const { parts = [], connections = [] } = diagram;
     const newNodes = parts.map(p => ({
       id: p.id,
-      type: p.type.toUpperCase().replace('WOKWI-', '').replace('-', '_'),
+      // ??$$$ Use replaceAll (with regex g flag) so e.g. esp32-devkit-v1 → ESP32_DEVKIT_V1 not ESP32_DEVKIT-V1
+      type: p.type.toUpperCase().replace('WOKWI-', '').replace(/-/g, '_'),
       position: [
         typeof p.left === 'number' && Number.isFinite(p.left) ? p.left / 10 : 0,
         0,

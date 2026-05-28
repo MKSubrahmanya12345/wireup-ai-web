@@ -315,6 +315,7 @@ const generationProfileSchema = new Schema<IGenerationProfile>(
   { _id: false }
 );
 
+/* old code
 interface IBomItem {
   key: string;
   wokwiPartType: string;
@@ -330,7 +331,26 @@ interface IBomItem {
   mpn?: string;
   partId?: string;
 }
+*/
+// ??$$$ newer code
+interface IBomItem {
+  key: string;
+  wokwiPartType: string;
+  displayName: string;
+  qty: number;
+  purpose: string;
+  pinConnections: Array<{
+    pin: string;
+    connectsTo: string;
+  }>;
+  price: number;
+  storeUrl: string;
+  mpn?: string;
+  partId?: string;
+  phase?: string;
+}
 
+/* old code
 const bomItemSchema = new Schema<IBomItem>(
   {
     key: { type: String, default: "" },
@@ -350,6 +370,31 @@ const bomItemSchema = new Schema<IBomItem>(
     storeUrl: { type: String, default: "" },
     mpn: { type: String, default: "" },
     partId: { type: String, default: "" }
+  },
+  { _id: false }
+);
+*/
+// ??$$$ newer code
+const bomItemSchema = new Schema<IBomItem>(
+  {
+    key: { type: String, default: "" },
+    wokwiPartType: { type: String, default: "" },
+    displayName: { type: String, default: "" },
+    qty: { type: Number, default: 1 },
+    purpose: { type: String, default: "" },
+
+    pinConnections: [
+      {
+        pin: { type: String, default: "" },
+        connectsTo: { type: String, default: "" }
+      }
+    ],
+
+    price: { type: Number, default: 0 },
+    storeUrl: { type: String, default: "" },
+    mpn: { type: String, default: "" },
+    partId: { type: String, default: "" },
+    phase: { type: String, default: "" }
   },
   { _id: false }
 );
@@ -568,6 +613,168 @@ const projectAiStateSchema = new Schema<IProjectAiState>(
   { _id: false }
 );
 
+// ??$$$ Milestone Test Interface
+export interface IMilestoneTest {
+  expectedSerialOutput: string;
+  passCondition: string;
+  commonProblems: string[];
+}
+
+// ??$$$ Debug Message Interface
+export interface IDebugMessage {
+  role: "user" | "model";
+  content: string;
+  timestamp: Date;
+}
+
+// ??$$$ Milestone Interface
+// ??$$$ newer code
+export interface IRequiredLibrary {
+  name: string;
+  version?: string;
+  type: "core" | "library_manager" | "manual";
+  installCommand?: string;
+}
+
+/* old code
+export interface IMilestone {
+  id: string;
+  order: number;
+  title: string;
+  objective: string;
+  componentsInvolved: string[];
+  wiringInstructions: string;
+  code: string;
+  explanation: string;
+  test: IMilestoneTest;
+  status: "locked" | "ready" | "in_progress" | "passed" | "failed";
+  userConfirmed: boolean;
+  userNotes: string;
+  compiledHex: string;
+  compilationErrors: any[];
+  serialOutput: string;
+  completedAt: Date | null;
+  simulatable: boolean;
+  dependsOn: string[];
+  debugMessages: IDebugMessage[];
+}
+*/
+// ??$$$ newer code
+export interface IMilestone {
+  id: string;
+  order: number;
+  title: string;
+  objective: string;
+  componentsInvolved: string[];
+  wiringInstructions: string;
+  code: string;
+  explanation: string;
+  test: IMilestoneTest;
+  status: "locked" | "ready" | "in_progress" | "passed" | "failed";
+  userConfirmed: boolean;
+  userNotes: string;
+  compiledHex: string;
+  compilationErrors: any[];
+  serialOutput: string;
+  completedAt: Date | null;
+  simulatable: boolean;
+  dependsOn: string[];
+  debugMessages: IDebugMessage[];
+  requiredLibraries?: IRequiredLibrary[];
+  manualLibsAcknowledged?: boolean;
+}
+
+// ??$$$ Milestone Schemas
+const milestoneTestSchema = new Schema<IMilestoneTest>(
+  {
+    expectedSerialOutput: { type: String, default: "" },
+    passCondition: { type: String, default: "" },
+    commonProblems: { type: [String], default: [] }
+  },
+  { _id: false }
+);
+
+const debugMessageSchema = new Schema<IDebugMessage>(
+  {
+    role: { type: String, enum: ["user", "model"], required: true },
+    content: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+  },
+  { _id: false }
+);
+
+/* old code
+const milestoneSchema = new Schema<IMilestone>(
+  {
+    id: { type: String, required: true },
+    order: { type: Number, required: true },
+    title: { type: String, default: "" },
+    objective: { type: String, default: "" },
+    componentsInvolved: { type: [String], default: [] },
+    wiringInstructions: { type: String, default: "" },
+    code: { type: String, default: "" },
+    explanation: { type: String, default: "" },
+    test: { type: milestoneTestSchema, required: true },
+    status: {
+      type: String,
+      enum: ["locked", "ready", "in_progress", "passed", "failed"],
+      default: "locked"
+    },
+    userConfirmed: { type: Boolean, default: false },
+    userNotes: { type: String, default: "" },
+    compiledHex: { type: String, default: "" },
+    compilationErrors: { type: [String], default: [] },
+    serialOutput: { type: String, default: "" },
+    completedAt: { type: Date, default: null },
+    simulatable: { type: Boolean, default: true },
+    dependsOn: { type: [String], default: [] },
+    debugMessages: { type: [debugMessageSchema], default: [] }
+  },
+  { _id: false }
+);
+*/
+// ??$$$ newer code
+const milestoneSchema = new Schema<IMilestone>(
+  {
+    id: { type: String, required: true },
+    order: { type: Number, required: true },
+    title: { type: String, default: "" },
+    objective: { type: String, default: "" },
+    componentsInvolved: { type: [String], default: [] },
+    wiringInstructions: { type: String, default: "" },
+    code: { type: String, default: "" },
+    explanation: { type: String, default: "" },
+    test: { type: milestoneTestSchema, required: true },
+    status: {
+      type: String,
+      enum: ["locked", "ready", "in_progress", "passed", "failed"],
+      default: "locked"
+    },
+    userConfirmed: { type: Boolean, default: false },
+    userNotes: { type: String, default: "" },
+    compiledHex: { type: String, default: "" },
+    compilationErrors: { type: [String], default: [] },
+    serialOutput: { type: String, default: "" },
+    completedAt: { type: Date, default: null },
+    simulatable: { type: Boolean, default: true },
+    dependsOn: { type: [String], default: [] },
+    debugMessages: { type: [debugMessageSchema], default: [] },
+    requiredLibraries: {
+      type: [
+        {
+          name: { type: String, required: true },
+          version: { type: String },
+          type: { type: String, enum: ["core", "library_manager", "manual"], default: "core" },
+          installCommand: { type: String }
+        }
+      ],
+      default: []
+    },
+    manualLibsAcknowledged: { type: Boolean, default: false }
+  },
+  { _id: false }
+);
+
 interface IProject {
   owner: Types.ObjectId;
   description: string;
@@ -625,6 +832,13 @@ interface IProject {
   wokwiProjectPath: string;
 
   wokwiEvidence: IWokwiEvidence;
+  // ??$$$ newer code
+  nodeCoordinates?: any;
+
+  // ??$$$ milestones fields
+  milestones: IMilestone[];
+  milestonesGenerated: boolean;
+  activeMilestoneId: string | null;
 }
 
 export type ProjectDocument = HydratedDocument<IProject>;
@@ -862,6 +1076,24 @@ const projectSchema = new Schema<IProject>(
         assembly: "locked",
         shopping: "locked"
       })
+    },
+    // ??$$$ newer code
+    nodeCoordinates: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
+    },
+    // ??$$$
+    milestones: {
+      type: [milestoneSchema],
+      default: []
+    },
+    milestonesGenerated: {
+      type: Boolean,
+      default: false
+    },
+    activeMilestoneId: {
+      type: String,
+      default: null
     }
   },
   { timestamps: true }

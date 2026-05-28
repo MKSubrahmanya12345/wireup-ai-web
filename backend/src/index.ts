@@ -22,6 +22,11 @@ import shoppingRoutes from "./routes/shopping.route";
 import voiceRoutes from "./routes/voice.route";
 // ??$$$ newer code
 import libraryRoutes from "./routes/library.route";
+import { exec as cbExec } from "child_process";
+import { promisify } from "util";
+import { existsSync } from "fs";
+import path from "path";
+const exec = promisify(cbExec);
 
 process.on("unhandledRejection", (reason, promise) => {
   console.error("[CRITICAL] Unhandled Rejection at:", promise, "reason:", reason);
@@ -98,6 +103,18 @@ app.use("/api", assemblyRoutes);
 app.use("/api", shoppingRoutes);
 app.use("/api", voiceRoutes);
 app.use("/api", libraryRoutes);
+
+// ??$$$ Expose component registry to frontend (used by Simulator3D to get pin defs + component metadata)
+import { getRegistry } from "./services/registry.services";
+app.get("/api/wokwi/registry", (_req: Request, res: Response) => {
+  try {
+    const registry = getRegistry();
+    res.json(registry);
+  } catch (err: any) {
+    console.error("[registry] Failed to load registry:", err.message);
+    res.status(500).json({ error: "Failed to load component registry" });
+  }
+});
 
 /**
  * -----------------------
@@ -296,12 +313,67 @@ io.on("connection", (socket) => {
  * START SERVER
  * -----------------------
  */
+// ??$$$ newer code
+// ??$$$ newer code - resolve arduino-cli path based on environments
+function resolveArduinoCliPath() {
+  if (process.env.ARDUINO_CLI_PATH?.trim()) {
+    return process.env.ARDUINO_CLI_PATH.trim();
+  }
+  const home = process.env.USERPROFILE || process.env.HOME || "";
+  const windowsLocal = path.join(home, ".arduino-cli", "bin", "arduino-cli.exe");
+  const unixLocal = path.join(home, ".arduino-cli", "bin", "arduino-cli");
+
+  if (existsSync(windowsLocal)) return windowsLocal;
+  if (existsSync(unixLocal)) return unixLocal;
+
+  return "arduino-cli";
+}
+
+async function ensureBoardCoresInstalled() {
+  const arduinoCliPath = resolveArduinoCliPath();
+  const cores = [
+    "arduino:avr",      // Arduino Uno, Nano
+    "esp32:esp32",      // ESP32 family
+    "rp2040:rp2040",    // Raspberry Pi Pico
+    "teensy:avr",       // Teensy
+  ];
+  
+  // Quick precheck
+  try {
+    await exec(`"${arduinoCliPath}" version`);
+  } catch (err) {
+    console.warn(`[BoardCoreInstaller] 'arduino-cli' is not installed or not found in system PATH or default home directory. Background core sync skipped.`);
+    return;
+  }
+  
+  for (const core of cores) {
+    try {
+      console.log(`[BoardCoreInstaller] Verifying core: ${core}`);
+      const { stdout } = await exec(`"${arduinoCliPath}" core list`);
+      if (!stdout.includes(core.split(":")[0])) {
+        console.log(`[BoardCoreInstaller] Core not found. Installing core: ${core}`);
+        await exec(`"${arduinoCliPath}" core install ${core}`);
+        console.log(`[BoardCoreInstaller] Successfully installed core: ${core}`);
+      } else {
+        console.log(`[BoardCoreInstaller] Core already installed: ${core}`);
+      }
+    } catch (err) {
+      console.error(`[BoardCoreInstaller] Error verifying/installing core ${core}:`, err);
+    }
+  }
+}
+
 const startServer = async () => {
   try {
     await connectDB();
 
     httpServer.listen(port, () => {
       console.log(`Server (with Socket.IO) is running on port ${port}`);
+    });
+
+    // Run core verification/installer in the background
+    ensureBoardCoresInstalled().catch(err => {
+      console.error("Board core installer background error:", err);
     });
   } catch (err) {
     console.error("Failed to start server:", err);
