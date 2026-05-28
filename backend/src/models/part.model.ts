@@ -1,6 +1,16 @@
 // ??$$$ newer code
 import mongoose, { Document, Schema } from "mongoose";
 
+// ??$$$ NEW FLOW — SnapEDA pin metadata type
+export interface IPartPin {
+  id: string;
+  name: string;
+  x_mm: number;
+  y_mm: number;
+  z_mm: number;
+  type: "power" | "digital" | "analog" | "gnd" | "nc";
+}
+
 export interface IPart extends Document {
   mpn: string;
   name: string;
@@ -15,6 +25,10 @@ export interface IPart extends Document {
   wokwiPartType?: string;
   isCurated?: boolean;
   glbUrl?: string;
+  // ??$$$ NEW FLOW — SnapEDA pin metadata
+  snapedaId?: string;
+  pins?: IPartPin[];
+  pinsCachedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,7 +47,21 @@ const partSchema = new Schema<IPart>(
     category: { type: String, default: "" },
     wokwiPartType: { type: String, default: "" },
     isCurated: { type: Boolean, default: true },
-    glbUrl: { type: String, default: "" }
+    glbUrl: { type: String, default: "" },
+    // ??$$$ NEW FLOW — SnapEDA pin metadata
+    snapedaId: { type: String, default: "" },
+    pins: {
+      type: [{
+        id: { type: String, required: true },
+        name: { type: String, required: true },
+        x_mm: { type: Number, default: 0 },
+        y_mm: { type: Number, default: 0 },
+        z_mm: { type: Number, default: 0 },
+        type: { type: String, default: "digital" }
+      }],
+      default: []
+    },
+    pinsCachedAt: { type: Date, default: null }
   },
   {
     timestamps: true

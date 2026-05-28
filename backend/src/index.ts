@@ -22,6 +22,8 @@ import shoppingRoutes from "./routes/shopping.route";
 import voiceRoutes from "./routes/voice.route";
 // ??$$$ newer code
 import libraryRoutes from "./routes/library.route";
+// ??$$$ NEW FLOW
+import newflowRoutes from "./routes/newflow.route";
 import { exec as cbExec } from "child_process";
 import { promisify } from "util";
 import { existsSync } from "fs";
@@ -103,6 +105,8 @@ app.use("/api", assemblyRoutes);
 app.use("/api", shoppingRoutes);
 app.use("/api", voiceRoutes);
 app.use("/api", libraryRoutes);
+// ??$$$ NEW FLOW
+app.use("/api", newflowRoutes);
 
 // ??$$$ Expose component registry to frontend (used by Simulator3D to get pin defs + component metadata)
 import { getRegistry } from "./services/registry.services";
@@ -292,10 +296,26 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // ??$$$
+// const httpServer = createServer(app);
+// const io = new Server(httpServer, {
+//   cors: {
+//     origin: "*",
+//     credentials: true
+//   }
+// });
+// (global as any).io = io;
+
+// ??$$$ NEW FLOW
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
-    origin: "*",
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (/^https?:\/\/localhost:\d+$/.test(origin) || /^https?:\/\/127\.0\.0\.1:\d+$/.test(origin) || allowedOrigins.has(origin) || origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS blocked by Socket.IO"));
+    },
     credentials: true
   }
 });
@@ -303,6 +323,13 @@ const io = new Server(httpServer, {
 
 io.on("connection", (socket) => {
   console.log(`[socket] Client connected: ${socket.id}`);
+  
+  // ??$$$ NEW FLOW - Support room joining for agentic pipeline updates
+  socket.on("join", (roomId) => {
+    socket.join(roomId);
+    console.log(`[socket] Client ${socket.id} joined room ${roomId}`);
+  });
+
   socket.on("disconnect", () => {
     console.log(`[socket] Client disconnected: ${socket.id}`);
   });
@@ -329,6 +356,42 @@ function resolveArduinoCliPath() {
   return "arduino-cli";
 }
 
+// ??$$$
+// async function ensureBoardCoresInstalled() {
+//   const arduinoCliPath = resolveArduinoCliPath();
+//   const cores = [
+//     "arduino:avr",      // Arduino Uno, Nano
+//     "esp32:esp32",      // ESP32 family
+//     "rp2040:rp2040",    // Raspberry Pi Pico
+//     "teensy:avr",       // Teensy
+//   ];
+//   
+//   // Quick precheck
+//   try {
+//     await exec(`"${arduinoCliPath}" version`);
+//   } catch (err) {
+//     console.warn(`[BoardCoreInstaller] 'arduino-cli' is not installed or not found in system PATH or default home directory. Background core sync skipped.`);
+//     return;
+//   }
+//   
+//   for (const core of cores) {
+//     try {
+//       console.log(`[BoardCoreInstaller] Verifying core: ${core}`);
+//       const { stdout } = await exec(`"${arduinoCliPath}" core list`);
+//       if (!stdout.includes(core.split(":")[0])) {
+//         console.log(`[BoardCoreInstaller] Core not found. Installing core: ${core}`);
+//         await exec(`"${arduinoCliPath}" core install ${core}`);
+//         console.log(`[BoardCoreInstaller] Successfully installed core: ${core}`);
+//       } else {
+//         console.log(`[BoardCoreInstaller] Core already installed: ${core}`);
+//       }
+//     } catch (err) {
+//       console.error(`[BoardCoreInstaller] Error verifying/installing core ${core}:`, err);
+//     }
+//   }
+// }
+
+// ??$$$ NEW FLOW
 async function ensureBoardCoresInstalled() {
   const arduinoCliPath = resolveArduinoCliPath();
   const cores = [
@@ -338,29 +401,56 @@ async function ensureBoardCoresInstalled() {
     "teensy:avr",       // Teensy
   ];
   
+  console.log(`[BoardCoreInstaller Debugger] Starting core sync...`);
+  console.log(`[BoardCoreInstaller Debugger] Using arduino-cli path: "${arduinoCliPath}"`);
+  
   // Quick precheck
   try {
-    await exec(`"${arduinoCliPath}" version`);
-  } catch (err) {
-    console.warn(`[BoardCoreInstaller] 'arduino-cli' is not installed or not found in system PATH or default home directory. Background core sync skipped.`);
+    const { stdout: verOut } = await exec(`"${arduinoCliPath}" version`);
+    console.log(`[BoardCoreInstaller Debugger] arduino-cli check passed: ${verOut.trim()}`);
+  } catch (err: any) {
+    console.warn(`[BoardCoreInstaller Debugger] 'arduino-cli' not available: ${err.message || err}. Sync skipped.`);
     return;
+  }
+
+  const urls = [
+    "https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json",
+    "https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json",
+    "https://www.pjrc.com/teensy/package_teensy_index.json"
+  ].join(",");
+
+  try {
+    console.log(`[BoardCoreInstaller Debugger] Syncing package index with additional URLs...`);
+    const updateCmd = `"${arduinoCliPath}" core update-index --additional-urls "${urls}"`;
+    console.log(`[BoardCoreInstaller Debugger] Running: ${updateCmd}`);
+    await exec(updateCmd);
+    console.log(`[BoardCoreInstaller Debugger] Index update complete.`);
+  } catch (err: any) {
+    console.error(`[BoardCoreInstaller Debugger] Warning: failed to update package index:`, err.message || err);
   }
   
   for (const core of cores) {
     try {
-      console.log(`[BoardCoreInstaller] Verifying core: ${core}`);
+      console.log(`[BoardCoreInstaller Debugger] Checking status of core: ${core}`);
       const { stdout } = await exec(`"${arduinoCliPath}" core list`);
-      if (!stdout.includes(core.split(":")[0])) {
-        console.log(`[BoardCoreInstaller] Core not found. Installing core: ${core}`);
-        await exec(`"${arduinoCliPath}" core install ${core}`);
-        console.log(`[BoardCoreInstaller] Successfully installed core: ${core}`);
+      const coreFamily = core.split(":")[0];
+      
+      if (!stdout.includes(coreFamily)) {
+        console.log(`[BoardCoreInstaller Debugger] Core ${core} not found. Attempting install...`);
+        const installCmd = `"${arduinoCliPath}" core install ${core}`;
+        console.log(`[BoardCoreInstaller Debugger] Running: ${installCmd}`);
+        const { stdout: installOut, stderr: installErr } = await exec(installCmd);
+        if (installOut) console.log(`[BoardCoreInstaller Debugger] Install stdout:\n${installOut}`);
+        if (installErr) console.warn(`[BoardCoreInstaller Debugger] Install stderr:\n${installErr}`);
+        console.log(`[BoardCoreInstaller Debugger] Core ${core} sync successful!`);
       } else {
-        console.log(`[BoardCoreInstaller] Core already installed: ${core}`);
+        console.log(`[BoardCoreInstaller Debugger] Core ${core} is already installed.`);
       }
-    } catch (err) {
-      console.error(`[BoardCoreInstaller] Error verifying/installing core ${core}:`, err);
+    } catch (err: any) {
+      console.error(`[BoardCoreInstaller Debugger] Error verifying/installing core ${core}:`, err.message || err);
     }
   }
+  console.log(`[BoardCoreInstaller Debugger] Core sync completed.`);
 }
 
 const startServer = async () => {

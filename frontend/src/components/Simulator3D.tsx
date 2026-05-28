@@ -6,12 +6,17 @@ import { OrbitControls, Environment, PerspectiveCamera, Html, QuadraticBezierLin
 import * as THREE from "three";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSimulatorStore } from "../store/useSimulatorStore";
-import { Zap, Cpu } from "lucide-react";
+import { Zap, Cpu, Eye, EyeOff } from "lucide-react";
 import { io } from "socket.io-client";
 
 const nodeRefs = {}; 
 const GRID_SIZE = 5; 
 const snapToGrid = (val) => Math.round(val / GRID_SIZE) * GRID_SIZE;
+
+// ??`$ NEW FLOW � pin type debug sphere colors
+const PIN_TYPE_COLORS = { power: "#ef4444", gnd: "#6b7280", digital: "#3b82f6", analog: "#22c55e", nc: "#ffffff" };
+// ??`$ NEW FLOW � 1mm = 0.1 Three.js units
+const MM_TO_UNITS = 0.1;
 
 // ??$$$ - ErrorBoundary to catch model loading errors and fallback to procedural meshes
 class ErrorBoundary extends React.Component {
@@ -129,7 +134,9 @@ const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelecte
   const moveNode = useSimulatorStore(s => s.moveNode);
   const commitNodeMove = useSimulatorStore(s => s.commitNodeMove);
   const addConnection = useSimulatorStore(s => s.addConnection);
-  
+  const setPinAnchors = useSimulatorStore(s => s.setPinAnchors);
+  const clearNodePinAnchors = useSimulatorStore(s => s.clearNodePinAnchors);
+
   const currentPos = livePos || position;
   const [hovered, setHovered] = useState(false);
   const dragState = useRef({ active: false, offset: new THREE.Vector3() });
@@ -137,8 +144,36 @@ const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelecte
 
   useCursor(hovered && mode === "IDLE");
 
+  // ??$$$ NEW FLOW � attach SnapEDA pin anchors to the store after mount
+  useEffect(() => {
+    if (!groupRef.current) return;
+    const pins = bomItem?.pins || [];
+    if (!pins.length) return;
+    clearNodePinAnchors(id);
+    const newAnchors = {};
+    pins.forEach(pin => {
+      const anchor = new THREE.Object3D();
+      anchor.name = `pin_${pin.name}`;
+      anchor.position.set(
+        pin.x_mm * MM_TO_UNITS,
+        pin.z_mm * MM_TO_UNITS,
+        pin.y_mm * MM_TO_UNITS
+      );
+      groupRef.current.add(anchor);
+      newAnchors[`${id}:${pin.id}`] = anchor;
+      newAnchors[`${id}:${pin.name}`] = anchor;
+    });
+    setPinAnchors(newAnchors);
+  }, [id, bomItem?.pins]);
+
   useImperativeHandle(ref, () => ({
     getPinWorldPos: (pinId) => {
+      // ??$$$ NEW FLOW � prefer SnapEDA anchor, fall back to registry def pin
+      const storeAnchors = useSimulatorStore.getState().pinAnchors;
+      const anchor = storeAnchors[`${id}:${pinId}`];
+      if (anchor) {
+        return anchor.getWorldPosition(new THREE.Vector3());
+      }
       const pin = def.pins.find(p => p.id === pinId);
       if (!pin || !groupRef.current) return new THREE.Vector3();
       return new THREE.Vector3(...pin.pos).applyMatrix4(groupRef.current.matrixWorld);
@@ -225,94 +260,143 @@ const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelecte
   );
 });
 
-// ??$$$ - Wire component with animated signal flow markers and midpoint details
-const Wire = ({ conn, start, end, mid }) => {
-  const markerRef = useRef();
-
-  // Calculate point on quadratic bezier curve
-  const getBezierPoint = (p0, p1, p2, t) => {
-    const x = (1 - t) * (1 - t) * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0];
-    const y = (1 - t) * (1 - t) * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1];
-    const z = (1 - t) * (1 - t) * p0[2] + 2 * (1 - t) * t * p1[2] + t * t * p2[2];
-    return [x, y, z];
-  };
-
-  useFrame((state) => {
-    if (!markerRef.current) return;
-    const speed = 0.5;
-    const time = state.clock.getElapsedTime() * speed;
-    const t = time % 1.0;
-    const pos = getBezierPoint(start, mid, end, t);
-    markerRef.current.position.set(pos[0], pos[1], pos[2]);
-  });
-
-  const labelPos = getBezierPoint(start, mid, end, 0.5);
+// ??$$$ NEW FLOW — Tube wire rendered with CatmullRomCurve3 between anchor world positions
+const TubeWire = ({ start, end, color }) => {
+  const geo = useMemo(() => {
+    const s = new THREE.Vector3(...start);
+    const e = new THREE.Vector3(...end);
+    const sag = new THREE.Vector3(0, -0.3, 0);
+    const mid = s.clone().lerp(e, 0.5).add(sag);
+    const curve = new THREE.CatmullRomCurve3([s, mid, e]);
+    return new THREE.TubeGeometry(curve, 20, 0.018, 8, false);
+  }, [start[0], start[1], start[2], end[0], end[1], end[2]]);
 
   return (
-    <group>
-      <QuadraticBezierLine start={start} end={end} mid={mid} color={conn.color || "#3b82f6"} lineWidth={4} />
-      
-      {/* ??$$$ - Flow pulse marker */}
-      <mesh ref={markerRef}>
-        <sphereGeometry args={[0.3, 8, 8]} />
-        <meshBasicMaterial color={conn.color || "#3b82f6"} toneMapping={false} />
-      </mesh>
-
-      {/* ??$$$ - Midpoint connection label */}
-      <Html position={labelPos} distanceFactor={45} pointerEvents="none">
-        <div style={{
-          background: 'rgba(10, 11, 16, 0.85)',
-          backdropFilter: 'blur(4px)',
-          border: `1px solid ${conn.color || '#3b82f6'}`,
-          borderRadius: '4px',
-          padding: '2px 6px',
-          color: '#ffffff',
-          fontSize: '7px',
-          fontWeight: 'bold',
-          textTransform: 'uppercase',
-          letterSpacing: '0.05em',
-          whiteSpace: 'nowrap',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-          transform: 'translate(-50%, -50%)',
-          opacity: 0.85
-        }}>
-          {conn.from.pinId} ↔ {conn.to.pinId}
-        </div>
-      </Html>
-    </group>
+    <mesh geometry={geo}>
+      <meshStandardMaterial color={color || "#3b82f6"} roughness={0.55} metalness={0.1} />
+    </mesh>
   );
 };
 
-function Wires() {
+// ??$$$ NEW FLOW — Animated flow pulse that travels along CatmullRom curve
+const WireFlowMarker = ({ start, end, color }) => {
+  const markerRef = useRef();
+  useFrame((state) => {
+    if (!markerRef.current) return;
+    const t = (state.clock.getElapsedTime() * 0.5) % 1.0;
+    const s = new THREE.Vector3(...start);
+    const e = new THREE.Vector3(...end);
+    const sag = new THREE.Vector3(0, -0.3, 0);
+    const mid = s.clone().lerp(e, 0.5).add(sag);
+    const curve = new THREE.CatmullRomCurve3([s, mid, e]);
+    const pos = curve.getPoint(t);
+    markerRef.current.position.copy(pos);
+  });
+  return (
+    <mesh ref={markerRef}>
+      <sphereGeometry args={[0.3, 8, 8]} />
+      <meshBasicMaterial color={color || "#3b82f6"} toneMapping={false} />
+    </mesh>
+  );
+};
+
+function Wires({ pinAnchors }) {
   const connections = useSimulatorStore(s => s.connections);
   const nodes = useSimulatorStore(s => s.nodes);
   const { mode, activeWiringSource } = useSimulatorStore(s => s.transient);
   const [mousePos, setMousePos] = useState([0, 0, 0]);
+
   useFrame(({ raycaster }) => {
     if (mode !== "WIRING" || !activeWiringSource) return;
     const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const hit = new THREE.Vector3();
     if (raycaster.ray.intersectPlane(plane, hit)) setMousePos([hit.x, hit.y, hit.z]);
   });
+
+  // ??$$$ NEW FLOW — resolve wire endpoint: SnapEDA anchor → nodeRef registry pin → null
+  const resolveEndpoint = useCallback((pinRef) => {
+    const anchor = pinAnchors[pinRef];
+    if (anchor) {
+      const wp = new THREE.Vector3();
+      anchor.getWorldPosition(wp);
+      return [wp.x, wp.y, wp.z];
+    }
+    const [nodeId, pinId] = pinRef.split(":");
+    const nodeRef = nodeRefs[nodeId];
+    if (nodeRef?.getPinWorldPos) {
+      const wp = nodeRef.getPinWorldPos(pinId);
+      return [wp.x, wp.y, wp.z];
+    }
+    return null;
+  }, [pinAnchors]);
+
   const renderedWires = useMemo(() => {
     return connections.map(conn => {
-      const fromRef = nodeRefs[conn.from.nodeId]; const toRef = nodeRefs[conn.to.nodeId];
-      if (!fromRef?.getPinWorldPos || !toRef?.getPinWorldPos) return null;
-      const start = fromRef.getPinWorldPos(conn.from.pinId); const end = toRef.getPinWorldPos(conn.to.pinId);
-      const mid = [ (start.x + end.x) / 2, Math.max(start.y, end.y) + 15, (start.z + end.z) / 2 ];
-      // ??$$$ - Render Wire component with animated flow markers and labels instead of raw line
-      return <Wire key={conn.id} conn={conn} start={[start.x, start.y, start.z]} end={[end.x, end.y, end.z]} mid={mid} />;
-      // /* Old QuadraticBezierLine wire rendering commented out
-      // return <QuadraticBezierLine key={conn.id} start={[start.x, start.y, start.z]} end={[end.x, end.y, end.z]} mid={[ (start.x + end.x) / 2, Math.max(start.y, end.y) + 15, (start.z + end.z) / 2 ]} color={conn.color || "#3b82f6"} lineWidth={4} />;
-      // */
+      const fromKey = `${conn.from.nodeId}:${conn.from.pinId}`;
+      const toKey = `${conn.to.nodeId}:${conn.to.pinId}`;
+      const start = resolveEndpoint(fromKey);
+      const end = resolveEndpoint(toKey);
+      if (!start || !end) return null;
+      return (
+        <group key={conn.id}>
+          <TubeWire start={start} end={end} color={conn.color || "#3b82f6"} />
+          <WireFlowMarker start={start} end={end} color={conn.color || "#3b82f6"} />
+        </group>
+      );
     }).filter(Boolean);
-  }, [connections, nodes]);
+  }, [connections, nodes, pinAnchors, resolveEndpoint]);
+
   return (
     <group>
       {renderedWires}
       {mode === "WIRING" && activeWiringSource && (
-        <QuadraticBezierLine start={activeWiringSource.worldPos} end={mousePos} mid={[ (activeWiringSource.worldPos[0] + mousePos[0]) / 2, Math.max(activeWiringSource.worldPos[1], mousePos[1]) + 20, (activeWiringSource.worldPos[2] + mousePos[2]) / 2 ]} color="#22c55e" lineWidth={2} transparent opacity={0.6} dashed />
+        <QuadraticBezierLine
+          start={activeWiringSource.worldPos}
+          end={mousePos}
+          mid={[
+            (activeWiringSource.worldPos[0] + mousePos[0]) / 2,
+            Math.max(activeWiringSource.worldPos[1], mousePos[1]) + 20,
+            (activeWiringSource.worldPos[2] + mousePos[2]) / 2
+          ]}
+          color="#22c55e"
+          lineWidth={2}
+          transparent
+          opacity={0.6}
+          dashed
+        />
       )}
+    </group>
+  );
+}
+
+// ??$$$ NEW FLOW — Dev-mode pin debug spheres (only visible when showPinDebug=true)
+function PinDebugSpheres({ pinAnchors, showPinDebug }) {
+  if (!showPinDebug) return null;
+  return (
+    <group>
+      {Object.entries(pinAnchors).map(([key, anchor]) => {
+        if (!anchor) return null;
+        const parts = key.split(":");
+        if (parts.length < 2) return null;
+        // Skip duplicate name-keyed entries (only render short/numeric id ones)
+        const pinId = parts[1];
+        if (isNaN(Number(pinId)) && pinId.length > 8) return null;
+        const wp = new THREE.Vector3();
+        try { anchor.getWorldPosition(wp); } catch { return null; }
+        return (
+          <group key={key} position={[wp.x, wp.y, wp.z]}>
+            <mesh>
+              <sphereGeometry args={[0.08, 8, 8]} />
+              <meshBasicMaterial color={PIN_TYPE_COLORS["digital"]} />
+            </mesh>
+            <Html distanceFactor={30} position={[0, 0.2, 0]} pointerEvents="none">
+              <div style={{ fontSize: "6px", background: "rgba(0,0,0,0.8)", color: "#fff", padding: "1px 4px", borderRadius: "3px", whiteSpace: "nowrap" }}>
+                {key}
+              </div>
+            </Html>
+          </group>
+        );
+      })}
     </group>
   );
 }
@@ -320,43 +404,52 @@ function Wires() {
 export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [], projectId, onDiagramChange }) {
   const nodes = useSimulatorStore(s => s.nodes);
   const connections = useSimulatorStore(s => s.connections);
+  const pinAnchors = useSimulatorStore(s => s.pinAnchors);
+  const setPinAnchors = useSimulatorStore(s => s.setPinAnchors);
   const { mode, selectedNodeId } = useSimulatorStore(s => s.transient);
   const orbitRef = useRef();
 
-  // Dynamic GLTF Url mapping from socket or initial BOM
-  const [liveGlbUrls, setLiveGlbUrls] = useState({});
+  // ??$$$ NEW FLOW — live BOM state (starts from prop, updated via pins:ready socket)
+  const [liveBom, setLiveBom] = useState(bom);
+  useEffect(() => { setLiveBom(bom); }, [bom]);
 
+  // ??$$$ NEW FLOW — dev mode pin debug toggle (only relevant in DEV)
+  const [showPinDebug, setShowPinDebug] = useState(false);
+
+  // Dynamic GLB URL mapping from initial BOM
+  const [liveGlbUrls, setLiveGlbUrls] = useState({});
   useEffect(() => {
     const initialMap = {};
     if (bom) {
       bom.forEach(b => {
-        if (b.glbUrl) {
-          initialMap[b.key.toLowerCase()] = b.glbUrl;
-        }
+        if (b.glbUrl) initialMap[b.key.toLowerCase()] = b.glbUrl;
       });
     }
     setLiveGlbUrls(initialMap);
   }, [bom]);
 
+  // ??$$$ NEW FLOW — socket: handle model:ready (GLB) + pins:ready (pin anchors)
   useEffect(() => {
     if (!projectId) return;
     const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
-    // ??$$$ Removed noisy console.log from here — was logging on every projectId change
     const socket = io(socketUrl);
 
     socket.on("model:ready", (data) => {
-      console.log("[Simulator3D] Socket model:ready received:", data);
       if (data && String(data.projectId) === String(projectId) && data.bomKey && data.glbUrl) {
-        setLiveGlbUrls(prev => ({
-          ...prev,
-          [data.bomKey.toLowerCase()]: data.glbUrl
-        }));
+        setLiveGlbUrls(prev => ({ ...prev, [data.bomKey.toLowerCase()]: data.glbUrl }));
       }
     });
 
-    return () => {
-      socket.disconnect();
-    };
+    // ??$$$ NEW FLOW — live pin metadata update from SnapEDA resolution
+    socket.on("pins:ready", (data) => {
+      if (!data || String(data.projectId) !== String(projectId)) return;
+      const { bomKey, pins } = data;
+      setLiveBom(prev => prev.map(b =>
+        b.key.toLowerCase() === bomKey.toLowerCase() ? { ...b, pins: pins || [] } : b
+      ));
+    });
+
+    return () => { socket.disconnect(); };
   }, [projectId]);
 
   // ??$$$ Flag to suppress sync-back when we just loaded nodes from the diagram prop
@@ -367,7 +460,7 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
     const { parts = [], connections = [] } = diagram;
     const newNodes = parts.map(p => ({
       id: p.id,
-      // ??$$$ Use replaceAll (with regex g flag) so e.g. esp32-devkit-v1 → ESP32_DEVKIT_V1 not ESP32_DEVKIT-V1
+      // ??$$$ Use replaceAll (with regex g flag) so e.g. esp32-devkit-v1 → ESP32_DEVKIT_V1
       type: p.type.toUpperCase().replace('WOKWI-', '').replace(/-/g, '_'),
       position: [
         typeof p.left === 'number' && Number.isFinite(p.left) ? p.left / 10 : 0,
@@ -377,7 +470,7 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
       rotation: [0, 0, 0],
       attrs: p.attrs || {}
     }));
-    
+
     const newConns = connections.map((c, i) => {
       const [from, to, color] = c;
       const [fNode, fPin] = from.split(':');
@@ -386,9 +479,9 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
     });
 
     // Auto-wiring fallback from BOM if diagram connections are empty
-    if (newConns.length === 0 && bom && bom.length > 0) {
+    if (newConns.length === 0 && liveBom && liveBom.length > 0) {
       let connIdCounter = 0;
-      bom.forEach(item => {
+      liveBom.forEach(item => {
         if (item.pinConnections) {
           item.pinConnections.forEach(pc => {
             if (pc.pin && pc.connectsTo) {
@@ -416,29 +509,18 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
     useSimulatorStore.setState({ nodes: newNodes, connections: newConns });
     // ??$$$ Reset the flag on the next microtask tick, after the store update has settled
     Promise.resolve().then(() => { syncingFromProp.current = false; });
-  }, [diagram, bom]);
+  }, [diagram, liveBom]);
 
   // Diagram change synchronization
   const onDiagramChangeRef = useRef(onDiagramChange);
-  useEffect(() => {
-    onDiagramChangeRef.current = onDiagramChange;
-  }, [onDiagramChange]);
-
+  useEffect(() => { onDiagramChangeRef.current = onDiagramChange; }, [onDiagramChange]);
   const isFirstRender = useRef(true);
 
   useEffect(() => {
-    if (isFirstRender.current) {
-      isFirstRender.current = false;
-      return;
-    }
-
-    // ??$$$ Skip sync-back if we just loaded from the diagram prop — prevents infinite update loop
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
     if (syncingFromProp.current) return;
-    
     const updated = {
-      version: 1,
-      author: "NovaAI",
-      editor: "wokwi",
+      version: 1, author: "NovaAI", editor: "wokwi",
       parts: nodes.map(n => ({
         id: n.id,
         type: n.type.toLowerCase().startsWith('wokwi') ? n.type.toLowerCase().replace(/_/g, '-') : `wokwi-${n.type.toLowerCase().replace(/_/g, '-')}`,
@@ -449,11 +531,9 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
       connections: connections.map(c => [
         `${c.from.nodeId}:${c.from.pinId}`,
         `${c.to.nodeId}:${c.to.pinId}`,
-        c.color || "green",
-        []
+        c.color || "green", []
       ])
     };
-
     if (diagram) {
       const partsDiff = JSON.stringify(updated.parts) !== JSON.stringify(diagram.parts);
       const connsDiff = JSON.stringify(updated.connections) !== JSON.stringify(diagram.connections);
@@ -470,10 +550,10 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
       defs[key] = {
         name: key,
         scale: key === "ARDUINO_UNO" ? 5 : 3,
-        gltf: key === "ARDUIDE_UNO" || key === "ARDUINO_UNO" ? "/models/arduino_uno.glb" : (reg.gltf || null),
-        pins: (reg.pins || []).map((p, i) => ({ 
-          id: p.name, 
-          pos: p.name === "GND" ? [2, 0.8, 8.2] : p.name === "5V" ? [1.2, 0.8, 8.2] : [-6.4 + i*0.2, 0.8, -8.2] 
+        gltf: key === "ARDUINO_UNO" ? "/models/arduino_uno.glb" : (reg.gltf || null),
+        pins: (reg.pins || []).map((p, i) => ({
+          id: p.name,
+          pos: p.name === "GND" ? [2, 0.8, 8.2] : p.name === "5V" ? [1.2, 0.8, 8.2] : [-6.4 + i * 0.2, 0.8, -8.2]
         }))
       };
     });
@@ -488,37 +568,60 @@ export default function Simulator3D({ diagram, hexCode, registry = {}, bom = [],
         <Suspense fallback={null}>
           {nodes.map(node => {
             const lowercaseType = node.type.toLowerCase();
-            const bomItem = bom.find(b => 
+            // ??$$$ NEW FLOW — find BOM item by key/type from liveBom (has real glbUrl + pins)
+            const bomItem = liveBom.find(b =>
               b.key.toLowerCase() === lowercaseType ||
-              b.wokwiPartType.toLowerCase() === lowercaseType ||
-              b.displayName.toLowerCase().replace(/[^a-z0-9]/g, '').includes(lowercaseType.replace(/[^a-z0-9]/g, ''))
+              b.key.toLowerCase() === node.id.toLowerCase() ||
+              (b.wokwiPartType && b.wokwiPartType.toLowerCase() === lowercaseType) ||
+              (b.displayName && b.displayName.toLowerCase().replace(/[^a-z0-9]/g, '').includes(lowercaseType.replace(/[^a-z0-9]/g, '')))
             );
             const bomKey = bomItem ? bomItem.key.toLowerCase() : null;
-            const glbUrl = bomKey && liveGlbUrls[bomKey] ? liveGlbUrls[bomKey] : (COMPONENT_DEFS[node.type]?.gltf || null);
+            // ??$$$ NEW FLOW — GLB priority: liveBom.glbUrl → socket liveGlbUrls → registry gltf
+            const glbUrl = bomItem?.glbUrl ||
+              (bomKey && liveGlbUrls[bomKey]) ||
+              COMPONENT_DEFS[node.type]?.gltf ||
+              null;
 
             return (
-              <DraggableComponent 
-                key={node.id} 
-                {...node} 
-                ref={el => nodeRefs[node.id] = el} 
-                def={COMPONENT_DEFS[node.type] || { pins: [] }} 
+              <DraggableComponent
+                key={node.id}
+                {...node}
+                ref={el => nodeRefs[node.id] = el}
+                def={COMPONENT_DEFS[node.type] || { pins: [] }}
                 isSelected={selectedNodeId === node.id}
                 bomItem={bomItem}
                 glbUrl={glbUrl}
               />
             );
           })}
-          <Wires /><Environment preset="city" /><Grid infiniteGrid fadeDistance={250} fadeStrength={5} sectionSize={5} sectionColor="#444" cellColor="#222" />
+          {/* ??$$$ NEW FLOW — pass live pinAnchors to Wires for anchor-resolved wire positions */}
+          <Wires pinAnchors={pinAnchors} />
+          {/* ??$$$ NEW FLOW — dev mode pin debug spheres */}
+          {import.meta.env.DEV && <PinDebugSpheres pinAnchors={pinAnchors} showPinDebug={showPinDebug} />}
+          <Environment preset="city" />
+          <Grid infiniteGrid fadeDistance={250} fadeStrength={5} sectionSize={5} sectionColor="#444" cellColor="#222" />
         </Suspense>
         <OrbitControls ref={orbitRef} makeDefault enabled={mode === "IDLE" || (mode === "WIRING" && !selectedNodeId)} minDistance={10} maxDistance={1000} enableDamping />
       </Canvas>
+
+      {/* HUD */}
       <div className="absolute top-4 right-4 z-10 pointer-events-none">
         <div className="bg-black/80 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/5 flex flex-col items-end gap-1 shadow-xl">
-          <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2"><Cpu className="w-3 h-3"/> 3D ENGINE ACTIVE</span>
+          <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2"><Cpu className="w-3 h-3" /> 3D ENGINE ACTIVE</span>
           <span className="text-[8px] text-gray-500 font-bold uppercase tracking-wider">{nodes.length} Parts | {mode}</span>
         </div>
       </div>
+
+      {/* ??$$$ NEW FLOW — dev mode toggle button */}
+      {import.meta.env.DEV && (
+        <button
+          onClick={() => setShowPinDebug(p => !p)}
+          className="absolute bottom-4 right-4 z-10 flex items-center gap-2 px-3 py-2 rounded-xl bg-black/70 border border-white/10 text-[9px] font-bold text-white hover:border-blue-500/50 transition-all"
+        >
+          {showPinDebug ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+          {showPinDebug ? "Hide Pins" : "Show Pins"}
+        </button>
+      )}
     </div>
   );
 }
-

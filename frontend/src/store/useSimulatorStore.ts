@@ -15,6 +15,9 @@ export const useSimulatorStore = create((set, get) => ({
   past: [],
   future: [],
 
+  // ??$$$ NEW FLOW — Pin anchor registry: "nodeId:pinId" → THREE.Object3D
+  pinAnchors: {},
+
   // --- Unified Interaction State ---
   transient: {
     mode: "IDLE", // "IDLE", "DRAGGING", "WIRING"
@@ -29,6 +32,23 @@ export const useSimulatorStore = create((set, get) => ({
   setTransient: (updates) => set((state) => ({ 
     transient: { ...state.transient, ...updates } 
   })),
+
+  // ??$$$ NEW FLOW — Pin anchor management
+  setPinAnchor: (key, obj) => set((state) => ({
+    pinAnchors: { ...state.pinAnchors, [key]: obj }
+  })),
+
+  setPinAnchors: (anchors) => set((state) => ({
+    pinAnchors: { ...state.pinAnchors, ...anchors }
+  })),
+
+  clearNodePinAnchors: (nodeId) => set((state) => {
+    const updated = { ...state.pinAnchors };
+    Object.keys(updated).forEach(key => {
+      if (key.startsWith(`${nodeId}:`)) delete updated[key];
+    });
+    return { pinAnchors: updated };
+  }),
 
   pushHistory: () => {
     const { nodes, connections, past } = get();
@@ -131,8 +151,10 @@ export const useSimulatorStore = create((set, get) => ({
     set({ 
       nodes: [], 
       connections: [],
+      pinAnchors: {},
       transient: { ...get().transient, selectedNodeId: null, livePositions: {} }
     });
   }
 }));
+
 

@@ -348,6 +348,16 @@ interface IBomItem {
   mpn?: string;
   partId?: string;
   phase?: string;
+  // ??$$$ NEW FLOW — SnapEDA 3D fields
+  glbUrl?: string;
+  pins?: Array<{
+    id: string;
+    name: string;
+    x_mm: number;
+    y_mm: number;
+    z_mm: number;
+    type: string;
+  }>;
 }
 
 /* old code
@@ -394,7 +404,20 @@ const bomItemSchema = new Schema<IBomItem>(
     storeUrl: { type: String, default: "" },
     mpn: { type: String, default: "" },
     partId: { type: String, default: "" },
-    phase: { type: String, default: "" }
+    phase: { type: String, default: "" },
+    // ??$$$ NEW FLOW — SnapEDA 3D fields
+    glbUrl: { type: String, default: "" },
+    pins: {
+      type: [{
+        id: { type: String },
+        name: { type: String },
+        x_mm: { type: Number, default: 0 },
+        y_mm: { type: Number, default: 0 },
+        z_mm: { type: Number, default: 0 },
+        type: { type: String, default: "digital" }
+      }],
+      default: []
+    }
   },
   { _id: false }
 );
@@ -800,6 +823,8 @@ interface IProject {
     componentCount?: number;
     detectedAt?: Date | null;
     agentLock?: string | null;
+    // ??$$$ Added experimental flag to identify agentic project runs
+    isAgentic?: boolean;
   };
 
   bom: IBomItem[];
@@ -990,6 +1015,12 @@ const projectSchema = new Schema<IProject>(
       agentLock: {
         type: String,
         default: null
+      },
+
+      // ??$$$ Added isAgentic flag to mongoose schema
+      isAgentic: {
+        type: Boolean,
+        default: false
       }
     },
 

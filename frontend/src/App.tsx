@@ -16,6 +16,8 @@ const BuildPage = lazy(() => import("./pages/BuildPage.tsx"));
 const AssemblyPage = lazy(() => import("./pages/AssemblyPage.tsx"));
 const ShoppingPage = lazy(() => import("./pages/ShoppingPage.tsx"));
 const Simulator3DPage = lazy(() => import("./pages/Simulator3DPage.tsx"));
+// ??$$$ NEW FLOW
+const BuildNewPage = lazy(() => import("./pages/BuildNewPage.tsx"));
 
 function RouteLoader(): ReactNode {
   return (
@@ -91,6 +93,12 @@ function App(): ReactNode {
             <Route path="assembly" element={<AssemblyPage />} />
             <Route path="shopping" element={<ShoppingPage />} />
           </Route>
+
+          {/* ??$$$ NEW FLOW */}
+          <Route
+            path="/project/:id/build-new"
+            element={authUser ? <BuildNewPage /> : <Navigate to="/auth" />}
+          />
 
           {/* Catch all */}
           <Route path="*" element={<Navigate to="/" replace />} />

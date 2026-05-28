@@ -6,6 +6,8 @@ import { axiosInstance } from "../lib/axios";
 import { useThemeStore } from "../store/useThemeStore";
 import { useAuthStore } from "../store/useAuthStore";
 import forgeLogo from "../assets/forge logo.png";
+// ??$$$ NEW FLOW
+import { DiscoveryModal } from "../components/DiscoveryModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +45,12 @@ export default function HomePage() {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showSettings,     setShowSettings]     = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
+
+  // ??$$$ NEW FLOW
+  const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
+  const [discoveryIdea, setDiscoveryIdea] = useState("");
+  const [discoveryProjectId, setDiscoveryProjectId] = useState<string | undefined>(undefined);
+  const [discoveryPhase, setDiscoveryPhase] = useState<1 | 2 | undefined>(undefined);
 
   // settings form
   const [settingsForm, setSettingsForm] = useState<SettingsForm>({
@@ -99,13 +107,17 @@ export default function HomePage() {
   }, []);
 
   // ── create project ──
-  const handleCreateProject = async (description: string) => {
+  // ??$$$ Modified to support agentic project creation
+  const handleCreateProject = async (description: string, isAgentic = false) => {
     if (isCreating) return;
     const trimmed = description.trim();
     if (!trimmed) { toast.error("Project name is required"); return; }
     try {
       setIsCreating(true);
-      const res = await axiosInstance.post<{ projectId: string }>("/project", { description: trimmed });
+      const res = await axiosInstance.post<{ projectId: string }>("/project", {
+        description: trimmed,
+        isAgentic
+      });
       navigate(`/project/${res.data.projectId}/ideation`);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || error?.response?.data?.message || "Failed to create project");
@@ -116,7 +128,15 @@ export default function HomePage() {
 
   const handleSubmitInput = () => {
     if (inputValue.trim()) {
-      handleCreateProject(inputValue);
+      handleCreateProject(inputValue, false);
+    }
+  };
+
+  // ??$$$ Added agentic submit handler
+  const handleSubmitAgenticInput = () => {
+    if (inputValue.trim()) {
+      setDiscoveryIdea(inputValue.trim());
+      setShowDiscoveryModal(true);
     }
   };
 
@@ -394,6 +414,25 @@ export default function HomePage() {
                 "↑"
               )}
             </button>
+            {/* ??$$$ Added 2nd button for experimental agentic creation */}
+            <button
+              onClick={handleSubmitAgenticInput}
+              disabled={isCreating || !inputValue.trim()}
+              className={`flex-shrink-0 flex h-8 px-3.5 items-center justify-center rounded-lg text-xs font-bold transition ${
+                inputValue.trim() && !isCreating
+                  ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-450 shadow-[0_0_12px_rgba(16,185,129,0.2)] hover:shadow-[0_0_16px_rgba(16,185,129,0.35)]"
+                  : isDark
+                  ? "bg-white/5 text-[#444] cursor-not-allowed"
+                  : "bg-black/5 text-[#bbb] cursor-not-allowed"
+              }`}
+              aria-label="Create project agentic"
+            >
+              {isCreating ? (
+                <span className="block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+              ) : (
+                "✦ AI Build"
+              )}
+            </button>
           </div>
 
           <p className={`mt-2.5 text-xs ${isDark ? "text-[#444]" : "text-[#bbb]"}`}>
@@ -494,40 +533,75 @@ export default function HomePage() {
                   </button>
 
                   {/* Card footer */}
-                  <div className={`flex items-center gap-1.5 px-4 pb-4 pt-3 border-t ${
+                  <div className={`flex flex-col gap-1.5 px-4 pb-4 pt-3 border-t ${
                     isDark ? "border-white/[0.06]" : "border-black/[0.06]"
                   }`}>
-                    {/* Open — primary */}
-                    <button
-                      onClick={() => navigate(`/project/${project._id}/ideation`)}
-                      className="flex-1 rounded-lg bg-[#d9a441] py-1.5 text-xs font-bold text-black transition hover:opacity-90"
-                    >
-                      Open
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {/* Open — primary */}
+                      <button
+                        onClick={() => navigate(`/project/${project._id}/ideation`)}
+                        className="flex-1 rounded-lg bg-[#d9a441] py-1.5 text-xs font-bold text-black transition hover:opacity-90"
+                      >
+                        Open
+                      </button>
 
-                    {/* Rename */}
-                    <button
-                      onClick={() => handleEditProject(project)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                        isDark
-                          ? "border-white/[0.08] text-[#888] hover:text-[#ccc] hover:border-white/20"
-                          : "border-black/[0.08] text-[#999] hover:text-[#444] hover:border-black/20"
-                      }`}
-                    >
-                      Rename
-                    </button>
+                      {/* Rename */}
+                      <button
+                        onClick={() => handleEditProject(project)}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          isDark
+                            ? "border-white/[0.08] text-[#888] hover:text-[#ccc] hover:border-white/20"
+                            : "border-black/[0.08] text-[#999] hover:text-[#444] hover:border-black/20"
+                        }`}
+                      >
+                        Rename
+                      </button>
 
-                    {/* Delete */}
-                    <button
-                      onClick={() => handleDeleteProject(project)}
-                      className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                        isDark
-                          ? "border-red-900/40 text-red-500/70 hover:border-red-500/40 hover:text-red-400"
-                          : "border-red-100 text-red-400 hover:border-red-300 hover:text-red-500"
-                      }`}
-                    >
-                      Delete
-                    </button>
+                      {/* Delete */}
+                      <button
+                        onClick={() => handleDeleteProject(project)}
+                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
+                          isDark
+                            ? "border-red-900/40 text-red-500/70 hover:border-red-500/40 hover:text-red-400"
+                            : "border-red-100 text-red-400 hover:border-red-300 hover:text-red-500"
+                        }`}
+                      >
+                        Delete
+                      </button>
+                    </div>
+
+                    {/* ??$$$ NEW FLOW */}
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => {
+                          setDiscoveryProjectId(project._id);
+                          setDiscoveryPhase(1);
+                          setShowDiscoveryModal(true);
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-semibold transition ${
+                          isDark
+                            ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50"
+                            : "border-emerald-500/30 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:border-emerald-500/50"
+                        }`}
+                      >
+                        ✦ AI Discovery
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setDiscoveryProjectId(project._id);
+                          setDiscoveryPhase(2);
+                          setShowDiscoveryModal(true);
+                        }}
+                        className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-semibold transition ${
+                          isDark
+                            ? "border-blue-500/30 bg-blue-500/5 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/50"
+                            : "border-blue-500/30 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-500/50"
+                        }`}
+                      >
+                        ✦ AI Formulation
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -535,6 +609,21 @@ export default function HomePage() {
           )}
         </section>
       </main>
+
+      {/* ??$$$ NEW FLOW */}
+      {showDiscoveryModal && (
+        <DiscoveryModal
+          initialIdea={discoveryIdea}
+          projectId={discoveryProjectId}
+          initialPhase={discoveryPhase}
+          onClose={() => {
+            setShowDiscoveryModal(false);
+            setDiscoveryIdea("");
+            setDiscoveryProjectId(undefined);
+            setDiscoveryPhase(undefined);
+          }}
+        />
+      )}
     </div>
   );
 }

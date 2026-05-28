@@ -24,6 +24,8 @@ interface ChatBody {
 
 interface CreateProjectBody {
   description: string;
+  // ??$$$ Added isAgentic flag to request interface
+  isAgentic?: boolean;
 }
 
 interface UpdateProjectBody {
@@ -55,7 +57,8 @@ export const createProject = async (
   res: Response
 ) => {
   try {
-    const { description } = req.body as CreateProjectBody;
+    // ??$$$ Read isAgentic from req.body
+    const { description, isAgentic } = req.body as CreateProjectBody;
 
     if (!req.user?._id) {
       return res.status(401).json({ error: "Unauthorized" });
@@ -95,7 +98,10 @@ export const createProject = async (
         validatorFeedback: "",
         validationAttempts: 0
       },
-      meta: { stage: "ideation" },
+      meta: { 
+        stage: "ideation",
+        isAgentic: isAgentic || false
+      },
     });
 
     // Old code:
