@@ -8,6 +8,19 @@ import Part from "../models/part.model";
 const CURATED_PARTS = [
   // === MCUs ===
   {
+    mpn: "ARDUINO-UNO",
+    name: "Arduino Uno",
+    manufacturer: "Arduino",
+    description: "The classic Arduino Uno R3 board, featuring the ATmega328P microcontroller, 14 digital I/O pins, and 6 analog inputs.",
+    imageUrl: "https://store.arduino.cc/cdn/shop/products/A000066_03.front_900x600.jpg",
+    datasheetUrl: "https://docs.arduino.cc/resources/datasheets/A000066-datasheet.pdf",
+    available: 5000,
+    price: 300,
+    category: "MCUs",
+    wokwiPartType: "wokwi-arduino-uno",
+    specs: { "Microcontroller": "ATmega328P", "Operating Voltage": "5V", "Digital I/O Pins": "14", "Analog Input Pins": "6", "Flash Memory": "32 KB" }
+  },
+  {
     mpn: "ESP32-DEVKIT-C",
     name: "ESP32 DevKit V1",
     manufacturer: "Espressif Systems",

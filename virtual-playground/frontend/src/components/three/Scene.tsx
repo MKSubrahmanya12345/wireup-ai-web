@@ -1,7 +1,7 @@
 // ??$$$
 import React, { Suspense } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid } from '@react-three/drei';
+import { OrbitControls, Grid, Html } from '@react-three/drei';
 import { useProjectStore } from '../../store/useProjectStore';
 import { Arduino } from './Arduino';
 import { LED } from './LED';
@@ -9,6 +9,82 @@ import { Button } from './Button';
 import { Wire } from './Wire';
 import { WebGLErrorBoundary } from './ErrorBoundary';
 import { SchematicView } from './SchematicView';
+
+const GenericPart: React.FC<{
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  componentKey: string;
+  displayName: string;
+  type: string;
+  glbUrl?: string;
+}> = ({ position, rotation = [0, 0, 0], componentKey, displayName, type, glbUrl }) => {
+  const { showLabels, selectedComponent, setSelectedComponent } = useProjectStore();
+  const isSelected = selectedComponent === componentKey;
+
+  const shapeColor = type === 'sensor'
+    ? '#0f766e'
+    : type === 'display'
+      ? '#7c3aed'
+      : type === 'module'
+        ? '#475569'
+        : '#1d4ed8';
+
+  return (
+    <group
+      position={position}
+      rotation={rotation}
+      onClick={(e) => {
+        e.stopPropagation();
+        setSelectedComponent(isSelected ? null : componentKey);
+      }}
+    >
+      {isSelected && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.12, 0]}>
+          <ringGeometry args={[0.75, 0.9, 32]} />
+          <meshBasicMaterial color="#00f0ff" side={2} transparent opacity={0.8} />
+        </mesh>
+      )}
+
+      <mesh castShadow receiveShadow position={[0, 0.14, 0]}>
+        {type === 'led' ? <sphereGeometry args={[0.28, 24, 24]} /> : type === 'button' ? <cylinderGeometry args={[0.32, 0.34, 0.22, 18]} /> : <boxGeometry args={[0.85, 0.26, 0.6]} />}
+        <meshStandardMaterial color={shapeColor} roughness={0.45} metalness={0.25} emissive={type === 'led' ? '#111111' : '#000000'} emissiveIntensity={0.15} />
+      </mesh>
+
+      <mesh position={[-0.25, 0.02, -0.18]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.22, 8]} />
+        <meshStandardMaterial color="#d1d5db" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <mesh position={[0.25, 0.02, -0.18]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.22, 8]} />
+        <meshStandardMaterial color="#d1d5db" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <mesh position={[-0.25, 0.02, 0.18]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.22, 8]} />
+        <meshStandardMaterial color="#d1d5db" metalness={0.8} roughness={0.3} />
+      </mesh>
+      <mesh position={[0.25, 0.02, 0.18]}>
+        <cylinderGeometry args={[0.02, 0.02, 0.22, 8]} />
+        <meshStandardMaterial color="#d1d5db" metalness={0.8} roughness={0.3} />
+      </mesh>
+
+      {glbUrl && (
+        <Html distanceFactor={8} position={[0, 0.55, 0]} center>
+          <div className="bg-slate-900/90 border border-slate-600 text-slate-200 text-[8px] font-mono px-2 py-0.5 rounded whitespace-nowrap">
+            3D asset linked
+          </div>
+        </Html>
+      )}
+
+      {showLabels && (
+        <Html distanceFactor={10} position={[0, 0.75, 0]} center>
+          <div className="bg-[#0b0b24]/85 border border-[#1f1f45] px-2 py-0.5 rounded text-white text-[9px] font-mono whitespace-nowrap shadow-md uppercase">
+            {displayName}
+          </div>
+        </Html>
+      )}
+    </group>
+  );
+};
 
 // ??$$$
 const checkWebGLSupport = (): boolean => {
@@ -25,6 +101,7 @@ const checkWebGLSupport = (): boolean => {
 
 export const Scene: React.FC = () => {
   const { project, showWires } = useProjectStore();
+  const bomItems = Array.isArray(project?.bom) ? project.bom : [];
   
   // ??$$$
   const isWebGLAvailable = React.useMemo(() => checkWebGLSupport(), []);
@@ -34,7 +111,7 @@ export const Scene: React.FC = () => {
   }
 
   return (
-    <div className="w-full h-full bg-[#050510] relative">
+    <div className="w-full h-full bg-slate-100 dark:bg-slate-950 relative">
       <WebGLErrorBoundary>
         <Canvas
           shadows
@@ -42,7 +119,7 @@ export const Scene: React.FC = () => {
           camera={{ position: [0, 4.5, 5], fov: 45 }}
           gl={{ antialias: true, alpha: false }}
         >
-          <color attach="background" args={['#03030c']} />
+          <color attach="background" args={['#e9eff5']} />
 
           {/* Ambient background light */}
           <ambientLight intensity={0.4} />
@@ -73,10 +150,10 @@ export const Scene: React.FC = () => {
             args={[15, 15]}
             cellSize={0.5}
             cellThickness={0.5}
-            cellColor="#1f1f45"
+            cellColor="#c7d2e0"
             sectionSize={2.5}
             sectionThickness={1}
-            sectionColor="#00f0ff"
+            sectionColor="#1d4ed8"
             fadeDistance={20}
           />
 
@@ -84,7 +161,7 @@ export const Scene: React.FC = () => {
           <mesh receiveShadow position={[0, -0.05, 0]}>
             <boxGeometry args={[7.8, 0.08, 4.2]} />
             <meshStandardMaterial 
-              color="#0d0d1e" 
+              color="#d7e3f4" 
               roughness={0.4} 
               metalness={0.7} 
             />
@@ -94,7 +171,7 @@ export const Scene: React.FC = () => {
           <mesh position={[0, -0.005, 0]}>
             <boxGeometry args={[7.6, 0.01, 4.0]} />
             <meshStandardMaterial 
-              color="#14142b" 
+              color="#edf2f7" 
               roughness={0.6} 
               metalness={0.2} 
               wireframe
@@ -103,9 +180,58 @@ export const Scene: React.FC = () => {
 
           <Suspense fallback={null}>
             {/* Hardware Parts */}
-            <Arduino position={[0, 0.05, 0]} />
-            <LED position={[2.5, 0.2, 0.5]} />
-            <Button position={[-2.5, 0.15, -0.5]} />
+            {bomItems.map((item, index) => {
+              const itemName = String(item?.displayName || "").toLowerCase();
+              const itemType = String(item?.type || "").toLowerCase();
+              const position = Array.isArray(item?.position)
+                ? item.position as [number, number, number]
+                : [0, 0.08, 0] as [number, number, number];
+
+              if (itemType === 'microcontroller') {
+                return (
+                  <Arduino
+                    key={item?.key || `mcu-${index}`}
+                    position={position}
+                    componentKey={String(item?.key || 'arduino')}
+                    displayName={String(item?.displayName || 'Microcontroller')}
+                  />
+                );
+              }
+
+              if (itemType === 'led' || itemName.includes('led')) {
+                return (
+                  <LED
+                    key={item?.key || `led-${index}`}
+                    position={position}
+                    componentKey={String(item?.key || `led${index + 1}`)}
+                    displayName={String(item?.displayName || `LED ${index + 1}`)}
+                  />
+                );
+              }
+
+              if (itemType === 'button' || itemName.includes('button') || itemName.includes('switch')) {
+                return (
+                  <Button
+                    key={item?.key || `button-${index}`}
+                    position={position}
+                    componentKey={String(item?.key || `button${index + 1}`)}
+                    displayName={String(item?.displayName || `Button ${index + 1}`)}
+                  />
+                );
+              }
+
+              return (
+                <GenericPart
+                  key={item?.key || `part-${index}`}
+                  position={position}
+                  rotation={Array.isArray(item?.rotation) ? item.rotation as [number, number, number] : [0, 0, 0]}
+                  componentKey={String(item?.key || `part${index + 1}`)}
+                  displayName={String(item?.displayName || `Part ${index + 1}`)}
+                  type={itemType || 'module'}
+                  glbUrl={String(item?.glbUrl || '')}
+                />
+              );
+            })}
 
             {/* Wire Connections */}
             {showWires && project.wiring.map((wire, idx) => (
@@ -130,8 +256,8 @@ export const Scene: React.FC = () => {
       </WebGLErrorBoundary>
 
       {/* Floating 3D Control Compass Help Overlay */}
-      <div className="absolute top-4 left-4 bg-black/60 backdrop-blur-md border border-[#1f1f45] px-3 py-2 rounded-lg pointer-events-none select-none text-[10px] text-slate-400 font-mono space-y-1 z-10 shadow-lg">
-        <div className="text-cyan-400 font-semibold uppercase tracking-wider mb-1">Canvas Controls</div>
+      <div className="absolute top-4 left-4 bg-white/85 dark:bg-slate-900/85 backdrop-blur-md border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-lg pointer-events-none select-none text-[10px] text-slate-600 dark:text-slate-300 font-mono space-y-1 z-10 shadow-lg">
+        <div className="text-blue-600 font-semibold uppercase tracking-wider mb-1">Canvas Controls</div>
         <div>Rotate: Left Click + Drag</div>
         <div>Pan: Right Click + Drag</div>
         <div>Zoom: Scroll Wheel</div>

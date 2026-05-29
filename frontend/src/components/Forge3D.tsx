@@ -1,9 +1,9 @@
 // @ts-nocheck
 // ??$$$ - Forge3D CAD Layout and Simulation Component
 import React, { useState, useEffect } from 'react';
-import { 
-  Play, Pause, RotateCcw, Plus, Trash, Settings, Sparkles, 
-  Download, Upload, Info, Key, Check, HelpCircle, 
+import {
+  Play, Pause, RotateCcw, Plus, Trash, Settings, Sparkles,
+  Download, Upload, Info, Key, Check, HelpCircle,
   Layers, Sliders, Activity, Globe, Compass, Wind
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
@@ -257,7 +257,7 @@ export default function Forge3D({ bom = [] }) {
       setInitialObjects(JSON.parse(JSON.stringify(cloned)));
       setSelectedId(null);
       setIsSimulating(false);
-      
+
       confetti({
         particleCount: 100,
         spread: 70,
@@ -283,7 +283,7 @@ export default function Forge3D({ bom = [] }) {
     let dimensions = [1, 1, 1];
     let color = '#00f0ff';
     let material = 'standard';
-    
+
     if (type === 'sphere') {
       dimensions = [0.8];
       color = '#ff007f';
@@ -321,7 +321,7 @@ export default function Forge3D({ bom = [] }) {
   const handleAddNewComponent = (partKey) => {
     const template = ELECTRONIC_COMPONENTS[partKey];
     if (!template) return;
-    
+
     const id = `${partKey}_${Date.now().toString().slice(-4)}`;
     const newObj = {
       id,
@@ -423,7 +423,7 @@ export default function Forge3D({ bom = [] }) {
 
     try {
       const result = await generate3DModel(prompt.trim(), groqApiKey, selectedModel, objects);
-      
+
       if (result && Array.isArray(result.objects)) {
         let finalObjects = result.objects;
         const hasFloor = finalObjects.some(o => o.id === 'floor' || o.type === 'box' && o.dimensions[0] >= 15 && o.position[1] < 0.5);
@@ -482,7 +482,7 @@ export default function Forge3D({ bom = [] }) {
   const handleExportJSON = () => {
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ name: "Forge3D Scene", objects, physicsConfig }, null, 2));
     const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute("href",     dataStr);
+    downloadAnchor.setAttribute("href", dataStr);
     downloadAnchor.setAttribute("download", `forge3d_scene_${Date.now()}.json`);
     document.body.appendChild(downloadAnchor);
     downloadAnchor.click();
@@ -518,31 +518,31 @@ export default function Forge3D({ bom = [] }) {
         {/* LEFT SIDEBAR */}
         <aside className="sidebar glass">
           <div className="sidebar-header">
-            <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Layers size={14} /> Explorer
             </div>
-            <button className="btn" style={{padding: '3px 6px', fontSize: '0.7rem'}} onClick={handleClearScene}>
+            <button className="btn" style={{ padding: '3px 6px', fontSize: '0.7rem' }} onClick={handleClearScene}>
               Clear
             </button>
           </div>
 
-          <div className="sidebar-content" style={{gap: '10px'}}>
+          <div className="sidebar-content" style={{ gap: '10px' }}>
             {/* Electronic Parts */}
             <div className="inspector-section">
               <div className="inspector-title">
                 🤖 Electronic Parts
               </div>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '140px', overflowY: 'auto', paddingRight: '4px'}}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '140px', overflowY: 'auto', paddingRight: '4px' }}>
                 {Object.entries(ELECTRONIC_COMPONENTS).map(([key, part]) => (
-                  <button 
-                    key={key} 
-                    className="btn" 
-                    style={{justifyContent: 'flex-start', fontSize: '0.75rem', padding: '4px 8px'}} 
+                  <button
+                    key={key}
+                    className="btn"
+                    style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '4px 8px' }}
                     onClick={() => handleAddNewComponent(key)}
                   >
-                    <span style={{marginRight: '6px', fontSize: '0.85rem'}}>{part.icon}</span>
-                    <span style={{fontWeight: 500}}>{part.name}</span>
-                    <span style={{marginLeft: 'auto', color: 'var(--accent-primary)', fontSize: '0.65rem'}}>+ Add</span>
+                    <span style={{ marginRight: '6px', fontSize: '0.85rem' }}>{part.icon}</span>
+                    <span style={{ fontWeight: 500 }}>{part.name}</span>
+                    <span style={{ marginLeft: 'auto', color: 'var(--accent-primary)', fontSize: '0.65rem' }}>+ Add</span>
                   </button>
                 ))}
               </div>
@@ -553,18 +553,18 @@ export default function Forge3D({ bom = [] }) {
               <div className="inspector-title">
                 <Plus size={12} /> Add Shape
               </div>
-              <div style={{display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px'}}>
-                <button className="btn" style={{padding: '4px 6px', fontSize: '0.75rem'}} onClick={() => handleAddNewShape('box')}>+ Box</button>
-                <button className="btn" style={{padding: '4px 6px', fontSize: '0.75rem'}} onClick={() => handleAddNewShape('sphere')}>+ Sphere</button>
-                <button className="btn" style={{padding: '4px 6px', fontSize: '0.75rem'}} onClick={() => handleAddNewShape('cylinder')}>+ Cylinder</button>
-                <button className="btn" style={{padding: '4px 6px', fontSize: '0.75rem'}} onClick={() => handleAddNewShape('cone')}>+ Cone</button>
-                <button className="btn" style={{padding: '4px 6px', fontSize: '0.75rem', gridColumn: 'span 2'}} onClick={() => handleAddNewShape('torus')}>+ Torus</button>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '6px' }}>
+                <button className="btn" style={{ padding: '4px 6px', fontSize: '0.75rem' }} onClick={() => handleAddNewShape('box')}>+ Box</button>
+                <button className="btn" style={{ padding: '4px 6px', fontSize: '0.75rem' }} onClick={() => handleAddNewShape('sphere')}>+ Sphere</button>
+                <button className="btn" style={{ padding: '4px 6px', fontSize: '0.75rem' }} onClick={() => handleAddNewShape('cylinder')}>+ Cylinder</button>
+                <button className="btn" style={{ padding: '4px 6px', fontSize: '0.75rem' }} onClick={() => handleAddNewShape('cone')}>+ Cone</button>
+                <button className="btn" style={{ padding: '4px 6px', fontSize: '0.75rem', gridColumn: 'span 2' }} onClick={() => handleAddNewShape('torus')}>+ Torus</button>
               </div>
             </div>
 
             {/* Objects Tree */}
-            <div className="inspector-section" style={{flex: 1, overflowY: 'auto'}}>
-              <div className="inspector-title" style={{marginBottom: '4px'}}>
+            <div className="inspector-section" style={{ flex: 1, overflowY: 'auto' }}>
+              <div className="inspector-title" style={{ marginBottom: '4px' }}>
                 <Globe size={12} /> Scene List
               </div>
               <div className="tree-list">
@@ -581,19 +581,19 @@ export default function Forge3D({ bom = [] }) {
                   }
 
                   return (
-                    <div 
-                      key={obj.id} 
+                    <div
+                      key={obj.id}
                       className={`tree-item ${selectedId === obj.id ? 'selected' : ''}`}
                       onClick={() => setSelectedId(obj.id)}
                     >
-                      <span className="tree-item-name" style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                      <span className="tree-item-name" style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         <span>{icon} {obj.name}</span>
                         {isElec && (
                           <span style={{
-                            fontSize: '0.55rem', 
-                            padding: '1px 3px', 
-                            borderRadius: '3px', 
-                            background: 'rgba(0, 240, 255, 0.15)', 
+                            fontSize: '0.55rem',
+                            padding: '1px 3px',
+                            borderRadius: '3px',
+                            background: 'rgba(0, 240, 255, 0.15)',
                             color: 'var(--accent-primary)',
                             fontWeight: 700,
                             marginLeft: '4px'
@@ -603,11 +603,11 @@ export default function Forge3D({ bom = [] }) {
                         )}
                       </span>
                       <div className="tree-item-actions">
-                        <button className="btn" style={{padding: '1px 4px', fontSize: '0.7rem'}} onClick={(e) => { e.stopPropagation(); handleDuplicateObject(obj); }} title="Duplicate">
+                        <button className="btn" style={{ padding: '1px 4px', fontSize: '0.7rem' }} onClick={(e) => { e.stopPropagation(); handleDuplicateObject(obj); }} title="Duplicate">
                           📑
                         </button>
                         {obj.id !== 'floor' && (
-                          <button className="btn" style={{padding: '1px 4px', fontSize: '0.7rem', color: 'var(--accent-secondary)'}} onClick={(e) => { e.stopPropagation(); handleDeleteObject(obj.id); }} title="Delete">
+                          <button className="btn" style={{ padding: '1px 4px', fontSize: '0.7rem', color: 'var(--accent-secondary)' }} onClick={(e) => { e.stopPropagation(); handleDeleteObject(obj.id); }} title="Delete">
                             <Trash size={10} />
                           </button>
                         )}
@@ -621,11 +621,11 @@ export default function Forge3D({ bom = [] }) {
         </aside>
 
         {/* 3D VIEWPORT CONTAINER */}
-        <main className="viewport-container" style={{position: 'relative'}}>
+        <main className="viewport-container" style={{ position: 'relative' }}>
           {/* SIMULATOR HUD */}
-          <div className="viewport-hud glass" style={{gap: '6px'}}>
-            <button 
-              className={`btn ${isSimulating ? 'btn-active' : 'btn-primary'}`} 
+          <div className="viewport-hud glass" style={{ gap: '6px' }}>
+            <button
+              className={`btn ${isSimulating ? 'btn-active' : 'btn-primary'}`}
               onClick={toggleSimulation}
               disabled={isExploded || assemblyTrigger > 0}
             >
@@ -633,8 +633,8 @@ export default function Forge3D({ bom = [] }) {
               {isSimulating ? 'Pause' : 'Simulate'}
             </button>
 
-            <button 
-              className="btn glass-interactive" 
+            <button
+              className="btn glass-interactive"
               onClick={resetSimulation}
               disabled={isExploded || assemblyTrigger > 0}
             >
@@ -642,7 +642,7 @@ export default function Forge3D({ bom = [] }) {
               Reset
             </button>
 
-            <button 
+            <button
               className={`btn ${isExploded ? 'btn-active' : 'glass-interactive'}`}
               onClick={() => {
                 if (isSimulating) setIsSimulating(false);
@@ -652,7 +652,7 @@ export default function Forge3D({ bom = [] }) {
               💥 {isExploded ? 'Collapse' : 'Explode'}
             </button>
 
-            <button 
+            <button
               className="btn glass-interactive"
               onClick={() => {
                 if (isSimulating) setIsSimulating(false);
@@ -665,10 +665,10 @@ export default function Forge3D({ bom = [] }) {
           </div>
 
           {/* Canvas Render Viewport */}
-          <ThreeViewport 
-            objects={objects} 
+          <ThreeViewport
+            objects={objects}
             setObjects={setObjects}
-            selectedId={selectedId} 
+            selectedId={selectedId}
             setSelectedId={setSelectedId}
             isSimulating={isSimulating}
             setIsSimulating={setIsSimulating}
@@ -679,7 +679,7 @@ export default function Forge3D({ bom = [] }) {
 
           {/* HUD INFO PANEL */}
           <div className="viewport-info glass">
-            <div style={{fontWeight: 700, color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '6px'}}>
+            <div style={{ fontWeight: 700, color: 'var(--accent-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Activity size={12} /> Sandbox HUD
             </div>
             <div>Gravity: {physicsConfig.gravity} m/s²</div>
@@ -689,11 +689,11 @@ export default function Forge3D({ bom = [] }) {
 
           {/* AI PANEL IN HUD */}
           <div className="prompt-panel glass">
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-              <span style={{fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px'}}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                 <Sparkles size={12} className="text-primary" /> Ask AI to arrange parts & design casing:
               </span>
-              <span style={{fontSize: '0.72rem', color: 'var(--accent-primary)', cursor: 'pointer', textDecoration: 'underline'}} onClick={() => setIsSettingsOpen(true)}>
+              <span style={{ fontSize: '0.72rem', color: 'var(--accent-primary)', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setIsSettingsOpen(true)}>
                 ⚙️ Config Groq API
               </span>
             </div>
@@ -707,30 +707,30 @@ export default function Forge3D({ bom = [] }) {
                 onChange={(e) => setPrompt(e.target.value)}
                 disabled={isGenerating}
               />
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 className="btn btn-primary"
                 disabled={isGenerating || !prompt.trim()}
               >
-                {isGenerating ? <div className="spinner" style={{width: 12, height: 12}} /> : <Sparkles size={14} />}
+                {isGenerating ? <div className="spinner" style={{ width: 12, height: 12 }} /> : <Sparkles size={14} />}
                 Generate
               </button>
             </form>
 
             {genError && (
-              <div style={{color: 'var(--accent-secondary)', fontSize: '0.75rem', marginTop: '2px'}}>
+              <div style={{ color: 'var(--accent-secondary)', fontSize: '0.75rem', marginTop: '2px' }}>
                 ⚠️ {genError}
               </div>
             )}
 
-            <div className="quick-tags" style={{marginTop: '2px'}}>
+            <div className="quick-tags" style={{ marginTop: '2px' }}>
               <span className="tag" onClick={() => loadTemplate('marble_slide')}>🌀 Marble Slide</span>
               <span className="tag" onClick={() => loadTemplate('pyramid_stack')}>🧱 Pyramid Stack</span>
               <span className="tag" onClick={() => loadTemplate('newtons_cradle')}>🎯 Newton Cradle</span>
-              <button className="tag" style={{border: 'none', background: 'none'}} onClick={handleExportJSON}>📥 Export Scene</button>
-              <label className="tag" style={{cursor: 'pointer'}}>
+              <button className="tag" style={{ border: 'none', background: 'none' }} onClick={handleExportJSON}>📥 Export Scene</button>
+              <label className="tag" style={{ cursor: 'pointer' }}>
                 📤 Import Scene
-                <input type="file" accept=".json" onChange={handleImportJSON} style={{display: 'none'}} />
+                <input type="file" accept=".json" onChange={handleImportJSON} style={{ display: 'none' }} />
               </label>
             </div>
           </div>
@@ -739,7 +739,7 @@ export default function Forge3D({ bom = [] }) {
         {/* RIGHT INSPECTOR */}
         <aside className="sidebar right glass">
           <div className="sidebar-header">
-            <span style={{display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)'}}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-muted)' }}>
               <Sliders size={14} /> Inspector
             </span>
             <div className="quick-tags">
@@ -757,17 +757,17 @@ export default function Forge3D({ bom = [] }) {
                       <div className="inspector-title">📝 General</div>
                       <div className="form-group">
                         <label>Name</label>
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           className="form-control"
-                          value={selectedObject.name} 
+                          value={selectedObject.name}
                           onChange={(e) => handleUpdateObjectProperty(selectedId, 'name', e.target.value)}
                         />
                       </div>
                       <div className="form-row">
                         <div className="form-group">
                           <label>Shape</label>
-                          <select 
+                          <select
                             className="form-control"
                             value={selectedObject.type}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'type', e.target.value)}
@@ -781,7 +781,7 @@ export default function Forge3D({ bom = [] }) {
                         </div>
                         <div className="form-group">
                           <label>Material</label>
-                          <select 
+                          <select
                             className="form-control"
                             value={selectedObject.material}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'material', e.target.value)}
@@ -796,19 +796,19 @@ export default function Forge3D({ bom = [] }) {
                       </div>
                       <div className="form-group">
                         <label>Color</label>
-                        <div style={{display: 'flex', gap: '6px'}}>
-                          <input 
-                            type="color" 
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <input
+                            type="color"
                             className="form-control"
-                            style={{width: '32px', height: '30px', padding: '2px', cursor: 'pointer'}}
-                            value={selectedObject.color} 
+                            style={{ width: '32px', height: '30px', padding: '2px', cursor: 'pointer' }}
+                            value={selectedObject.color}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'color', e.target.value)}
                           />
-                          <input 
-                            type="text" 
+                          <input
+                            type="text"
                             className="form-control"
-                            style={{flex: 1}}
-                            value={selectedObject.color} 
+                            style={{ flex: 1 }}
+                            value={selectedObject.color}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'color', e.target.value)}
                           />
                         </div>
@@ -818,7 +818,7 @@ export default function Forge3D({ bom = [] }) {
                     <div className="inspector-section">
                       <div className="inspector-title">📐 Dimensions</div>
                       {selectedObject.isElectronic ? (
-                        <div style={{fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0', borderLeft: '2px solid var(--accent-primary)', paddingLeft: '6px'}}>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '4px 0', borderLeft: '2px solid var(--accent-primary)', paddingLeft: '6px' }}>
                           ℹ️ Dimensions are locked for standard electronic component.
                         </div>
                       ) : (
@@ -827,7 +827,7 @@ export default function Forge3D({ bom = [] }) {
                             <div className="form-row-three">
                               <div className="form-group">
                                 <label>Width</label>
-                                <input 
+                                <input
                                   type="number" step="0.1" className="form-control"
                                   value={selectedObject.dimensions[0] || 0}
                                   onChange={(e) => handleUpdateObjectProperty(selectedId, 'dimensions[0]', e.target.value)}
@@ -835,7 +835,7 @@ export default function Forge3D({ bom = [] }) {
                               </div>
                               <div className="form-group">
                                 <label>Height</label>
-                                <input 
+                                <input
                                   type="number" step="0.1" className="form-control"
                                   value={selectedObject.dimensions[1] || 0}
                                   onChange={(e) => handleUpdateObjectProperty(selectedId, 'dimensions[1]', e.target.value)}
@@ -843,7 +843,7 @@ export default function Forge3D({ bom = [] }) {
                               </div>
                               <div className="form-group">
                                 <label>Depth</label>
-                                <input 
+                                <input
                                   type="number" step="0.1" className="form-control"
                                   value={selectedObject.dimensions[2] || 0}
                                   onChange={(e) => handleUpdateObjectProperty(selectedId, 'dimensions[2]', e.target.value)}
@@ -854,10 +854,10 @@ export default function Forge3D({ bom = [] }) {
                           {selectedObject.type === 'sphere' && (
                             <div className="form-group">
                               <label>Radius</label>
-                              <input 
+                              <input
                                 type="number" step="0.1" className="form-control"
                                 value={selectedObject.dimensions[0] || 0}
-                                  onChange={(e) => handleUpdateObjectProperty(selectedId, 'dimensions[0]', e.target.value)}
+                                onChange={(e) => handleUpdateObjectProperty(selectedId, 'dimensions[0]', e.target.value)}
                               />
                             </div>
                           )}
@@ -865,7 +865,7 @@ export default function Forge3D({ bom = [] }) {
                             <div className="form-row">
                               <div className="form-group">
                                 <label>Radius</label>
-                                <input 
+                                <input
                                   type="number" step="0.1" className="form-control"
                                   value={selectedObject.dimensions[0] || 0}
                                   onChange={(e) => handleUpdateObjectProperty(selectedId, 'dimensions[0]', e.target.value)}
@@ -873,7 +873,7 @@ export default function Forge3D({ bom = [] }) {
                               </div>
                               <div className="form-group">
                                 <label>{selectedObject.type === 'torus' ? 'Tube Rad' : 'Height'}</label>
-                                <input 
+                                <input
                                   type="number" step="0.1" className="form-control"
                                   value={selectedObject.dimensions[1] || 0}
                                   onChange={(e) => handleUpdateObjectProperty(selectedId, 'dimensions[1]', e.target.value)}
@@ -890,17 +890,17 @@ export default function Forge3D({ bom = [] }) {
                       <div className="form-group">
                         <label>Position (X, Y, Z)</label>
                         <div className="form-row-three">
-                          <input 
+                          <input
                             type="number" step="0.1" className="form-control"
                             value={selectedObject.position[0].toFixed(2)}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'position[0]', e.target.value)}
                           />
-                          <input 
+                          <input
                             type="number" step="0.1" className="form-control"
                             value={selectedObject.position[1].toFixed(2)}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'position[1]', e.target.value)}
                           />
-                          <input 
+                          <input
                             type="number" step="0.1" className="form-control"
                             value={selectedObject.position[2].toFixed(2)}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'position[2]', e.target.value)}
@@ -910,17 +910,17 @@ export default function Forge3D({ bom = [] }) {
                       <div className="form-group">
                         <label>Rotation (X, Y, Z deg)</label>
                         <div className="form-row-three">
-                          <input 
+                          <input
                             type="number" step="1" className="form-control"
                             value={Math.round(selectedObject.rotation[0])}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'rotation[0]', e.target.value)}
                           />
-                          <input 
+                          <input
                             type="number" step="1" className="form-control"
                             value={Math.round(selectedObject.rotation[1])}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'rotation[1]', e.target.value)}
                           />
-                          <input 
+                          <input
                             type="number" step="1" className="form-control"
                             value={Math.round(selectedObject.rotation[2])}
                             onChange={(e) => handleUpdateObjectProperty(selectedId, 'rotation[2]', e.target.value)}
@@ -931,13 +931,13 @@ export default function Forge3D({ bom = [] }) {
 
                     <div className="inspector-section">
                       <div className="inspector-title">⚡ Physics</div>
-                      <div className="form-group" style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                        <label style={{cursor: 'pointer'}} htmlFor="static-check-component">Anchor (Static)</label>
-                        <input 
+                      <div className="form-group" style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <label style={{ cursor: 'pointer' }} htmlFor="static-check-component">Anchor (Static)</label>
+                        <input
                           id="static-check-component"
-                          type="checkbox" 
-                          style={{width: '16px', height: '16px'}}
-                          checked={!!selectedObject.physics?.isStatic} 
+                          type="checkbox"
+                          style={{ width: '16px', height: '16px' }}
+                          checked={!!selectedObject.physics?.isStatic}
                           onChange={(e) => handleUpdateObjectProperty(selectedId, 'physics.isStatic', e.target.checked)}
                         />
                       </div>
@@ -946,7 +946,7 @@ export default function Forge3D({ bom = [] }) {
                           <div className="form-row">
                             <div className="form-group">
                               <label>Mass (kg)</label>
-                              <input 
+                              <input
                                 type="number" step="0.1" min="0.1" className="form-control"
                                 value={selectedObject.physics?.mass ?? 1.0}
                                 onChange={(e) => handleUpdateObjectProperty(selectedId, 'physics.mass', parseFloat(e.target.value) || 1.0)}
@@ -954,9 +954,9 @@ export default function Forge3D({ bom = [] }) {
                             </div>
                             <div className="form-group">
                               <label>Bounciness</label>
-                              <input 
+                              <input
                                 type="range" min="0" max="1" step="0.05" className="form-control"
-                                style={{padding: '0'}}
+                                style={{ padding: '0' }}
                                 value={selectedObject.physics?.restitution ?? 0.6}
                                 onChange={(e) => handleUpdateObjectProperty(selectedId, 'physics.restitution', parseFloat(e.target.value) || 0)}
                               />
@@ -967,8 +967,8 @@ export default function Forge3D({ bom = [] }) {
                     </div>
                   </>
                 ) : (
-                  <div style={{textAlign: 'center', color: 'var(--text-muted)', padding: '30px 10px', fontSize: '0.8rem'}}>
-                    <Compass size={24} style={{margin: '0 auto 8px', opacity: 0.5}} />
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px 10px', fontSize: '0.8rem' }}>
+                    <Compass size={24} style={{ margin: '0 auto 8px', opacity: 0.5 }} />
                     Select a part from the list or view to edit its properties.
                   </div>
                 )}
@@ -976,32 +976,32 @@ export default function Forge3D({ bom = [] }) {
             )}
 
             {activeTab === 'physics' && (
-              <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div className="inspector-section">
                   <div className="inspector-title"><Globe size={12} /> Environmental Force</div>
                   <div className="form-group">
                     <label>Gravity</label>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                      <input 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
                         type="range" min="-25" max="0" step="0.1" className="form-control"
-                        style={{flex: 1, padding: 0}}
+                        style={{ flex: 1, padding: 0 }}
                         value={physicsConfig.gravity}
-                        onChange={(e) => setPhysicsConfig({...physicsConfig, gravity: parseFloat(e.target.value)})}
+                        onChange={(e) => setPhysicsConfig({ ...physicsConfig, gravity: parseFloat(e.target.value) })}
                       />
-                      <span style={{fontFamily: 'var(--font-mono)', fontSize: '0.8rem', width: '40px'}}>{physicsConfig.gravity}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', width: '40px' }}>{physicsConfig.gravity}</span>
                     </div>
                   </div>
 
                   <div className="form-group">
                     <label>Air Resistance</label>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                      <input 
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
                         type="range" min="0" max="0.5" step="0.01" className="form-control"
-                        style={{flex: 1, padding: 0}}
+                        style={{ flex: 1, padding: 0 }}
                         value={physicsConfig.airResistance}
-                        onChange={(e) => setPhysicsConfig({...physicsConfig, airResistance: parseFloat(e.target.value)})}
+                        onChange={(e) => setPhysicsConfig({ ...physicsConfig, airResistance: parseFloat(e.target.value) })}
                       />
-                      <span style={{fontFamily: 'var(--font-mono)', fontSize: '0.8rem', width: '40px'}}>{physicsConfig.airResistance}</span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', width: '40px' }}>{physicsConfig.airResistance}</span>
                     </div>
                   </div>
                 </div>
@@ -1011,29 +1011,29 @@ export default function Forge3D({ bom = [] }) {
                   <div className="form-group">
                     <label>Wind Velocity (X, Y, Z)</label>
                     <div className="form-row-three">
-                      <input 
+                      <input
                         type="number" step="0.5" className="form-control"
                         value={physicsConfig.wind?.[0] ?? 0}
                         onChange={(e) => {
-                          const newWind = [...(physicsConfig.wind || [0,0,0])];
+                          const newWind = [...(physicsConfig.wind || [0, 0, 0])];
                           newWind[0] = parseFloat(e.target.value) || 0;
                           setPhysicsConfig({ ...physicsConfig, wind: newWind });
                         }}
                       />
-                      <input 
+                      <input
                         type="number" step="0.5" className="form-control"
                         value={physicsConfig.wind?.[1] ?? 0}
                         onChange={(e) => {
-                          const newWind = [...(physicsConfig.wind || [0,0,0])];
+                          const newWind = [...(physicsConfig.wind || [0, 0, 0])];
                           newWind[1] = parseFloat(e.target.value) || 0;
                           setPhysicsConfig({ ...physicsConfig, wind: newWind });
                         }}
                       />
-                      <input 
+                      <input
                         type="number" step="0.5" className="form-control"
                         value={physicsConfig.wind?.[2] ?? 0}
                         onChange={(e) => {
-                          const newWind = [...(physicsConfig.wind || [0,0,0])];
+                          const newWind = [...(physicsConfig.wind || [0, 0, 0])];
                           newWind[2] = parseFloat(e.target.value) || 0;
                           setPhysicsConfig({ ...physicsConfig, wind: newWind });
                         }}
@@ -1052,17 +1052,17 @@ export default function Forge3D({ bom = [] }) {
         <div className="modal-overlay">
           <div className="modal-content glass">
             <div className="modal-header">
-              <span style={{display: 'flex', alignItems: 'center', gap: '6px'}}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Key size={14} className="text-primary" /> Groq AI Settings
               </span>
-              <button className="btn" style={{padding: '2px 6px'}} onClick={() => setIsSettingsOpen(false)}>×</button>
+              <button className="btn" style={{ padding: '2px 6px' }} onClick={() => setIsSettingsOpen(false)}>×</button>
             </div>
-            
+
             <div className="modal-body">
               <div className="form-group">
                 <label>Groq API Key</label>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   className="form-control"
                   placeholder="gsk_..."
                   value={groqApiKey}
@@ -1072,21 +1072,21 @@ export default function Forge3D({ bom = [] }) {
 
               <div className="form-group">
                 <label>Preferred LLM Model</label>
-                <select 
+                <select
                   className="form-control"
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                 >
                   <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Fast & Smart)</option>
                   <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Ultra-fast)</option>
-                  <option value="qwen/qwen3-32b">Mixtral 8x7B (Solid reasoning)</option>
+                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Mixtral 8x7B (Solid reasoning)</option>
                 </select>
               </div>
             </div>
 
-            <div style={{display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px'}}>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '8px' }}>
               <button className="btn" onClick={() => setIsSettingsOpen(false)}>Cancel</button>
-              <button 
+              <button
                 className="btn btn-primary"
                 onClick={() => handleSaveSettings(groqApiKey, selectedModel)}
               >

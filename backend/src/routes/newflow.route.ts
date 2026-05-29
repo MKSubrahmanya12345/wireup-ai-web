@@ -11,7 +11,9 @@ import {
   restartSession,
   getSessionByProject,
   // ??$$$ newer code
-  exportLocalSession
+  exportLocalSession,
+  getVirtualProjectData,
+  resumeSession
 } from "../controllers/newflow.controller";
 
 const router = Router();
@@ -23,6 +25,8 @@ router.post("/new-flow/formulate", protectRoute, formulateSession);
 router.post("/new-flow/restart", protectRoute, restartSession);
 // ??$$$ newer code
 router.post("/new-flow/export-local", protectRoute, exportLocalSession);
+router.post("/new-flow/resume", protectRoute, resumeSession);
+router.get("/new-flow/virtual-project/:sessionId", protectRoute, getVirtualProjectData);
 router.get("/new-flow/session/:sessionId", protectRoute, getSession);
 router.get("/new-flow/project-session/:projectId", protectRoute, getSessionByProject);
 

@@ -50,9 +50,9 @@ export const CodeEditor: React.FC = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-[#1e1e1e] border-l border-[#1f1f45]">
+    <div className="flex-1 flex flex-col h-full bg-[var(--surface)] border-l border-[var(--border)]">
       {/* File Editor Tabs */}
-      <div className="h-9 bg-[#181818] border-b border-[#252526] flex items-center justify-between px-3 select-none">
+      <div className="h-9 bg-[var(--surface-alt)] border-b border-[var(--border)] flex items-center justify-between px-3 select-none">
         <div className="flex h-full space-x-0.5 overflow-x-auto">
           {tabs.map((tab) => {
             const isSelected = selectedFile === tab.name;
@@ -64,11 +64,11 @@ export const CodeEditor: React.FC = () => {
                 onClick={() => setSelectedFile(tab.name)}
                 className={`h-full px-4 flex items-center space-x-2 border-r border-[#252526] text-xs font-mono transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-[#1e1e1e] text-[#569cd6] border-t-2 border-t-[#00f0ff] font-semibold'
-                    : 'bg-[#141414] text-[#858585] hover:bg-[#1a1a1a] hover:text-[#cccccc]'
+                    ? 'bg-white text-blue-700 border-t-2 border-t-blue-600 font-semibold'
+                    : 'bg-[var(--surface-alt)] text-[var(--text-muted)] hover:bg-white hover:text-[var(--heading)]'
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-[#00f0ff]' : 'text-[#858585]'}`} />
+                <Icon className={`w-3.5 h-3.5 ${isSelected ? 'text-blue-600' : 'text-[var(--text-muted)]'}`} />
                 <span>{tab.name}</span>
               </button>
             );
@@ -76,7 +76,7 @@ export const CodeEditor: React.FC = () => {
         </div>
         
         {/* Editor Info Badge */}
-        <div className="flex items-center space-x-1.5 text-[10px] font-mono text-[#858585] bg-[#252526] px-2 py-0.5 rounded">
+        <div className="flex items-center space-x-1.5 text-[10px] font-mono text-[var(--text-muted)] bg-white px-2 py-0.5 rounded border border-[var(--border)]">
           <Lock className="w-3 h-3" />
           <span>READ-ONLY MODE</span>
         </div>

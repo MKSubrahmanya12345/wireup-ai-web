@@ -98,37 +98,78 @@ export const RightSidebar: React.FC = () => {
   const componentInfo = project.bom.find(c => c.key === selectedComponent);
 
   return (
-    <aside className="w-80 border-l border-[#1f1f45] bg-[#070716] flex flex-col select-none">
+    <aside className="w-80 border-l border-[var(--border)] bg-[var(--surface)] flex flex-col select-none">
       {/* Project Metadata Section */}
-      <div className="p-4 border-b border-[#1f1f45] space-y-2.5">
-        <div className="flex items-center space-x-1.5 text-slate-400 text-xs uppercase tracking-wider font-mono">
-          <Info className="w-4 h-4 text-cyan-400" />
+      <div className="p-4 border-b border-[var(--border)] space-y-2.5">
+        <div className="flex items-center space-x-1.5 text-[var(--text-muted)] text-xs uppercase tracking-wider font-mono">
+          <Info className="w-4 h-4 text-[var(--primary)]" />
           <span>Project Metadata</span>
         </div>
         
-        <div className="bg-[#0f0f29] border border-[#1f1f45] p-3 rounded-lg space-y-1.5">
-          <h3 className="text-xs font-mono font-semibold text-white">{project.name}</h3>
-          <p className="text-[10px] text-slate-400 font-mono leading-relaxed">{project.description}</p>
-          <div className="pt-2 border-t border-[#1f1f45]/50 flex justify-between text-[9px] text-slate-500 font-mono">
+        <div className="bg-[var(--surface-alt)] border border-[var(--border)] p-3 rounded-lg space-y-1.5">
+          <h3 className="text-xs font-mono font-semibold text-[var(--heading)]">{project.name}</h3>
+          <p className="text-[10px] text-[var(--text-muted)] font-mono leading-relaxed">{project.description}</p>
+          <div className="pt-2 border-t border-[var(--border)] flex justify-between text-[9px] text-[var(--text-muted)] font-mono">
             <span>Author: {project.author}</span>
             <span>Date: {project.createdAt}</span>
           </div>
         </div>
+
+        {(project.phases?.length || project.additionalTools?.length || project.milestones?.length) ? (
+          <div className="bg-[var(--surface-alt)] border border-[var(--border)] p-3 rounded-lg space-y-2">
+            {project.phases?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Build Phases</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {project.phases.map((phase, index) => (
+                    <span key={`${phase}-${index}`} className="rounded bg-blue-100 px-2 py-0.5 text-[9px] font-semibold text-blue-700">
+                      {phase}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {project.additionalTools?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Additional Tools</p>
+                <ul className="mt-1 space-y-0.5">
+                  {project.additionalTools.slice(0, 6).map((tool, index) => (
+                    <li key={`${tool}-${index}`} className="text-[10px] text-[var(--text)]">• {tool}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+
+            {project.milestones?.length ? (
+              <div>
+                <p className="text-[10px] font-semibold text-[var(--text-muted)] uppercase tracking-wider">Milestones</p>
+                <div className="mt-1 max-h-28 overflow-y-auto space-y-1 pr-1">
+                  {project.milestones.slice(0, 8).map((milestone, index) => (
+                    <div key={`${milestone.id || milestone.title}-${index}`} className="rounded border border-[var(--border)] px-2 py-1 text-[10px] text-[var(--text)] bg-white/60">
+                      <span className="font-semibold">{milestone.order || index + 1}.</span> {milestone.title || 'Untitled milestone'}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {/* Interactive Controls & Speed */}
-      <div className="p-4 border-b border-[#1f1f45] space-y-3">
-        <div className="flex items-center space-x-1.5 text-slate-400 text-xs uppercase tracking-wider font-mono">
-          <Settings className="w-4 h-4 text-cyan-400" />
+      <div className="p-4 border-b border-[var(--border)] space-y-3">
+        <div className="flex items-center space-x-1.5 text-[var(--text-muted)] text-xs uppercase tracking-wider font-mono">
+          <Settings className="w-4 h-4 text-[var(--primary)]" />
           <span>Hardware Controls</span>
         </div>
 
         <div className="space-y-3.5">
           {/* Simulation speed slider */}
-          <div className="space-y-1.5 bg-[#0f0f29] border border-[#1f1f45] p-3 rounded-lg">
-            <div className="flex justify-between text-[10px] text-slate-400 font-mono">
+          <div className="space-y-1.5 bg-[var(--surface-alt)] border border-[var(--border)] p-3 rounded-lg">
+            <div className="flex justify-between text-[10px] text-[var(--text-muted)] font-mono">
               <span>Clock Speed:</span>
-              <span className="text-cyan-400 font-semibold">{simSpeed}x (Realtime)</span>
+              <span className="text-blue-600 font-semibold">{simSpeed}x (Realtime)</span>
             </div>
             <input 
               type="range" 
@@ -141,8 +182,8 @@ export const RightSidebar: React.FC = () => {
           </div>
 
           {/* Interactive virtual push button in sidebar */}
-          <div className="bg-[#0f0f29] border border-[#1f1f45] p-3 rounded-lg space-y-2.5">
-            <div className="text-[10px] text-slate-400 font-mono">
+          <div className="bg-[var(--surface-alt)] border border-[var(--border)] p-3 rounded-lg space-y-2.5">
+            <div className="text-[10px] text-[var(--text-muted)] font-mono">
               Sidebar Breadboard Push Button Input Switch:
             </div>
             <button
@@ -152,7 +193,7 @@ export const RightSidebar: React.FC = () => {
               className={`w-full py-2.5 rounded font-mono text-xs font-semibold select-none cursor-pointer transition-all border ${
                 buttonPressed 
                   ? 'bg-red-500 text-white border-red-400 shadow-[0_0_12px_rgba(239,68,68,0.4)]'
-                  : 'bg-[#1b1b3a] text-red-400 border-red-900/60 hover:bg-[#252550]'
+                  : 'bg-white text-red-500 border-red-200 hover:bg-red-50'
               }`}
             >
               {buttonPressed ? 'BUTTON DEPRESSED' : 'HOLD TO PRESS BUTTON'}
@@ -162,26 +203,26 @@ export const RightSidebar: React.FC = () => {
       </div>
 
       {/* Pin Inspector */}
-      <div className="p-4 border-b border-[#1f1f45] flex-1 overflow-y-auto space-y-2.5">
-        <div className="flex items-center space-x-1.5 text-slate-400 text-xs uppercase tracking-wider font-mono">
-          <Search className="w-4 h-4 text-cyan-400" />
+      <div className="p-4 border-b border-[var(--border)] flex-1 overflow-y-auto space-y-2.5">
+        <div className="flex items-center space-x-1.5 text-[var(--text-muted)] text-xs uppercase tracking-wider font-mono">
+          <Search className="w-4 h-4 text-[var(--primary)]" />
           <span>Pin Inspector</span>
         </div>
 
         {componentInfo ? (
-          <div className="bg-[#0f0f29] border border-[#1f1f45] p-3.5 rounded-lg space-y-3 text-left">
-            <div className="flex items-center justify-between border-b border-[#1f1f45] pb-2">
-              <span className="text-xs font-mono font-bold text-cyan-300">{componentInfo.displayName}</span>
+          <div className="bg-[var(--surface-alt)] border border-[var(--border)] p-3.5 rounded-lg space-y-3 text-left">
+            <div className="flex items-center justify-between border-b border-[var(--border)] pb-2">
+              <span className="text-xs font-mono font-bold text-blue-700">{componentInfo.displayName}</span>
               <button 
                 onClick={() => setSelectedComponent(null)}
-                className="text-[9px] text-slate-500 hover:text-slate-300 font-mono"
+                className="text-[9px] text-[var(--text-muted)] hover:text-[var(--heading)] font-mono"
               >
                 Clear
               </button>
             </div>
 
             <div className="space-y-2">
-              <div className="text-[10px] font-mono text-slate-400">
+              <div className="text-[10px] font-mono text-[var(--text-muted)]">
                 Live Voltages and Terminal States:
               </div>
               <div className="space-y-1.5">
@@ -198,13 +239,13 @@ export const RightSidebar: React.FC = () => {
                   }
 
                   return (
-                    <div key={pin.id} className="flex justify-between items-center bg-black/30 p-2 rounded border border-[#1f1f45]/50 text-[10.5px] font-mono">
+                    <div key={pin.id} className="flex justify-between items-center bg-white/70 p-2 rounded border border-[var(--border)] text-[10.5px] font-mono">
                       <div className="flex items-center space-x-1.5">
-                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span>
-                        <span className="text-white font-bold">{pin.id}</span>
-                        <span className="text-[9px] text-slate-500 uppercase">({pin.type})</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                        <span className="text-[var(--heading)] font-bold">{pin.id}</span>
+                        <span className="text-[9px] text-[var(--text-muted)] uppercase">({pin.type})</span>
                       </div>
-                      <span className={active ? 'text-cyan-400' : 'text-slate-400'}>
+                      <span className={active ? 'text-blue-600' : 'text-[var(--text-muted)]'}>
                         {vLevel.toFixed(2)} V
                       </span>
                     </div>
@@ -214,8 +255,8 @@ export const RightSidebar: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="bg-[#0f0f29]/30 border border-[#1f1f45]/60 p-4 rounded-lg text-center text-slate-500 text-[10.5px] font-mono py-8">
-            <Compass className="w-6 h-6 text-slate-700 mx-auto mb-2 animate-pulse" />
+          <div className="bg-[var(--surface-alt)] border border-[var(--border)] p-4 rounded-lg text-center text-[var(--text-muted)] text-[10.5px] font-mono py-8">
+            <Compass className="w-6 h-6 text-[var(--text-muted)] mx-auto mb-2 animate-pulse" />
             <span>Select a 3D component or list item to inspect pin voltages.</span>
           </div>
         )}

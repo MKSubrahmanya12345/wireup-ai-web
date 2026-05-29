@@ -1,6 +1,12 @@
 // ??$$$ NEW FLOW — Pin Resolver Service
 // Resolves SnapEDA pin metadata for BOM items after Agent 2 completes
 // Runs in background — never blocks BOM response to frontend
+// ??$$$ old code
+// import Part from "../models/part.model";
+// import { searchSnapEDA, getPinMetadata, SnapEdaPin } from "./snapeda.service";
+// import { cacheModelLocally } from "./modelConversion.service";
+// ??$$$ newer code
+import mongoose from "mongoose";
 import Part from "../models/part.model";
 import { searchSnapEDA, getPinMetadata, SnapEdaPin } from "./snapeda.service";
 import { cacheModelLocally } from "./modelConversion.service";
@@ -92,9 +98,64 @@ export async function resolvePins(
     // Step 1: Find Part in MongoDB
     let part = await Part.findOne({ mpn }).lean() as any;
 
+    // ??$$$ old code
+    /*
     // Step 2: Return cached if fresh
     if (part && part.pins && part.pins.length > 0 && isPinCacheValid(part.pinsCachedAt)) {
       console.log(`[PinResolver] Cache hit for "${mpn}" (${part.pins.length} pins)`);
+
+      if (io) {
+        io.to(projectId).emit("pins:ready", {
+          projectId,
+          bomKey,
+          pins: part.pins
+        });
+      }
+      return part.pins;
+    }
+    */
+    // ??$$$ newer code
+    // Step 2: Return cached if fresh, and sync models
+    if (part && part.pins && part.pins.length > 0 && isPinCacheValid(part.pinsCachedAt)) {
+      console.log(`[PinResolver] Cache hit for "${mpn}" (${part.pins.length} pins)`);
+
+      if (projectId) {
+        try {
+          const Project = mongoose.model("Project");
+          const mappedPins = part.pins.map((p: any) => ({
+            id: p.id || p.name,
+            name: p.name || p.id,
+            x_mm: p.x_mm || 0,
+            y_mm: p.y_mm || 0,
+            z_mm: p.z_mm || 0,
+            type: p.type || "digital"
+          }));
+          
+          await Project.updateOne(
+            { _id: projectId, "bom.key": bomKey },
+            {
+              $set: {
+                "bom.$.pins": mappedPins,
+                "bom.$.glbUrl": part.glbUrl || ""
+              }
+            }
+          );
+          
+          const NewFlowSession = mongoose.model("NewFlowSession");
+          await NewFlowSession.updateOne(
+            { projectId: projectId, "bom.key": bomKey },
+            {
+              $set: {
+                "bom.$.pins": mappedPins,
+                "bom.$.glbUrl": part.glbUrl || ""
+              }
+            }
+          );
+          console.log(`[PinResolver] Synced cached pins/glbUrl to Project and NewFlowSession for "${bomKey}"`);
+        } catch (err: any) {
+          console.error(`[PinResolver] Failed to sync cached pins/glbUrl:`, err.message);
+        }
+      }
 
       if (io) {
         io.to(projectId).emit("pins:ready", {
@@ -121,6 +182,8 @@ export async function resolvePins(
       pins = getFallbackPins(mpn);
     }
 
+    // ??$$$ old code
+    /*
     // Also download & cache GLB model locally if not already cached
     let glbUrl = part?.glbUrl || "";
     if (!glbUrl) {
@@ -143,7 +206,26 @@ export async function resolvePins(
         glbUrl = sourceUrl;
       }
     }
+    */
+    // ??$$$ newer code — map directly to local/standard models to bypass 404 remote fetch failures
+    let glbUrl = part?.glbUrl || "";
+    if (!glbUrl) {
+      const lowercaseMpn = mpn.toLowerCase();
+      if (lowercaseMpn.includes("arduino-uno") || lowercaseMpn.includes("uno")) {
+        glbUrl = "/models/arduino.glb";
+      } else if (lowercaseMpn.includes("led")) {
+        glbUrl = "/models/led.glb";
+      } else if (lowercaseMpn.includes("resistor")) {
+        glbUrl = "/models/resistor.glb";
+      } else if (lowercaseMpn.includes("button") || lowercaseMpn.includes("switch") || lowercaseMpn.includes("tactile")) {
+        glbUrl = "/models/button.glb";
+      } else {
+        glbUrl = "/models/generic.glb";
+      }
+    }
 
+    // ??$$$ old code
+    /*
     // Step 5: Save to MongoDB Part document
     await Part.findOneAndUpdate(
       { mpn },
@@ -157,6 +239,59 @@ export async function resolvePins(
       },
       { upsert: false } // only update existing parts, never create phantom parts
     );
+    */
+    // ??$$$ newer code — update Part document, and also Project and Session models
+    await Part.findOneAndUpdate(
+      { mpn },
+      {
+        $set: {
+          snapedaId,
+          pins,
+          glbUrl,
+          pinsCachedAt: new Date()
+        }
+      },
+      { upsert: false }
+    );
+
+    if (projectId) {
+      try {
+        const Project = mongoose.model("Project");
+        const mappedPins = pins.map((p: any) => ({
+          id: p.id || p.name,
+          name: p.name || p.id,
+          x_mm: p.x_mm || 0,
+          y_mm: p.y_mm || 0,
+          z_mm: p.z_mm || 0,
+          type: p.type || "digital"
+        }));
+        
+        await Project.updateOne(
+          { _id: projectId, "bom.key": bomKey },
+          {
+            $set: {
+              "bom.$.pins": mappedPins,
+              "bom.$.glbUrl": glbUrl
+            }
+          }
+        );
+        console.log(`[PinResolver] Updated Project ${projectId} BOM item "${bomKey}" with ${pins.length} pins.`);
+
+        const NewFlowSession = mongoose.model("NewFlowSession");
+        await NewFlowSession.updateOne(
+          { projectId: projectId, "bom.key": bomKey },
+          {
+            $set: {
+              "bom.$.pins": mappedPins,
+              "bom.$.glbUrl": glbUrl
+            }
+          }
+        );
+        console.log(`[PinResolver] Updated NewFlowSession matching project ${projectId} BOM item "${bomKey}" with ${pins.length} pins.`);
+      } catch (err: any) {
+        console.error(`[PinResolver] Failed to update Project/Session pins:`, err.message);
+      }
+    }
 
     console.log(`[PinResolver] Resolved ${pins.length} pins for "${mpn}" via SnapEDA/Fallback`);
 

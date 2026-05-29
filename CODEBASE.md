@@ -748,7 +748,7 @@ The workflow progresses through a strict 6-stage pipeline orchestrated by `pipel
 
 ### Technical Debt & Known Gaps
 *   **`@ts-nocheck` Headers**: Core controllers and services (`ideation.controller.ts`, `build.controller.ts`, `ai.services.ts`, `pipeline.service.ts`) contain `@ts-nocheck` headers. These need to be migrated to strict TypeScript types.
-*   **Hardcoded Models**: Model identifiers (e.g. `qwen/qwen3-32b`) are hardcoded in `ai.services.ts` and `index.ts`. These should be moved to environment configuration.
+*   **Hardcoded Models**: Model identifiers (e.g. `meta-llama/llama-4-scout-17b-16e-instruct`) are hardcoded in `ai.services.ts` and `index.ts`. These should be moved to environment configuration.
 *   **Observability**: Error logging is currently managed using a simple file-append setup (`components_error.log`). This should be replaced with a structured logging or observability service.
 
 ---

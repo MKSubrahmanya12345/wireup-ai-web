@@ -3,6 +3,24 @@ import { create } from 'zustand';
 import type { ProjectData } from '../types/project';
 import { projectData } from '../data/project';
 
+const normalizeProjectData = (data: ProjectData): ProjectData => {
+  const editableJson = {
+    simulationSpeed: 1,
+    ledInitialState: false,
+    buttonInitialState: false,
+    ...(data.editableJson || {})
+  };
+
+  return {
+    ...data,
+    bom: Array.isArray(data.bom) ? data.bom : [],
+    wiring: Array.isArray(data.wiring) ? data.wiring : [],
+    editableJson,
+    milestones: Array.isArray(data.milestones) ? data.milestones : [],
+    additionalTools: Array.isArray(data.additionalTools) ? data.additionalTools : []
+  };
+};
+
 export interface LogEntry {
   id: string;
   timestamp: string;
@@ -58,11 +76,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   setTab: (tab) => set({ currentTab: tab }),
 
-  loadProject: (data) => set({ 
-    project: data, 
-    ledState: data.editableJson.ledInitialState,
-    buttonPressed: data.editableJson.buttonInitialState
-  }),
+  loadProject: (data) => {
+    const normalized = normalizeProjectData(data);
+    set({ 
+      project: normalized, 
+      ledState: normalized.editableJson.ledInitialState,
+      buttonPressed: normalized.editableJson.buttonInitialState
+    });
+  },
 
   setSimulationRunning: (running) => {
     set({ simulationRunning: running });
@@ -122,10 +143,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
   resetSimulation: () => {
     const currentProj = get().project;
+    const normalized = normalizeProjectData(currentProj);
     set({
       simulationRunning: false,
-      ledState: currentProj.editableJson.ledInitialState,
-      buttonPressed: currentProj.editableJson.buttonInitialState,
+      ledState: normalized.editableJson.ledInitialState,
+      buttonPressed: normalized.editableJson.buttonInitialState,
       voltage: 0.0,
       cpuUsage: 0,
     });

@@ -215,7 +215,7 @@ export const callGeminiIdeation = async (
   const modelsToTry = [
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
-    "qwen/qwen3-32b"
+    "meta-llama/llama-4-scout-17b-16e-instruct"
   ];
 
   let lastError: any = null;
@@ -256,9 +256,9 @@ export const callGeminiIdeation = async (
         content: m.content || ""
       }))
     ];
-    console.log(`[Groq] Call ideation using qwen/qwen3-32b`);
+    console.log(`[Groq] Call ideation using meta-llama/llama-4-scout-17b-16e-instruct`);
     const completion = await groq.chat.completions.create({
-      model: "qwen/qwen3-32b",
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages: groqMessages,
       temperature: 0.7
     });
@@ -357,9 +357,9 @@ export const callGeminiValidator = async (
   const promptText = brief || "No brief provided.";
   try {
     const groq = await rotationService.getClient();
-    console.log(`[Groq] Call validator using qwen/qwen3-32b`);
+    console.log(`[Groq] Call validator using meta-llama/llama-4-scout-17b-16e-instruct`);
     const completion = await groq.chat.completions.create({
-      model: "qwen/qwen3-32b",
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages: [
         { role: "system", content: VALIDATOR_SYSTEM_PROMPT },
         { role: "user", content: promptText }
@@ -549,9 +549,9 @@ export const callAI = async (systemInstruction: string, promptText: string): Pro
 export const callAI = async (systemInstruction: string, promptText: string): Promise<string> => {
   try {
     const groq = await rotationService.getClient();
-    console.log(`[Groq] callAI using qwen/qwen3-32b`);
+    console.log(`[Groq] callAI using meta-llama/llama-4-scout-17b-16e-instruct`);
     const completion = await groq.chat.completions.create({
-      model: "qwen/qwen3-32b",
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages: [
         { role: "system", content: systemInstruction },
         { role: "user", content: promptText }
@@ -693,9 +693,9 @@ ${milestone.code}
         content: m.content || ""
       }))
     ];
-    console.log(`[Groq] Debug Coach using qwen/qwen3-32b`);
+    console.log(`[Groq] Debug Coach using meta-llama/llama-4-scout-17b-16e-instruct`);
     const completion = await groq.chat.completions.create({
-      model: "qwen/qwen3-32b",
+      model: "meta-llama/llama-4-scout-17b-16e-instruct",
       messages: groqMessages as any,
       temperature: 0.5
     });

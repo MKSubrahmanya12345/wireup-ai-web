@@ -5,6 +5,8 @@ import Part from "../models/part.model";
 import { getRegistry } from "./registry.services";
 import { searchLibrary } from "./library.service";
 import rotationService from "./keyRotation.service";
+// ??$$$ newer code
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 // ??$$$ NEW FLOW
 function parseIfString(val: any): any {
@@ -793,7 +795,19 @@ async function executeGenerateMilestone(args: any, sessionId?: string) {
   }
 
   try {
-    const groq = await rotationService.getClient();
+    // ??$$$ newer code — model aware selection
+    let modelName = "llama-3.3-70b-versatile";
+    if (sessionId) {
+      try {
+        const NewFlowSession = require("../models/newFlowSession.model").default;
+        const session = await NewFlowSession.findById(sessionId);
+        if (session && session.selectedModel) {
+          modelName = session.selectedModel;
+        }
+      } catch (e) {
+        console.error("[Agent2] Failed to read session model for milestone:", e);
+      }
+    }
 
     const wiringText = JSON.stringify(wiringSubset, null, 2);
     const prevText = previousMilestones ? previousMilestones.join(", ") : "None";
@@ -836,16 +850,51 @@ async function executeGenerateMilestone(args: any, sessionId?: string) {
     ]
   }`;
 
-    const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ],
-      temperature: 0.2
-    });
+    let raw = "";
 
-    const raw = completion.choices[0]?.message?.content?.trim() || "";
+    const useGemini = modelName.toLowerCase().includes("gemini");
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+
+    if (useGemini && geminiApiKey) {
+      console.log("[Agent2Tools] Generating milestone using Gemini directly...");
+      const genAI = new GoogleGenerativeAI(geminiApiKey);
+      const geminiModel = genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        systemInstruction: systemPrompt,
+        generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
+      });
+      const result = await geminiModel.generateContent(userPrompt);
+      raw = result.response.text().trim();
+    } else {
+      try {
+        console.log(`[Agent2Tools] Generating milestone using Groq (${modelName})...`);
+        const groq = await rotationService.getClient();
+        const completion = await groq.chat.completions.create({
+          model: modelName.toLowerCase().includes("qwen") ? "qwen/qwen3-32b" : "llama-3.3-70b-versatile",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt }
+          ],
+          temperature: 0.2
+        });
+        raw = completion.choices[0]?.message?.content?.trim() || "";
+      } catch (err: any) {
+        console.warn("[Agent2Tools] Groq milestone generation failed. Trying Gemini fallback...", err.message || err);
+        if (geminiApiKey) {
+          const genAI = new GoogleGenerativeAI(geminiApiKey);
+          const geminiModel = genAI.getGenerativeModel({
+            model: "gemini-2.5-flash",
+            systemInstruction: systemPrompt,
+            generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
+          });
+          const result = await geminiModel.generateContent(userPrompt);
+          raw = result.response.text().trim();
+        } else {
+          throw err;
+        }
+      }
+    }
+
     const clean = raw.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
 

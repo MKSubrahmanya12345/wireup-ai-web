@@ -3,9 +3,24 @@ import express from 'express';
 import cors from 'cors';
 
 const app = express();
-const PORT = 5000;
+const PORT = 5001;
 
-app.use(cors());
+const allowedOrigins = new Set([
+  'http://localhost:5174',
+  'http://127.0.0.1:5174'
+]);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.has(origin)) return callback(null, true);
+    if (/^https?:\/\/localhost:\d+$/.test(origin) || /^https?:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // Mock project database store
@@ -83,9 +98,66 @@ void loop() {
 `
 };
 
-// REST API Endpoints
+// ??$$$ old code
+/*
 app.get('/api/project', (req, res) => {
   console.log('[API] GET /api/project requested - serving hardware project schema');
+  res.json(mockProject);
+});
+*/
+// ??$$$ newer code
+import fs from 'fs';
+import path from 'path';
+
+app.get('/api/project', (req, res) => {
+  const sessionId = req.query.sessionId;
+  if (sessionId) {
+    const exportDir = path.join("E:", "wireup_formulation_exports", `session_${sessionId}`);
+    if (fs.existsSync(exportDir)) {
+      try {
+        console.log(`[API] Serving dynamic session project from E: drive for session: ${sessionId}`);
+        const bom = JSON.parse(fs.readFileSync(path.join(exportDir, "bom.json"), "utf8") || "[]");
+        const wiring = JSON.parse(fs.readFileSync(path.join(exportDir, "wiring.json"), "utf8") || "[]");
+        const milestones = JSON.parse(fs.readFileSync(path.join(exportDir, "milestones.json"), "utf8") || "[]");
+        const context = JSON.parse(fs.readFileSync(path.join(exportDir, "context.json"), "utf8") || "{}");
+        const sketch = fs.readFileSync(path.join(exportDir, "sketch.ino"), "utf8") || "";
+
+        // Build normalized projectData structure as expected by the frontend
+        const projectPayload = {
+          id: sessionId,
+          name: context.corePurpose || "Wireup Project",
+          description: "AI-formulated project loaded from E: drive",
+          author: "Wireup AI",
+          createdAt: new Date().toISOString().slice(0, 10),
+          bom,
+          wiring,
+          editableJson: {
+            simulationSpeed: 1,
+            ledInitialState: false,
+            buttonInitialState: false
+          },
+          sketch,
+          context,
+          phases: context.subsystems || [],
+          milestones,
+          additionalTools: [
+            "Soldering iron",
+            "Solder wire",
+            "Wire stripper",
+            "Wire cutter",
+            "Multimeter"
+          ]
+        };
+        return res.json(projectPayload);
+      } catch (err) {
+        console.error(`[API] Error reading session exports for ${sessionId}:`, err);
+      }
+    } else {
+      console.warn(`[API] Export directory not found for session: ${sessionId}`);
+    }
+  }
+
+  console.log('[API] GET /api/project requested - serving fallback mockProject');
   res.json(mockProject);
 });
 

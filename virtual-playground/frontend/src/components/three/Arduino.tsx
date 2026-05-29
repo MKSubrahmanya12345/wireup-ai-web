@@ -5,9 +5,15 @@ import { Html } from '@react-three/drei';
 
 interface ArduinoProps {
   position: [number, number, number];
+  componentKey?: string;
+  displayName?: string;
 }
 
-export const Arduino: React.FC<ArduinoProps> = ({ position }) => {
+export const Arduino: React.FC<ArduinoProps> = ({
+  position,
+  componentKey = 'arduino',
+  displayName = 'Arduino Uno'
+}) => {
   const { showLabels, selectedComponent, setSelectedComponent, simulationRunning } = useProjectStore();
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const meshRef = useRef<any>(null);
@@ -19,7 +25,7 @@ export const Arduino: React.FC<ArduinoProps> = ({ position }) => {
     { id: "D2", pos: [1.2, 0.1, -0.8], label: "Digital In D2", type: "digital" }
   ];
 
-  const isSelected = selectedComponent === 'arduino';
+  const isSelected = selectedComponent === componentKey;
 
   return (
     <group 
@@ -27,7 +33,7 @@ export const Arduino: React.FC<ArduinoProps> = ({ position }) => {
       ref={meshRef}
       onClick={(e) => {
         e.stopPropagation();
-        setSelectedComponent(isSelected ? null : 'arduino');
+        setSelectedComponent(isSelected ? null : componentKey);
       }}
     >
       {/* Selection Ring */}
@@ -133,7 +139,7 @@ export const Arduino: React.FC<ArduinoProps> = ({ position }) => {
       {showLabels && (
         <Html distanceFactor={10} position={[0, 0.6, 0]} center>
           <div className="bg-[#0b0b24]/85 border border-[#1f1f45] px-2 py-0.5 rounded text-white text-[9px] font-mono whitespace-nowrap shadow-md uppercase">
-            Arduino Uno
+            {displayName}
           </div>
         </Html>
       )}

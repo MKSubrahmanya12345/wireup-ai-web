@@ -50,8 +50,10 @@ const port = Number(process.env.PORT) || 5000;
 const allowedOrigins = new Set(
   [
     "http://localhost:5173",
+    "http://localhost:5174",
     "http://localhost:4173",
     "http://127.0.0.1:5173",
+    "http://127.0.0.1:5174",
     "http://127.0.0.1:4173",
     process.env.FRONTEND_URL,
   ].filter(Boolean)
@@ -115,7 +117,7 @@ import fs from "fs";
 if (!fs.existsSync(modelsDir)) {
   try {
     fs.mkdirSync(modelsDir, { recursive: true });
-  } catch (e) {}
+  } catch (e) { }
 }
 app.use("/models", express.static(modelsDir));
 
@@ -123,7 +125,7 @@ const storageModelsDir = path.join(__dirname, "..", "storage", "models");
 if (!fs.existsSync(storageModelsDir)) {
   try {
     fs.mkdirSync(storageModelsDir, { recursive: true });
-  } catch (e) {}
+  } catch (e) { }
 }
 app.use("/models", express.static(storageModelsDir));
 
@@ -213,7 +215,7 @@ app.post(
     try {
       const {
         prompt,
-        model = "qwen/qwen3-32b",
+        model = "meta-llama/llama-4-scout-17b-16e-instruct",
         apiKey,
         existingObjects = [],
       } = req.body;
@@ -342,7 +344,7 @@ const io = new Server(httpServer, {
 
 io.on("connection", (socket) => {
   console.log(`[socket] Client connected: ${socket.id}`);
-  
+
   // ??$$$ NEW FLOW - Support room joining for agentic pipeline updates
   socket.on("join", (roomId) => {
     socket.join(roomId);
@@ -419,10 +421,10 @@ async function ensureBoardCoresInstalled() {
     "rp2040:rp2040",    // Raspberry Pi Pico
     "teensy:avr",       // Teensy
   ];
-  
+
   console.log(`[BoardCoreInstaller Debugger] Starting core sync...`);
   console.log(`[BoardCoreInstaller Debugger] Using arduino-cli path: "${arduinoCliPath}"`);
-  
+
   // Quick precheck
   try {
     const { stdout: verOut } = await exec(`"${arduinoCliPath}" version`);
@@ -447,16 +449,19 @@ async function ensureBoardCoresInstalled() {
   } catch (err: any) {
     console.error(`[BoardCoreInstaller Debugger] Warning: failed to update package index:`, err.message || err);
   }
-  
+
   for (const core of cores) {
     try {
       console.log(`[BoardCoreInstaller Debugger] Checking status of core: ${core}`);
       const { stdout } = await exec(`"${arduinoCliPath}" core list`);
       const coreFamily = core.split(":")[0];
-      
+
       if (!stdout.includes(coreFamily)) {
         console.log(`[BoardCoreInstaller Debugger] Core ${core} not found. Attempting install...`);
-        const installCmd = `"${arduinoCliPath}" core install ${core}`;
+        // ??$$$ old code
+        // const installCmd = `"${arduinoCliPath}" core install ${core}`;
+        // ??$$$ newer code
+        const installCmd = `"${arduinoCliPath}" core install ${core} --additional-urls "${urls}"`;
         console.log(`[BoardCoreInstaller Debugger] Running: ${installCmd}`);
         const { stdout: installOut, stderr: installErr } = await exec(installCmd);
         if (installOut) console.log(`[BoardCoreInstaller Debugger] Install stdout:\n${installOut}`);

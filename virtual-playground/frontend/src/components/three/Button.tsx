@@ -5,14 +5,20 @@ import { Html } from '@react-three/drei';
 
 interface ButtonProps {
   position: [number, number, number];
+  componentKey?: string;
+  displayName?: string;
 }
 
-export const Button: React.FC<ButtonProps> = ({ position }) => {
+export const Button: React.FC<ButtonProps> = ({
+  position,
+  componentKey = 'button1',
+  displayName = 'Push Button'
+}) => {
   const { buttonPressed, setButtonPressed, showLabels, selectedComponent, setSelectedComponent } = useProjectStore();
   const [hovered, setHovered] = useState(false);
   const buttonRef = useRef<any>(null);
 
-  const isSelected = selectedComponent === 'button1';
+  const isSelected = selectedComponent === componentKey;
 
   // Tactile animation - push down the cap when pressed
   const capY = buttonPressed ? 0.08 : 0.14;
@@ -23,7 +29,7 @@ export const Button: React.FC<ButtonProps> = ({ position }) => {
       ref={buttonRef}
       onClick={(e) => {
         e.stopPropagation();
-        setSelectedComponent(isSelected ? null : 'button1');
+        setSelectedComponent(isSelected ? null : componentKey);
       }}
     >
       {/* Selection Ring */}
@@ -115,7 +121,7 @@ export const Button: React.FC<ButtonProps> = ({ position }) => {
         <Html distanceFactor={8} position={[0.15, 0.5, 0]} center>
           <div className="flex flex-col items-center space-y-0.5 pointer-events-none">
             <span className="bg-[#051c14]/95 border border-[#00ffcc]/50 px-2 py-0.5 rounded text-[#00ffcc] text-[9px] font-mono whitespace-nowrap shadow-cyber uppercase font-bold">
-              Push Button
+              {displayName}
             </span>
             <span className="text-[7px] text-slate-400 font-mono">
               {buttonPressed ? 'STATE: CLOSED (HIGH)' : 'STATE: OPEN (LOW)'}

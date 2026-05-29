@@ -223,7 +223,7 @@ const milestoneSchema = new Schema<INewFlowMilestone>({
 
 const newFlowSessionSchema = new Schema<INewFlowSession>({
   owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  selectedModel: { type: String, default: "qwen/qwen3-32b" },
+  selectedModel: { type: String, default: "meta-llama/llama-4-scout-17b-16e-instruct" },
   idea: { type: String, required: true },
   qaHistory: { type: [qaHistorySchema], default: [] },
   context: { type: projectContextSchema, default: () => ({}) },

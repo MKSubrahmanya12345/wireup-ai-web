@@ -39,4 +39,20 @@ export interface ProjectData {
   wiring: Wiring[];
   editableJson: EditableJson;
   sketch: string;
+  context?: {
+    mcu?: string;
+    powerSource?: string;
+    connectivity?: string;
+    constraints?: string[];
+  };
+  phases?: string[];
+  milestones?: Array<{
+    id?: string;
+    order?: number;
+    title?: string;
+    objective?: string;
+    expectedOutput?: string;
+    passCondition?: string;
+  }>;
+  additionalTools?: string[];
 }

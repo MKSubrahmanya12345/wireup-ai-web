@@ -5,13 +5,19 @@ import { Html } from '@react-three/drei';
 
 interface LEDProps {
   position: [number, number, number];
+  componentKey?: string;
+  displayName?: string;
 }
 
-export const LED: React.FC<LEDProps> = ({ position }) => {
+export const LED: React.FC<LEDProps> = ({
+  position,
+  componentKey = 'led1',
+  displayName = 'Red LED'
+}) => {
   const { ledState, showLabels, selectedComponent, setSelectedComponent } = useProjectStore();
   const ledRef = useRef<any>(null);
 
-  const isSelected = selectedComponent === 'led1';
+  const isSelected = selectedComponent === componentKey;
 
   return (
     <group 
@@ -19,7 +25,7 @@ export const LED: React.FC<LEDProps> = ({ position }) => {
       ref={ledRef}
       onClick={(e) => {
         e.stopPropagation();
-        setSelectedComponent(isSelected ? null : 'led1');
+        setSelectedComponent(isSelected ? null : componentKey);
       }}
     >
       {/* Selection Ring */}
@@ -113,7 +119,7 @@ export const LED: React.FC<LEDProps> = ({ position }) => {
         <Html distanceFactor={8} position={[0.15, 0.6, 0]} center>
           <div className="flex flex-col items-center space-y-0.5 pointer-events-none">
             <span className="bg-[#1a0505]/95 border border-red-500/50 px-2 py-0.5 rounded text-[#ff6666] text-[9px] font-mono whitespace-nowrap shadow-cyber uppercase font-bold">
-              Red LED
+              {displayName}
             </span>
             <span className="text-[7px] text-slate-400 font-mono">
               {ledState ? 'STATUS: ON' : 'STATUS: OFF'}

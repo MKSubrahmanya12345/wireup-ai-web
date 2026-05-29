@@ -11,25 +11,63 @@ interface WireProps {
 }
 
 export const Wire: React.FC<WireProps> = ({ from, to, color }) => {
-  const { simulationRunning, ledState, buttonPressed } = useProjectStore();
+  const { simulationRunning, ledState, buttonPressed, project } = useProjectStore();
   const pulseRef = useRef<THREE.Mesh>(null);
 
-  // Absolute positions of pins based on hardcoded project specs
   const getAbsoluteCoordinates = (pinStr: string): [number, number, number] => {
-    switch (pinStr) {
-      case 'arduino.5V': return [-1.2, 0.15, 0.4];
-      case 'arduino.GND': return [-1.2, 0.15, 0.8];
-      case 'arduino.D7': return [1.2, 0.15, -0.4];
-      case 'arduino.D2': return [1.2, 0.15, -0.8];
-      
-      case 'led1.A': return [2.5, 0.3, 0.5]; // Absolute: pos [2.5, 0.2, 0.5] + pin [0, 0.1, 0]
-      case 'led1.C': return [2.8, 0.3, 0.5]; // Absolute: pos [2.5, 0.2, 0.5] + pin [0.3, 0.1, 0]
-      
-      case 'button1.1': return [-2.5, 0.2, -0.5]; // Absolute: pos [-2.5, 0.15, -0.5] + pin [0, 0.05, 0]
-      case 'button1.2': return [-2.2, 0.2, -0.5]; // Absolute: pos [-2.5, 0.15, -0.5] + pin [0.3, 0.05, 0]
-      
-      default: return [0, 0, 0];
+    const [rawPartKey, rawPinId] = String(pinStr || '').split('.');
+    const partKey = String(rawPartKey || '').trim();
+    const pinId = String(rawPinId || '').trim();
+
+    const bom = Array.isArray(project?.bom) ? project.bom : [];
+    const part = bom.find((item: any) => String(item?.key || '').toLowerCase() === partKey.toLowerCase());
+    if (part && Array.isArray(part.position)) {
+      const base = part.position;
+      const pin = Array.isArray(part.pins)
+        ? part.pins.find((p: any) => {
+            const pid = String(p?.id || '').toLowerCase();
+            const pName = String(p?.name || '').toLowerCase();
+            const target = pinId.toLowerCase();
+            return pid === target || pName === target ||
+                   pid.replace(/^gpio/, '') === target.replace(/^gpio/, '') ||
+                   pName.replace(/^gpio/, '') === target.replace(/^gpio/, '');
+          })
+        : null;
+
+      const px = Number(base[0] || 0) + Number(pin?.x_mm ?? pin?.x ?? 0) * 0.1;
+      const py = Number(base[1] || 0.1) + Number(pin?.y_mm ?? pin?.y ?? 0) * 0.1;
+      const pz = Number(base[2] || 0) + Number(pin?.z_mm ?? pin?.z ?? 0) * 0.1;
+      return [px, py, pz];
     }
+
+    // Legacy fallback map for older hardcoded payloads.
+    // ??$$$ commented old code
+    /*
+    switch (pinStr) {
+      case 'arduino.5V':
+      case 'mcu.5V':
+        return [-1.2, 0.15, 0.4];
+      case 'arduino.GND':
+      case 'mcu.GND':
+        return [-1.2, 0.15, 0.8];
+      case 'arduino.D7':
+      case 'mcu.D7':
+        return [1.2, 0.15, -0.4];
+      case 'arduino.D2':
+      case 'mcu.D2':
+        return [1.2, 0.15, -0.8];
+      default:
+        return [0, 0, 0];
+    }
+    */
+    const pinLower = pinId.toLowerCase();
+    if (partKey.toLowerCase() === 'mcu' || partKey.toLowerCase() === 'arduino') {
+      if (pinLower === '5v' || pinLower === 'vcc') return [Number(part?.position?.[0] || 0) - 1.2, 0.15, Number(part?.position?.[2] || 0) + 0.4];
+      if (pinLower === 'gnd') return [Number(part?.position?.[0] || 0) - 1.2, 0.15, Number(part?.position?.[2] || 0) + 0.8];
+      if (pinLower === 'd7' || pinLower === 'gpio13' || pinLower === '13') return [Number(part?.position?.[0] || 0) + 1.2, 0.15, Number(part?.position?.[2] || 0) - 0.4];
+      if (pinLower === 'd2' || pinLower === 'gpio4' || pinLower === '4') return [Number(part?.position?.[0] || 0) + 1.2, 0.15, Number(part?.position?.[2] || 0) - 0.8];
+    }
+    return [0, 0.1, 0];
   };
 
   const p1 = getAbsoluteCoordinates(from);

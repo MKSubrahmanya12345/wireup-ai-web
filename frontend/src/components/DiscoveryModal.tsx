@@ -77,11 +77,13 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   onClose
 }) => {
   const navigate = useNavigate();
+  const virtualPlaygroundUrl = (import.meta.env.VITE_VIRTUAL_PLAYGROUND_URL || "http://localhost:5174").replace(/\/$/, "");
   // ??$$$ NEW FLOW
-  const [model, setModel] = useState("qwen/qwen3-32b");
+  const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
   const [phase, setPhase] = useState<1 | 2>(1);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [started, setStarted] = useState(false); // ??$$$ newer code - track if discovery has started
   const [submitting, setSubmitting] = useState(false);
   // ??$$$ NEW FLOW
   const [restarting, setRestarting] = useState(false);
@@ -112,11 +114,45 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const [isCompleted, setIsCompleted] = useState(false);
   const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [isFailed, setIsFailed] = useState(false); // ??$$$ newer code
 
   const socketRef = useRef<Socket | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
   // ??$$$ NEW FLOW
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // ??$$$ newer code — Visual Progress Calculations
+  const progressPercent = useMemo(() => {
+    if (isCompleted) return 100;
+    if (isFailed) return 0;
+    
+    let base = 5;
+    if (bom && bom.length > 0) {
+      base = 25;
+      if (wiring && wiring.length > 0) {
+        base = 50;
+        if (milestones && milestones.length > 0) {
+          base = 75;
+          if (logs.some(l => l.type === "tool_call" && l.name === "generate_diagram_json" && l.status === "done")) {
+            base = 90;
+          }
+        }
+      }
+    }
+    return base;
+  }, [bom, wiring, milestones, logs, isCompleted, isFailed]);
+
+  const progressStatus = useMemo(() => {
+    if (isCompleted) return "Formulation completed successfully!";
+    if (isFailed) return "Formulation paused/interrupted.";
+    
+    if (progressPercent === 5) return "Discovering and sourcing components...";
+    if (progressPercent === 25) return "Generating wiring connection matrix...";
+    if (progressPercent === 50) return "Structuring code milestones and test parameters...";
+    if (progressPercent === 75) return "Mapping Wokwi schematic layout and diagrams...";
+    if (progressPercent === 90) return "Finalizing formulation payload...";
+    return "Initializing formulation assistant...";
+  }, [progressPercent, isCompleted, isFailed]);
 
   // Setup Socket URL
   const getSocketUrl = () => {
@@ -192,6 +228,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           setWiring(res.data.wiring || []);
           setMilestones(res.data.milestones || []);
           setLogs(res.data.agentLog || []);
+          setStarted(true); // ??$$$ newer code - mark as started
 
           if (res.data.phase2Complete) {
             setIsCompleted(true);
@@ -230,6 +267,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 setWiring(res.data.wiring || []);
                 setMilestones(res.data.milestones || []);
                 setLogs(res.data.agentLog || []);
+                setStarted(true); // ??$$$ newer code - mark as started
                 if (res.data.phase2Complete) {
                   setIsCompleted(true);
                   if (res.data.projectId) {
@@ -252,20 +290,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             }
           }
 
-          // Start brand new session
-          const res = await axiosInstance.post("/new-flow/start", {
-            idea: initialIdea,
-            model
-          });
-          setSessionId(res.data.sessionId);
-          localStorage.setItem("wireup_discovery_session_id", res.data.sessionId);
-          setQuestion(res.data.question);
-          setOptions(res.data.options || []);
-          setContext(res.data.context || {});
-          setShouldAutoFormulate(true);
-          if (res.data.done) {
-            handleProceed();
-          }
+          // ??$$$ newer code - don't start brand new session automatically, let user select AI first
+          setStarted(false);
         }
       } catch (err: any) {
         toast.error("Failed to initiate agent session.");
@@ -276,6 +302,31 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     };
     startSession();
   }, [projectId]);
+
+  // ??$$$ newer code — Handle starting a brand new session with selected model
+  const handleStartSession = async () => {
+    setLoading(true);
+    try {
+      const res = await axiosInstance.post("/new-flow/start", {
+        idea: initialIdea,
+        model
+      });
+      setSessionId(res.data.sessionId);
+      localStorage.setItem("wireup_discovery_session_id", res.data.sessionId);
+      setQuestion(res.data.question);
+      setOptions(res.data.options || []);
+      setContext(res.data.context || {});
+      setStarted(true);
+      setShouldAutoFormulate(true);
+      if (res.data.done) {
+        handleProceed();
+      }
+    } catch (err: any) {
+      toast.error("Failed to initiate agent session.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Socket connection for Phase 2
   // ??$$$ NEW FLOW
@@ -319,9 +370,31 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       socket.on("agent2:complete", (data: any) => {
         toast.success("Project formulation complete!");
         setIsCompleted(true);
+        setIsFailed(false); // ??$$$ newer code
         if (data.projectId) {
           setCompletedProjectId(data.projectId);
         }
+      });
+
+      // ??$$$ newer code — Handle socket error and resume listeners
+      socket.on("agent2:error", (data: any) => {
+        toast.error(data.message || "An error occurred during formulation.");
+        setIsFailed(true);
+      });
+
+      socket.on("agent2:resumed", (data: any) => {
+        toast.success("Formulation resumed!");
+        setIsFailed(false);
+      });
+
+      socket.on("disconnect", () => {
+        console.warn("[DiscoveryModal] Socket disconnected.");
+        setIsFailed(true);
+      });
+
+      socket.on("connect_error", () => {
+        console.error("[DiscoveryModal] Socket connection error.");
+        setIsFailed(true);
       });
 
       // Trigger formulation trigger call
@@ -341,6 +414,34 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       };
     }
   }, [phase, sessionId, shouldAutoFormulate]);
+
+  // ??$$$ newer code — Fallback polling for session completion (every 5 seconds)
+  useEffect(() => {
+    if (!sessionId || isCompleted || phase !== 2) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await axiosInstance.get(`/new-flow/session/${sessionId}`);
+        if (res.data.phase2Complete) {
+          setIsCompleted(true);
+          setIsFailed(false);
+          if (res.data.projectId) {
+            setCompletedProjectId(res.data.projectId);
+          }
+          // Sync final session updates
+          if (res.data.bom) setBom(res.data.bom);
+          if (res.data.wiring) setWiring(res.data.wiring);
+          if (res.data.milestones) setMilestones(res.data.milestones);
+          if (res.data.agentLog) setLogs(res.data.agentLog);
+          clearInterval(interval);
+        }
+      } catch (err) {
+        console.error("Fallback polling failed:", err);
+      }
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [sessionId, isCompleted, phase]);
 
   // Submit Answer (Phase 1)
   const handleAnswer = async (selectedAnswer: string) => {
@@ -435,13 +536,23 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
   // ??$$$ newer code — Go to simulator workspace
   const handleGoToSimulator = () => {
-    if (completedProjectId) {
-      localStorage.removeItem("wireup_discovery_session_id");
+    if (!sessionId) {
       onClose();
-      navigate(`/test-simulator?projectId=${completedProjectId}`);
-    } else {
-      onClose();
+      return;
     }
+
+    const params = new URLSearchParams({
+      sessionId,
+      source: "wireup"
+    });
+
+    if (completedProjectId) {
+      params.set("projectId", completedProjectId);
+    }
+
+    localStorage.removeItem("wireup_discovery_session_id");
+    onClose();
+    window.location.href = `${virtualPlaygroundUrl}/?${params.toString()}`;
   };
 
   // ??$$$ NEW FLOW
@@ -455,13 +566,31 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     try {
       await axiosInstance.post("/new-flow/restart", {
         sessionId,
-        context
+        context,
+        model // ??$$$ newer code - pass currently selected model on restart
       });
       toast.success("Agent restarted with current context!");
     } catch (err: any) {
       toast.error("Failed to restart formulation agent.");
     } finally {
       setRestarting(false);
+    }
+  };
+
+  // ??$$$ newer code — Trigger resumption of automated formulation
+  const handleResume = async () => {
+    if (!sessionId) return;
+    setLoading(true);
+    setIsFailed(false);
+    try {
+      await axiosInstance.post("/new-flow/resume", { sessionId });
+      toast.success("Triggered formulation resumption!");
+    } catch (err: any) {
+      console.error("handleResume failed:", err);
+      toast.error(err.response?.data?.error || "Failed to trigger resumption.");
+      setIsFailed(true);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -489,7 +618,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
         <div className="flex items-center gap-4">
           {/* Model Selector */}
-          {phase === 1 && (
+          {started && ( // ??$$$ newer code - show model selector in both phases once started
             <div className="flex items-center gap-2">
               <span className="text-xs text-zinc-400">Agent Brain:</span>
               <select
@@ -498,7 +627,11 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-emerald-500 transition-colors"
               >
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="qwen/qwen3-32b">Groq Llama 4 Scout</option>
+                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
+                {/* old code
+                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Qwen2.5-32B</option>
+                */}
+                {/* ??$$$ newer code */}
                 <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
               </select>
             </div>
@@ -520,6 +653,44 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           <div className="flex h-full flex-col items-center justify-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
             <p className="text-sm text-zinc-400">Booting discovery pipelines...</p>
+          </div>
+        ) : !started ? (
+          /* ??$$$ newer code — Pre-start setup screen to select AI Brain */
+          <div className="flex h-full flex-col items-center justify-center gap-6 max-w-md mx-auto text-center px-4">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <Cpu className="h-6 w-6 animate-pulse" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-bold text-zinc-100">Ready to build your idea?</h2>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                You've specified the project idea: <span className="text-emerald-450 font-semibold font-mono">"{initialIdea}"</span>.
+                Choose the AI model you'd like to use for the discovery and formulation, then start.
+              </p>
+            </div>
+            <div className="w-full space-y-4">
+              <div className="flex flex-col items-start gap-1.5 text-left">
+                <label className="text-xs font-semibold text-zinc-400">Select AI Brain:</label>
+                <select
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-200 outline-none focus:border-emerald-500 transition-colors"
+                >
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
+                  {/* old code
+                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Qwen2.5-32B</option>
+                  */}
+                  {/* ??$$$ newer code */}
+                  <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
+                </select>
+              </div>
+              <button
+                onClick={handleStartSession}
+                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 transition-colors active:scale-[0.98]"
+              >
+                <Play className="h-4 w-4" /> Start AI Build
+              </button>
+            </div>
           </div>
         ) : phase === 1 ? (
           /* PHASE 1: DISCOVERY SCREEN */
@@ -789,6 +960,23 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 </button>
               </div>
 
+              {/* ??$$$ newer code — Visual Progress Bar */}
+              <div className="bg-zinc-900/40 border-b border-zinc-800/60 px-6 py-3 space-y-1.5 select-none">
+                <div className="flex justify-between items-center text-[10px] font-mono">
+                  <span className="text-zinc-400 font-medium">Formulation Progress</span>
+                  <span className="text-emerald-400 font-bold">{progressPercent}%</span>
+                </div>
+                <div className="h-1.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 transition-all duration-1000 ease-out"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-zinc-500 font-medium font-sans">
+                  Current Stage: <span className="text-zinc-300 font-semibold">{progressStatus}</span>
+                </div>
+              </div>
+
               <div
                 ref={scrollContainerRef}
                 className="flex-1 overflow-y-auto p-6 space-y-5"
@@ -820,7 +1008,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                         className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-xs font-bold text-zinc-950 transition-all active:scale-[0.98]"
                       >
                         <PlayCircle className="h-3.5 w-3.5" />
-                        Open 3D Simulator (Tool Access)
+                        Open Virtual Playground
                       </button>
                     </div>
                   </div>
@@ -985,6 +1173,25 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
                   return null;
                 })}
+                {isFailed && !isCompleted && (
+                  <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-5 max-w-2xl text-zinc-300 space-y-3">
+                    <div className="flex items-center gap-2.5 text-red-400 font-bold text-xs">
+                      <AlertTriangle className="h-4 w-4" />
+                      <span>Formulation Interrupted</span>
+                    </div>
+                    <p className="text-xs text-zinc-450 leading-relaxed">
+                      The formulation loop stopped. You can resume from where it was left off without starting from scratch.
+                    </p>
+                    <button
+                      onClick={handleResume}
+                      disabled={loading}
+                      className="flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-450 px-4 py-2 text-xs font-bold text-zinc-950 transition-all active:scale-[0.98]"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                      {loading ? "Resuming..." : "Resume Formulation"}
+                    </button>
+                  </div>
+                )}
                 <div ref={logEndRef} />
               </div>
             </div>

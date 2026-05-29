@@ -9,6 +9,143 @@ import rotationService from "../services/keyRotation.service";
 import NewFlowSession from "../models/newFlowSession.model";
 import { runAgent2 } from "../services/newflow.agent";
 
+const safeId = (value: any, fallback: string) => {
+  const normalized = String(value || "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
+  return normalized || fallback;
+};
+
+const pickPinPosition = (index: number) => {
+  const col = index % 6;
+  const row = Math.floor(index / 6);
+  return {
+    x: -0.75 + col * 0.32,
+    y: 0.02,
+    z: -0.45 + row * 0.24
+  };
+};
+
+const mapSessionToVirtualProject = (session: any) => {
+  const bom = Array.isArray(session?.bom) ? session.bom : [];
+  const wiring = Array.isArray(session?.wiring) ? session.wiring : [];
+  const milestones = Array.isArray(session?.milestones) ? session.milestones : [];
+  const context = session?.context || {};
+
+  const circleRadius = 2.4;
+  const componentCount = Math.max(bom.length, 1);
+
+  const mappedBom = bom.map((item: any, index: number) => {
+    const angle = (index / componentCount) * Math.PI * 2;
+    const displayName = String(item?.displayName || item?.mpn || `Component ${index + 1}`);
+    const purpose = String(item?.purpose || "");
+    const typeHint = `${displayName} ${purpose}`.toLowerCase();
+
+    let componentType = "module";
+    if (item?.key === "mcu" || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint)) {
+      componentType = "microcontroller";
+    } else if (/led|neopixel|ws2812/.test(typeHint)) {
+      componentType = "led";
+    } else if (/button|switch|push/.test(typeHint)) {
+      componentType = "button";
+    }
+
+    const pins = Array.isArray(item?.pins) && item.pins.length > 0
+      ? item.pins.map((pin: any, pinIndex: number) => {
+        const fallback = pickPinPosition(pinIndex);
+        return {
+          id: String(pin?.id || pin?.name || `P${pinIndex + 1}`),
+          x: Number.isFinite(pin?.x_mm) ? Number(pin.x_mm) / 10 : fallback.x,
+          y: Number.isFinite(pin?.z_mm) ? Number(pin.z_mm) / 10 : fallback.y,
+          z: Number.isFinite(pin?.y_mm) ? Number(pin.y_mm) / 10 : fallback.z,
+          type: String(pin?.type || "signal")
+        };
+      })
+      : [
+        { id: "P1", x: -0.25, y: 0.02, z: -0.2, type: "signal" },
+        { id: "P2", x: 0.25, y: 0.02, z: 0.2, type: "signal" }
+      ];
+
+    const key = safeId(item?.key || item?.displayName, `component-${index + 1}`);
+
+    return {
+      key,
+      displayName,
+      type: componentType,
+      glbUrl: item?.glbUrl || "",
+      position: [
+        Number((Math.cos(angle) * circleRadius).toFixed(2)),
+        0.08,
+        Number((Math.sin(angle) * circleRadius).toFixed(2))
+      ],
+      rotation: [0, Number((angle * -1).toFixed(2)), 0],
+      pins
+    };
+  });
+
+  const mappedWiring = wiring
+    .map((wire: any) => ({
+      from: String(wire?.from || ""),
+      to: String(wire?.to || ""),
+      color: String(wire?.color || "#1d4ed8")
+    }))
+    .filter((wire: any) => wire.from && wire.to);
+
+  // ??$$$ old code
+  /*
+  const byOrder = [...milestones].sort((a: any, b: any) => Number(a?.order || 0) - Number(b?.order || 0));
+  const firstCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
+  const sketch = firstCodeMilestone?.code
+    || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+  */
+  // ??$$$ newer code
+  const byOrder = [...milestones].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
+  const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
+  const sketch = latestCodeMilestone?.code
+    || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+
+  const additionalTools = Array.from(new Set([
+    "Soldering iron",
+    "Solder wire",
+    "Wire stripper",
+    "Wire cutter",
+    "Multimeter",
+    ...byOrder.flatMap((m: any) => Array.isArray(m?.requiredLibraries) ? m.requiredLibraries : [])
+      .filter((lib: any) => lib?.type === "manual")
+      .map((lib: any) => `${lib.name}${lib.installCommand ? ` (${lib.installCommand})` : ""}`)
+  ]));
+
+  return {
+    id: String(session?._id || "virtual-project"),
+    name: context?.corePurpose || session?.idea || "Wireup Project",
+    description: session?.idea || context?.corePurpose || "AI formulated electronics build",
+    author: "Wireup AI",
+    createdAt: new Date(session?.createdAt || Date.now()).toISOString().slice(0, 10),
+    bom: mappedBom,
+    wiring: mappedWiring,
+    editableJson: {
+      simulationSpeed: 1,
+      ledInitialState: false,
+      buttonInitialState: false
+    },
+    sketch,
+    context: {
+      mcu: context?.mcu || "",
+      powerSource: context?.powerSource || "",
+      connectivity: context?.connectivity || "",
+      constraints: Array.isArray(context?.constraints) ? context.constraints : []
+    },
+    phases: Array.isArray(context?.subsystems) ? context.subsystems : [],
+    milestones: byOrder.map((m: any) => ({
+      id: m?.id,
+      order: m?.order,
+      title: m?.title,
+      objective: m?.objective,
+      expectedOutput: m?.expectedOutput,
+      passCondition: m?.passCondition
+    })),
+    additionalTools
+  };
+};
+
 export const AGENT1_SYSTEM_PROMPT = `You are a hardware engineering discovery agent.
 Your job is to ask the user clarifying questions about their project idea so that we can formulate it.
 Ask ONE clear question at a time. Provide 2 to 4 simple option chips as quick responses, but also allow custom text answers.
@@ -52,8 +189,15 @@ async function callDiscovery(modelName: string, promptText: string): Promise<any
     const clean = text.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
   } else {
+    /* old code
     // Map Llama and Qwen models
-    let actualModel = "qwen/qwen3-32b";
+    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    if (modelName.toLowerCase().includes("qwen")) {
+      actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    }
+    */
+    // ??$$$ Map Llama and Qwen models correctly to production string
+    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
     }
@@ -78,7 +222,7 @@ async function callDiscovery(modelName: string, promptText: string): Promise<any
 // 1. POST /api/new-flow/start
 export const startSession = async (req: Request, res: Response) => {
   try {
-    const { idea, model = "qwen/qwen3-32b" } = req.body;
+    const { idea, model = "meta-llama/llama-4-scout-17b-16e-instruct" } = req.body;
     if (!idea) {
       return res.status(400).json({ error: "Original project idea is required." });
     }
@@ -270,7 +414,7 @@ export const formulateSession = async (req: Request, res: Response) => {
 // 6. POST /api/new-flow/restart
 export const restartSession = async (req: Request, res: Response) => {
   try {
-    const { sessionId, context } = req.body;
+    const { sessionId, context, model } = req.body; // ??$$$ newer code
     if (!sessionId) {
       return res.status(400).json({ error: "SessionId is required." });
     }
@@ -278,6 +422,11 @@ export const restartSession = async (req: Request, res: Response) => {
     const session = await NewFlowSession.findById(sessionId);
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
+    }
+
+    // ??$$$ newer code
+    if (model) {
+      session.selectedModel = model;
     }
 
     // Save context to database if provided
@@ -337,7 +486,7 @@ export const getSessionByProject = async (req: Request, res: Response) => {
       // Create a new session linked to this project
       session = new NewFlowSession({
         owner: userId,
-        selectedModel: "qwen/qwen3-32b",
+        selectedModel: "meta-llama/llama-4-scout-17b-16e-instruct",
         idea: project.description,
         qaHistory: [],
         phase1Complete: true,
@@ -389,12 +538,40 @@ export const exportLocalSession = async (req: Request, res: Response) => {
       fs.mkdirSync(exportDir, { recursive: true });
     }
 
-    // Write individual JSON files
+    // ??$$$ old code
+    /*
     fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
+    */
+    // ??$$$ newer code
+    fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
+
+    // ??$$$ old code
+    /*
+    const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(a?.order || 0) - Number(b?.order || 0));
+    const firstCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
+    const sketchCode = firstCodeMilestone?.code
+      || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+    */
+    // ??$$$ newer code
+    const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
+    const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
+    const sketchCode = latestCodeMilestone?.code
+      || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+    fs.writeFileSync(path.join(exportDir, "sketch.ino"), sketchCode, "utf8");
+
+    // Also write a sketch.json wrapper containing code, as expected by the compilation service
+    fs.writeFileSync(path.join(exportDir, "sketch.json"), JSON.stringify({
+      code: sketchCode,
+      filename: "sketch.ino"
+    }, null, 2), "utf8");
 
     return res.json({
       success: true,
@@ -404,5 +581,66 @@ export const exportLocalSession = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("exportLocalSession failed:", err);
     return res.status(500).json({ error: err.message || "Failed to export session to local folder." });
+  }
+};
+
+// ??$$$ newer code — Virtual playground payload endpoint from AI formulation session
+export const getVirtualProjectData = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.params;
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required." });
+    }
+
+    const session = await NewFlowSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found." });
+    }
+
+    const payload = mapSessionToVirtualProject(session);
+    return res.json({ success: true, project: payload });
+  } catch (err: any) {
+    console.error("getVirtualProjectData failed:", err);
+    return res.status(500).json({ error: err.message || "Failed to build virtual project payload." });
+  }
+};
+
+// ??$$$ newer code — POST /new-flow/resume route handler
+export const resumeSession = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required." });
+    }
+
+    const session = await NewFlowSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found." });
+    }
+
+    /* old code
+    // Reset session errors and set status back to active
+    session.status = "formulating";
+    await session.save();
+    */
+
+    // Trigger runAgent2 in the background with isResume = true
+    const model = session.selectedModel || "gemini-2.5-flash";
+    runAgent2(sessionId, model, true).catch(err => {
+      console.error("[NewFlowController] Background runAgent2 resume failed:", err);
+    });
+
+    const io = (global as any).io;
+    if (io) {
+      io.to(sessionId).emit("agent2:resumed", { success: true });
+    }
+
+    return res.json({
+      success: true,
+      message: "Formulation resumption triggered successfully."
+    });
+  } catch (err: any) {
+    console.error("resumeSession failed:", err);
+    return res.status(500).json({ error: err.message || "Failed to resume formulation session." });
   }
 };
