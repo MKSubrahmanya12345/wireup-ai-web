@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 import mongoose, { Schema, Types, HydratedDocument, Model } from "mongoose";
 import { getRegistry } from "../services/registry.services";
 

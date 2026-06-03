@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 // @ts-nocheck
 // ??$$$ FORGE: boardLock.js — Forces diagram boardPartType to match generationProfile
 

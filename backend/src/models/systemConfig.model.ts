@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 import mongoose from "mongoose";
 
 const systemConfigSchema = new mongoose.Schema({

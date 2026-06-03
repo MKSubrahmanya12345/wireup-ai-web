@@ -1,3 +1,4 @@
+// ??$$$ group 7 - Shopping & Costing (Phase 6)
 // @ts-nocheck
 // ??$$$ FORGE: shopping.service.js — Static price catalog and jugaad substitutions
 import { resolveDimensionKey } from '../lib/wokwiDimensionKeyMap';

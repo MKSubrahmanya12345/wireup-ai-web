@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // ??$$$ newer code — EasyEDA Component Ingestion Service
 import crypto from "crypto";
 

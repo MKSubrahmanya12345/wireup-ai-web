@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // ??$$$ NEW FLOW
 import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
@@ -59,6 +60,85 @@ const RateLimitTimer: React.FC<{ delaySeconds: number; timestamp: string }> = ({
           </div>
         </div>
       </div>
+    </div>
+  );
+};// ??$$$ newer code - MilestoneCard component
+const MilestoneCard: React.FC<{ m: any; idx: number }> = ({ m, idx }) => {
+  const [expanded, setExpanded] = useState(false);
+  const [showCode, setShowCode] = useState(false);
+
+  return (
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900/20 overflow-hidden transition-all duration-300">
+      <div
+        onClick={() => setExpanded(!expanded)}
+        className="p-4 flex justify-between items-center cursor-pointer hover:bg-zinc-900/30 select-none"
+      >
+        <div className="flex gap-3 items-center">
+          <div className="h-6 w-6 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400 font-bold text-xs flex items-center justify-center">
+            {idx + 1}
+          </div>
+          <div>
+            <div className="text-xs font-bold text-zinc-150">{m.title}</div>
+            <div className="text-[10px] text-zinc-500">{m.objective || "Milestone objective"}</div>
+          </div>
+        </div>
+        <span className="text-[10px] text-zinc-500 font-mono">{expanded ? "COLLAPSE" : "EXPAND"}</span>
+      </div>
+
+      {expanded && (
+        <div className="px-4 pb-4 pt-2 border-t border-zinc-800/50 space-y-3 text-[11px] text-zinc-300 leading-relaxed font-sans">
+          <div>
+            <span className="text-zinc-500 font-bold uppercase text-[9px] tracking-wider block mb-0.5 font-mono">Overview</span>
+            <p className="text-zinc-400">{m.explanation || "No detailed explanation generated."}</p>
+          </div>
+
+          {m.wiringInstructions && (
+            <div>
+              <span className="text-zinc-500 font-bold uppercase text-[9px] tracking-wider block mb-0.5 font-mono">Wiring</span>
+              <pre className="font-mono bg-zinc-950/60 p-2 rounded border border-zinc-900 text-zinc-400 overflow-x-auto text-[10px]">
+                {m.wiringInstructions}
+              </pre>
+            </div>
+          )}
+
+          {(m.expectedOutput || m.passCondition) && (
+            <div>
+              <span className="text-zinc-500 font-bold uppercase text-[9px] tracking-wider block mb-0.5 font-mono">Testing</span>
+              <div className="space-y-1 bg-zinc-900/30 p-2 rounded border border-zinc-850">
+                {m.expectedOutput && (
+                  <div>
+                    <span className="text-zinc-500">Expected:</span> {m.expectedOutput}
+                  </div>
+                )}
+                {m.passCondition && (
+                  <div>
+                    <span className="text-zinc-500">Pass:</span> {m.passCondition}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {m.code && (
+            <div className="pt-1">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowCode(!showCode);
+                }}
+                className="text-[10px] font-bold text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                {showCode ? "Hide Firmware Code" : "Open Full Code"}
+              </button>
+              {showCode && (
+                <pre className="mt-2 font-mono text-[10px] bg-black/60 p-3 rounded border border-zinc-900 text-zinc-300 overflow-x-auto max-h-48 cursor-text">
+                  <code>{m.code}</code>
+                </pre>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
@@ -153,6 +233,224 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     if (progressPercent === 90) return "Finalizing formulation payload...";
     return "Initializing formulation assistant...";
   }, [progressPercent, isCompleted, isFailed]);
+
+  // ??$$$ newer code - Derived UI states for candidates, reasoning, active pipeline stage, and conflicts
+  const candidates = useMemo(() => {
+    const searchLogs = logs.filter(l => l.type === "tool_call" && l.name === "search_library" && l.status === "done");
+    const foundParts = new Set<string>();
+    searchLogs.forEach(l => {
+      const results = l.output;
+      if (Array.isArray(results)) {
+        results.forEach((r: any) => {
+          if (r.mpn) foundParts.add(r.mpn);
+        });
+      }
+    });
+    const bomMpns = new Set(bom.map(b => b.mpn));
+    return Array.from(foundParts).filter(p => !bomMpns.has(p)).slice(0, 4);
+  }, [logs, bom]);
+
+  const decisions = useMemo(() => {
+    const reasoningLogs = logs.filter(l => l.type === "thinking" || l.type === "decision");
+    const extracted: string[] = [];
+    reasoningLogs.forEach(l => {
+      const text = l.text || "";
+      const lines = text.split("\n");
+      lines.forEach((line: string) => {
+        const clean = line.trim();
+        if (
+          clean.toLowerCase().includes("selected") ||
+          clean.toLowerCase().includes("choose") ||
+          clean.toLowerCase().includes("because") ||
+          clean.toLowerCase().includes("rejected")
+        ) {
+          const bulletFree = clean.replace(/^[\s\-\*\d\.\✓\?]+/, "").trim();
+          if (bulletFree.length > 10 && bulletFree.length < 150) {
+            extracted.push(bulletFree);
+          }
+        }
+      });
+    });
+    return Array.from(new Set(extracted)).slice(0, 3);
+  }, [logs]);
+
+  const activeStage = useMemo(() => {
+    if (isCompleted) return "curriculum";
+    if (isFailed) return "validation";
+    const latestTool = [...logs].reverse().find(l => l.type === "tool_call" && l.status === "running");
+    if (latestTool) {
+      if (latestTool.name === "search_library" || latestTool.name === "get_component_details") {
+        return "components";
+      }
+      if (latestTool.name === "generate_wiring" || latestTool.name === "validate_wiring") {
+        return "wiring";
+      }
+      if (latestTool.name === "generate_milestones" || latestTool.name === "generate_milestone") {
+        return "curriculum";
+      }
+    }
+    if (bom.length === 0) return "components";
+    if (wiring.length === 0) return "wiring";
+    if (milestones.length === 0) return "curriculum";
+    return "validation";
+  }, [logs, bom, wiring, milestones, isCompleted, isFailed]);
+
+  const conflictDetails = useMemo(() => {
+    const errorLog = logs.find(l => l.type === "error" || (l.type === "tool_call" && l.status === "failed"));
+    if (errorLog) {
+      const msg = (errorLog.text || JSON.stringify(errorLog.output) || "").toLowerCase();
+      if (msg.includes("conflict") || msg.includes("constraint") || msg.includes("power") || msg.includes("limit")) {
+        return {
+          title: "Constraint Conflict Detected",
+          description: errorLog.text || "The formulation agent detected conflicting requirements in your constraints (e.g. WiFi connectivity vs low battery life targets).",
+          options: [
+            "Optimize for low power (reduce WiFi updates)",
+            "Increase battery capacity spec",
+            "Change to low power BLE connectivity"
+          ]
+        };
+      }
+    }
+    return null;
+  }, [logs]);
+
+  const resolveConflict = async (choice: string) => {
+    setLoading(true);
+    try {
+      toast.success(`Conflict resolved: ${choice}. Restarting formulation...`);
+      await axiosInstance.post("/new-flow/restart", {
+        sessionId,
+        context: {
+          ...context,
+          constraints: [...(context.constraints || []), `Resolved conflict by choosing: ${choice}`]
+        },
+        model
+      });
+    } catch (e) {
+      toast.error("Failed to submit conflict resolution.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const renderStepper = () => {
+    const stages = [
+      { key: "requirements", label: "Requirements Analyzed" },
+      { key: "components", label: "Component Selection" },
+      { key: "wiring", label: "Wiring Design" },
+      { key: "validation", label: "Wiring & Pin Validation" },
+      { key: "curriculum", label: "Curriculum Generation" }
+    ];
+
+    return (
+      <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] items-center">
+        {stages.map((stage, idx) => {
+          let status = "upcoming";
+          if (isCompleted) {
+            status = "done";
+          } else if (isFailed && stage.key === activeStage) {
+            status = "failed";
+          } else if (stage.key === activeStage) {
+            status = "active";
+          } else {
+            const stageOrder = ["requirements", "components", "wiring", "validation", "curriculum"];
+            const currentIdx = stageOrder.indexOf(activeStage);
+            const thisIdx = stageOrder.indexOf(stage.key);
+            if (thisIdx < currentIdx) {
+              status = "done";
+            }
+          }
+
+          return (
+            <div key={stage.key} className="flex items-center gap-1">
+              {idx > 0 && <span className="text-zinc-700 mr-1">→</span>}
+              {status === "done" && <span className="text-emerald-500 font-bold">✓</span>}
+              {status === "active" && (
+                <span className="relative flex h-1.5 w-1.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
+                </span>
+              )}
+              {status === "upcoming" && <span className="text-zinc-650">○</span>}
+              {status === "failed" && <span className="text-red-500">⚠</span>}
+              <span className={status === "active" ? "text-zinc-100 font-bold" : status === "done" ? "text-zinc-400" : "text-zinc-600"}>
+                {stage.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderHardwareAssembly = () => {
+    return (
+      <div className="border border-zinc-800 bg-zinc-900/10 rounded-xl p-6 min-h-[220px] flex flex-col justify-between">
+        <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-500 mb-4 flex justify-between items-center select-none">
+          <span>Live Assembly Canvas</span>
+          <span className="text-zinc-400">Total BOM Parts: {bom.length}</span>
+        </div>
+
+        {bom.length === 0 ? (
+          <div className="flex-grow flex items-center justify-center text-zinc-600 text-xs italic py-10">
+            Waiting for agent to source components...
+          </div>
+        ) : (
+          <div className="flex-grow flex flex-col sm:flex-row gap-6 items-center justify-around py-2 w-full">
+            {/* Compute Brain (ESP32/MCU) */}
+            <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 min-w-[120px] shadow-lg shadow-blue-500/5 select-none">
+              <Cpu className="h-6 w-6 text-blue-400" />
+              <div className="text-xs font-bold text-zinc-200">MCU</div>
+              <div className="text-[9px] text-zinc-400 font-mono">{context.mcu || "ESP32"}</div>
+            </div>
+
+            {/* Connection Vectors */}
+            <div className="flex-1 max-w-[200px] flex flex-col gap-2 font-mono text-[9px] text-zinc-500 border-y border-dashed border-zinc-800 py-3 w-full select-none">
+              {wiring.length === 0 ? (
+                bom.filter(b => b.key !== "mcu" && b.key !== "brain").map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center text-zinc-600 italic">
+                    <span>mcu</span>
+                    <span className="text-zinc-700 animate-pulse">- - - -</span>
+                    <span>{item.key}</span>
+                  </div>
+                ))
+              ) : (
+                wiring.slice(0, 5).map((w, idx) => (
+                  <div key={idx} className="flex justify-between items-center">
+                    <span className="text-blue-400">{w.from.split(".")[1] || w.from}</span>
+                    <span className="text-zinc-750 font-sans">════</span>
+                    <span className="text-emerald-450">{w.to.split(".")[0] || w.to}</span>
+                  </div>
+                ))
+              )}
+              {wiring.length > 5 && (
+                <div className="text-center text-[8px] text-zinc-650 italic pt-1 border-t border-zinc-900/60">
+                  +{wiring.length - 5} more connections active
+                </div>
+              )}
+            </div>
+
+            {/* Connected Subsystems */}
+            <div className="flex flex-col gap-2.5 min-w-[150px]">
+              {bom.filter(b => b.key !== "mcu" && b.key !== "brain").length === 0 ? (
+                <div className="text-zinc-650 text-[10px] italic select-none">No peripheral components added.</div>
+              ) : (
+                bom.filter(b => b.key !== "mcu" && b.key !== "brain").map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-2.5 px-3 py-1.5 rounded-lg border border-zinc-850 bg-zinc-900/25 select-none">
+                    <Database className="h-3.5 w-3.5 text-zinc-500 flex-shrink-0" />
+                    <div className="min-w-0">
+                      <div className="text-xs font-bold text-zinc-300 truncate">{item.displayName}</div>
+                      <div className="text-[9px] text-zinc-500 truncate font-mono">{item.purpose}</div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Setup Socket URL
   const getSocketUrl = () => {
@@ -712,6 +1010,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                     {/* Option Chips */}
                     {options.length > 0 && (
                       <div className="grid grid-cols-2 gap-3">
+                        {/* ??$$$ old code */}
+                        {/*
                         {options.map((opt, idx) => (
                           <button
                             key={idx}
@@ -722,13 +1022,45 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                             {opt}
                           </button>
                         ))}
+                        */}
+                        {/* ??$$$ newer code */}
+                        {[...options, "Other / Custom"].map((opt, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => {
+                              if (opt === "Other / Custom") {
+                                const inputEl = document.getElementById("custom-input-field");
+                                if (inputEl) inputEl.focus();
+                              } else {
+                                handleAnswer(opt);
+                              }
+                            }}
+                            disabled={submitting}
+                            className={`rounded-xl border p-4 text-left text-sm font-medium transition-all active:scale-[0.98] ${
+                              opt === "Other / Custom"
+                                ? "border-dashed border-zinc-700 bg-zinc-950/20 text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-450"
+                                : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-emerald-500/50 hover:bg-zinc-900"
+                            }`}
+                          >
+                            {opt}
+                          </button>
+                        ))}
                       </div>
                     )}
 
                     {/* Custom Text Answer input */}
                     <div className="space-y-4">
                       <div className="flex gap-2 rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 focus-within:border-emerald-500 transition-colors">
+                        {/* ??$$$ old code */}
+                        {/*
                         <input
+                          type="text"
+                          value={answerText}
+                          onChange={(e) => setAnswerText(e.target.value)}
+                        */}
+                        {/* ??$$$ newer code */}
+                        <input
+                          id="custom-input-field"
                           type="text"
                           value={answerText}
                           onChange={(e) => setAnswerText(e.target.value)}
@@ -889,123 +1221,55 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             </aside>
           </div>
         ) : (
-          /* PHASE 2: AUTOMATED FORMULATION LOOP */
+                    /* PHASE 2: AUTOMATED FORMULATION LOOP */
+          // ??$$$ newer code
           <div className="flex h-full overflow-hidden">
-            {/* Agent Live Log - Left Panel */}
-            <div className="flex-1 flex flex-col border-r border-zinc-800 bg-zinc-950 overflow-hidden">
-              {/* ??$$$ */}
-              {/*
-              // Tabs
-              <div className="flex h-12 border-b border-zinc-800 bg-zinc-900/20 px-4 items-center justify-between">
-                <div className="flex h-full">
-                  <button
-                    onClick={() => setActiveTab("thinking")}
-                    className={`flex items-center gap-1.5 border-b-2 px-4 text-xs font-semibold transition-colors ${
-                      activeTab === "thinking"
-                        ? "border-emerald-500 text-emerald-400"
-                        : "border-transparent text-zinc-500 hover:text-zinc-300"
-                    }`}
-                  >
-                    <Cpu className="h-3.5 w-3.5" /> Agent Thinking
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("tools")}
-                    className={`flex items-center gap-1.5 border-b-2 px-4 text-xs font-semibold transition-colors ${
-                      activeTab === "tools"
-                        ? "border-emerald-500 text-emerald-400"
-                        : "border-transparent text-zinc-500 hover:text-zinc-300"
-                    }`}
-                  >
-                    <Terminal className="h-3.5 w-3.5" /> Tool Executions
-                  </button>
+            {/* Left/Center Main Workspace (Main panel for progress) */}
+            <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden border-r border-zinc-800">
+              {/* Stepper progress & controls */}
+              <div className="border-b border-zinc-800 bg-zinc-900/20 px-6 py-4 flex flex-col md:flex-row justify-between gap-4 select-none">
+                <div className="space-y-1">
+                  <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">AI Sourcing Pipeline</div>
+                  {renderStepper()}
                 </div>
-
-                <button
-                  onClick={handleRestart}
-                  disabled={restarting}
-                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 active:scale-[0.98] transition-all disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${restarting ? "animate-spin text-emerald-400" : "text-zinc-400"}`} />
-                  {restarting ? "Restarting..." : "Restart formulation"}
-                </button>
-              </div>
-
-              // Log Stage
-              <div className="flex-1 overflow-y-auto p-6 font-mono text-xs leading-relaxed space-y-4">
-                {activeTab === "thinking" ? (
-                  ...
-                ) : (
-                  ...
-                )}
-              </div>
-              */}
-
-              {/* ??$$$ NEW FLOW */}
-              <div className="flex h-12 border-b border-zinc-800 bg-zinc-900/20 px-4 items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-xs font-semibold text-zinc-300">✦ AI Build Assistant</span>
-                </div>
-
-                <button
-                  onClick={handleRestart}
-                  disabled={restarting}
-                  className="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 active:scale-[0.98] transition-all disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 ${restarting ? "animate-spin text-emerald-400" : "text-zinc-400"}`} />
-                  {restarting ? "Restarting..." : "Restart formulation"}
-                </button>
-              </div>
-
-              {/* ??$$$ newer code — Visual Progress Bar */}
-              <div className="bg-zinc-900/40 border-b border-zinc-800/60 px-6 py-3 space-y-1.5 select-none">
-                <div className="flex justify-between items-center text-[10px] font-mono">
-                  <span className="text-zinc-400 font-medium">Formulation Progress</span>
-                  <span className="text-emerald-400 font-bold">{progressPercent}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-zinc-800/80 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-emerald-500 transition-all duration-1000 ease-out"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <div className="text-[10px] text-zinc-500 font-medium font-sans">
-                  Current Stage: <span className="text-zinc-300 font-semibold">{progressStatus}</span>
+                  <button
+                    onClick={handleRestart}
+                    disabled={restarting}
+                    className="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 transition-all disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-3.5 w-3.5 ${restarting ? "animate-spin text-emerald-400" : "text-zinc-400"}`} />
+                    Restart Build
+                  </button>
                 </div>
               </div>
 
-              <div
-                ref={scrollContainerRef}
-                className="flex-1 overflow-y-auto p-6 space-y-5"
-              >
-                {/* ??$$$ newer code — completion actions block */}
+              {/* Main Workspace View Panels */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Completion card */}
                 {isCompleted && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-zinc-300 space-y-4 shadow-xl mb-4">
+                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-zinc-300 space-y-4 shadow-xl">
                     <div className="flex items-center gap-3">
                       <div className="h-9 w-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
                         <CheckCircle className="h-5 w-5" />
                       </div>
                       <div>
                         <h4 className="text-sm font-bold text-zinc-100">Formulation Completed Successfully!</h4>
-                        <p className="text-[11px] text-zinc-400">All components, wiring layouts, and instructions are finalized.</p>
+                        <p className="text-[11px] text-zinc-450">BOM, wiring netlists, and code curriculum are generated.</p>
                       </div>
                     </div>
-
-                    <div className="flex flex-wrap gap-2 pt-3 border-t border-zinc-800/80">
+                    <div className="flex gap-2 pt-1">
                       <button
                         onClick={handleExportLocal}
                         disabled={exporting}
-                        className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 px-3.5 py-2 text-xs font-semibold text-zinc-200 transition-all disabled:opacity-50 active:scale-[0.98]"
+                        className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition-all"
                       >
                         <HardDrive className="h-3.5 w-3.5 text-emerald-400" />
                         {exporting ? "Exporting..." : "Export Data to local E:"}
                       </button>
                       <button
                         onClick={handleGoToSimulator}
-                        className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-2 text-xs font-bold text-zinc-950 transition-all active:scale-[0.98]"
+                        className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-1.5 text-xs font-bold text-zinc-950 transition-all"
                       >
                         <PlayCircle className="h-3.5 w-3.5" />
                         Open Virtual Playground
@@ -1014,282 +1278,191 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                   </div>
                 )}
 
-                {logs.length === 0 && (
-                  <div className="flex h-full flex-col items-center justify-center gap-2 text-zinc-500 text-xs italic">
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-zinc-700 border-t-transparent" />
-                    Waiting for agent to initialize loop...
+                {/* Constraint conflict card */}
+                {conflictDetails && (
+                  <div className="rounded-xl border border-amber-500/30 bg-amber-955/15 p-5 text-zinc-300 space-y-3 shadow-lg">
+                    <div className="flex items-center gap-2.5 text-amber-400 font-bold text-xs">
+                      <AlertTriangle className="h-4 w-4 animate-pulse" />
+                      <span>{conflictDetails.title}</span>
+                    </div>
+                    <p className="text-xs text-zinc-400 leading-relaxed">
+                      {conflictDetails.description}
+                    </p>
+                    <div className="space-y-2 pt-2">
+                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Choose Resolution Path:</div>
+                      {conflictDetails.options.map((opt, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => resolveConflict(opt)}
+                          disabled={loading}
+                          className="w-full text-left rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900 hover:border-amber-550/50 p-3 text-xs text-zinc-300 transition-all active:scale-[0.99]"
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
-                {logs.map((log, i) => {
-                  const key = i;
-                  const timestampStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "";
 
-                  if (log.type === "context_received") {
-                    const input = log.input || {};
-                    return (
-                      <div key={key} className="p-5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 text-zinc-300 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 text-emerald-400 font-bold text-xs">
-                            <Cpu className="h-4 w-4 text-emerald-400 animate-pulse" />
-                            <span>✦ AI Received Formulation Context</span>
-                          </div>
-                          <span className="text-[10px] text-zinc-500 font-mono">{timestampStr}</span>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-3 text-xs pt-2 border-t border-zinc-800/60">
-                          <div>
-                            <span className="text-zinc-500 font-semibold">Core Purpose:</span>
-                            <p className="text-zinc-300 mt-0.5">{input.corePurpose || "N/A"}</p>
-                          </div>
-                          <div>
-                            <span className="text-zinc-500 font-semibold">Compute Brain (MCU):</span>
-                            <p className="text-zinc-300 mt-0.5">{input.mcu || "N/A"}</p>
-                          </div>
-                        </div>
-
-                        <div className="text-xs space-y-1">
-                          <span className="text-zinc-500 font-semibold">Subsystems:</span>
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {input.subsystems?.length > 0 ? (
-                              input.subsystems.map((sub: string, sIdx: number) => (
-                                <span key={sIdx} className="rounded bg-zinc-900 border border-zinc-800 px-2 py-0.5 text-[10px] text-zinc-300">
-                                  {sub}
-                                </span>
-                              ))
-                            ) : (
-                              <span className="text-zinc-650 italic">None</span>
-                            )}
-                          </div>
-                        </div>
-
-                        {input.constraints?.length > 0 && (
-                          <div className="text-xs pt-1">
-                            <span className="text-zinc-500 font-semibold">Constraints:</span>
-                            <ul className="list-disc list-inside space-y-0.5 text-zinc-400 mt-1 pl-1">
-                              {input.constraints.map((c: string, cIdx: number) => (
-                                <li key={cIdx}>{c}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  if (log.type === "thinking") {
-                    return (
-                      <div key={key} className="flex gap-3 items-start max-w-2xl">
-                        <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-bold text-xs flex items-center justify-center flex-shrink-0 mt-0.5">
-                          AI
-                        </div>
-                        <div className="flex-1 p-4 rounded-xl bg-zinc-900/40 border border-zinc-850 text-zinc-200 space-y-1.5">
-                          <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono">
-                            <span>Thinking Monologue</span>
-                            <span>{timestampStr}</span>
-                          </div>
-                          <p className="text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans text-xs">{log.text}</p>
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (log.type === "tool_call") {
-                    const isRunning = log.status === "running";
-                    const isFailed = log.status === "failed";
-                    const isDone = log.status === "done";
-
-                    return (
-                      <div key={key} className="flex gap-3 items-start max-w-2xl pl-10">
-                        <div className="h-6 w-6 rounded bg-zinc-900 border border-zinc-800 text-zinc-400 font-mono text-[10px] flex items-center justify-center flex-shrink-0 mt-0.5">
-                          &gt;_
-                        </div>
-                        <div className="flex-1 p-3.5 rounded-xl bg-zinc-950/60 border border-zinc-900 space-y-2 font-mono">
-                          <div className="flex items-center justify-between text-[10px]">
-                            <span className="inline-flex items-center gap-1 rounded bg-zinc-900 border border-zinc-800 px-2 py-0.5 font-bold text-emerald-400">
-                              {log.name}
-                            </span>
-                            <span className={`font-semibold ${isRunning ? "text-amber-400" : isFailed ? "text-red-400" : "text-zinc-400"
-                              }`}>
-                              {log.status?.toUpperCase()}
-                            </span>
-                          </div>
-
-                          {log.input && (
-                            <details className="text-[10px] text-zinc-500 cursor-pointer" open>
-                              <summary className="hover:text-zinc-400 select-none">Arguments</summary>
-                              <pre className="overflow-x-auto text-[10px] bg-black/40 p-2 rounded border border-zinc-900 mt-1 cursor-text">
-                                {JSON.stringify(log.input, null, 2)}
-                              </pre>
-                            </details>
-                          )}
-
-                          {log.output && (
-                            <details className="text-[10px] text-zinc-500 cursor-pointer" open>
-                              <summary className="hover:text-zinc-400 select-none">Output</summary>
-                              <pre className="overflow-x-auto text-[10px] bg-zinc-900/20 p-2 rounded border border-zinc-900/60 mt-1 cursor-text max-h-40">
-                                {JSON.stringify(log.output, null, 2)}
-                              </pre>
-                            </details>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  }
-
-                  if (log.type === "decision") {
-                    return (
-                      <div key={key} className="p-4 rounded-xl border border-blue-500/20 bg-blue-500/5 text-blue-300 max-w-2xl">
-                        <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono mb-2">
-                          <span>DECISION</span>
-                          <span>{timestampStr}</span>
-                        </div>
-                        <p className="font-sans text-xs">{log.text}</p>
-                      </div>
-                    );
-                  }
-
-                  if (log.type === "error") {
-                    return (
-                      <div key={key} className="p-4 rounded-xl border border-red-500/20 bg-red-500/5 text-red-400 max-w-2xl">
-                        <div className="flex items-center justify-between text-[10px] text-zinc-500 font-mono mb-2">
-                          <span>ERROR</span>
-                          <span>{timestampStr}</span>
-                        </div>
-                        <p className="font-sans text-xs">{log.text}</p>
-                      </div>
-                    );
-                  }
-
-                  if (log.type === "rate_limit") {
-                    return (
-                      <div key={key} className="max-w-2xl">
-                        <RateLimitTimer
-                          delaySeconds={log.input?.delaySeconds || 60}
-                          timestamp={log.timestamp}
-                        />
-                      </div>
-                    );
-                  }
-
-                  return null;
-                })}
-                {isFailed && !isCompleted && (
-                  <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-5 max-w-2xl text-zinc-300 space-y-3">
+                {/* Failure card */}
+                {isFailed && !isCompleted && !conflictDetails && (
+                  <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-5 text-zinc-300 space-y-3 shadow-lg">
                     <div className="flex items-center gap-2.5 text-red-400 font-bold text-xs">
                       <AlertTriangle className="h-4 w-4" />
                       <span>Formulation Interrupted</span>
                     </div>
-                    <p className="text-xs text-zinc-450 leading-relaxed">
-                      The formulation loop stopped. You can resume from where it was left off without starting from scratch.
+                    <p className="text-xs text-zinc-450 leading-relaxed font-sans">
+                      The formulation loop stopped. You can resume from where it was left off.
                     </p>
                     <button
                       onClick={handleResume}
                       disabled={loading}
-                      className="flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-450 px-4 py-2 text-xs font-bold text-zinc-950 transition-all active:scale-[0.98]"
+                      className="flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-450 px-4 py-2 text-xs font-bold text-zinc-950 transition-all"
                     >
                       <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
                       {loading ? "Resuming..." : "Resume Formulation"}
                     </button>
                   </div>
                 )}
-                <div ref={logEndRef} />
-              </div>
-            </div>
 
-            {/* Spec / Preview - Right Panel */}
-            <div className="w-1/2 flex flex-col bg-zinc-900/20 overflow-hidden">
-              <div className="flex h-12 items-center justify-between border-b border-zinc-800 bg-zinc-900/40 px-6">
-                <span className="text-xs font-bold uppercase tracking-wider text-zinc-400">
-                  Spec Formulation Preview
-                </span>
-                <span className="flex h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping" />
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* BOM Panel */}
+                {/* Section 1: Live Hardware Assembly */}
                 <div className="space-y-3">
-                  <h4 className="flex items-center gap-2 text-xs font-bold text-zinc-300">
-                    <Database className="h-4 w-4 text-emerald-400" /> Bill of Materials
-                  </h4>
-                  {bom.length > 0 ? (
-                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 divide-y divide-zinc-850">
-                      {bom.map((item, idx) => (
-                        <div key={idx} className="p-3 text-xs flex justify-between items-center">
-                          <div>
-                            <div className="font-semibold text-zinc-200">{item.displayName}</div>
-                            <div className="text-[10px] text-zinc-500">Key: {item.key} · Role: {item.purpose}</div>
-                          </div>
-                          <span className="rounded bg-zinc-800 px-2 py-0.5 text-zinc-400">
-                            Qty: {item.qty}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-600">
-                      No components finalized yet.
-                    </div>
-                  )}
+                  <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider font-mono">Assembly Preview</div>
+                  {renderHardwareAssembly()}
                 </div>
 
-                {/* Wiring List */}
+                {/* Section 2: Milestone Timeline */}
                 <div className="space-y-3">
-                  <h4 className="flex items-center gap-2 text-xs font-bold text-zinc-300">
-                    <Layers className="h-4 w-4 text-blue-400" /> Wiring Connection Matrix
-                  </h4>
-                  {wiring.length > 0 ? (
-                    <div className="rounded-xl border border-zinc-800 bg-zinc-900/40 divide-y divide-zinc-850 max-h-48 overflow-y-auto">
-                      {wiring.map((conn, idx) => (
-                        <div key={idx} className="p-3 text-[11px] font-mono flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-zinc-400">{conn.from}</span>
-                            <span className="text-zinc-650">→</span>
-                            <span className="text-emerald-400">{conn.to}</span>
-                          </div>
-                          <span
-                            className="rounded px-1.5 py-0.5 text-[9px] font-bold text-zinc-950"
-                            style={{ backgroundColor: conn.color || "#888888" }}
-                          >
-                            {conn.net}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-600">
-                      Wiring netlists not generated.
-                    </div>
-                  )}
-                </div>
-
-                {/* Milestone Curriculum */}
-                <div className="space-y-3">
-                  <h4 className="flex items-center gap-2 text-xs font-bold text-zinc-300">
-                    <CheckCircle className="h-4 w-4 text-purple-400" /> Milestone Curriculum
-                  </h4>
+                  <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider font-mono">Project Roadmap</div>
                   {milestones.length > 0 ? (
                     <div className="space-y-2">
                       {milestones.map((m, idx) => (
-                        <div key={idx} className="rounded-xl border border-zinc-800 bg-zinc-900/40 p-3 flex gap-3 items-start">
-                          <div className="h-6 w-6 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 font-bold text-xs flex items-center justify-center flex-shrink-0">
-                            {idx + 1}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold text-zinc-200">{m.title}</div>
-                            <p className="text-[10px] text-zinc-500 mt-0.5">{m.objective}</p>
-                          </div>
-                        </div>
+                        <MilestoneCard key={idx} m={m} idx={idx} />
                       ))}
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-600">
-                      Milestone steps not generated.
+                    <div className="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-650 italic">
+                      Roadmap milestones will appear as they are designed.
                     </div>
                   )}
                 </div>
               </div>
+
+              {/* Bottom drawer/tray (Live AI activity log) */}
+              <div className="h-44 border-t border-zinc-800 bg-zinc-950 flex flex-col">
+                <div className="flex h-9 border-b border-zinc-800 bg-zinc-900/10 px-4 items-center justify-between select-none">
+                  <span className="text-[10px] font-mono text-zinc-550 uppercase tracking-wider">Live AI Activity Log</span>
+                  {logs.some(l => l.type === "thinking" || l.type === "tool_call") && (
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                  )}
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-[10px] leading-relaxed text-zinc-455">
+                  {logs.length === 0 && <div className="text-zinc-600 italic">No logs initialized.</div>}
+                  {logs.slice(-15).map((log, i) => {
+                    const timestampStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "";
+                    if (log.type === "thinking") {
+                      return (
+                        <div key={i} className="text-zinc-400 truncate">
+                          <span className="text-zinc-600">[{timestampStr}]</span> <span className="text-blue-450 font-bold">THINK:</span> {log.text}
+                        </div>
+                      );
+                    }
+                    if (log.type === "tool_call") {
+                      return (
+                        <div key={i} className="text-zinc-350">
+                          <span className="text-zinc-650">[{timestampStr}]</span> <span className="text-emerald-450 font-bold">TOOL:</span> {log.name} ({log.status})
+                        </div>
+                      );
+                    }
+                    return null;
+                  })}
+                </div>
+              </div>
             </div>
+
+            {/* Right Sidebar: Context summaries, locked constraints, and decisions */}
+            <aside className="w-80 border-l border-zinc-800 bg-zinc-900/10 p-6 overflow-y-auto space-y-6">
+              {/* Project Goals */}
+              <div className="space-y-5 text-xs">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">Project Constraints</h3>
+                  <div className="space-y-2.5">
+                    <div>
+                      <div className="text-zinc-400 font-semibold mb-0.5">Core Purpose</div>
+                      <div className="text-zinc-300 bg-zinc-900/40 p-2 rounded border border-zinc-800/80">
+                        {context.corePurpose || "Extracting..."}
+                      </div>
+                    </div>
+                    {context.mcu && (
+                      <div>
+                        <div className="text-zinc-400 font-semibold mb-0.5">Compute Brain</div>
+                        <div className="text-zinc-300 font-mono text-[10px]">{context.mcu}</div>
+                      </div>
+                    )}
+                    {context.powerSource && (
+                      <div>
+                        <div className="text-zinc-400 font-semibold mb-0.5">Power Source</div>
+                        <div className="text-zinc-350">{context.powerSource}</div>
+                      </div>
+                    )}
+                    {context.connectivity && (
+                      <div>
+                        <div className="text-zinc-400 font-semibold mb-0.5">Connectivity</div>
+                        <div className="text-zinc-350">{context.connectivity}</div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Confirmed BOM */}
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">Confirmed BOM</h3>
+                  {bom.length > 0 ? (
+                    <div className="space-y-1">
+                      {bom.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-zinc-900/30 px-2.5 py-1.5 rounded border border-zinc-850">
+                          <span className="text-zinc-300 font-medium font-mono text-[10px] truncate max-w-[140px]">{item.displayName}</span>
+                          <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Confirmed</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-zinc-650 italic text-[11px] font-sans">No parts finalized yet.</div>
+                  )}
+                </div>
+
+                {/* Candidate alternatives */}
+                {candidates.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">Evaluating Candidates</h3>
+                    <div className="space-y-1">
+                      {candidates.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center bg-zinc-900/10 px-2.5 py-1.5 rounded border border-dashed border-zinc-800">
+                          <span className="text-zinc-450 font-mono text-[10px] truncate max-w-[140px]">{item}</span>
+                          <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Evaluating</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI Rationale / Reasoning */}
+                {decisions.length > 0 && (
+                  <div className="pt-2 border-t border-zinc-800/80">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">AI Rationale</h3>
+                    <div className="space-y-2">
+                      {decisions.map((dec, idx) => (
+                        <div key={idx} className="p-2.5 rounded bg-zinc-900/40 border border-zinc-850 text-zinc-400 leading-relaxed text-[10px] font-sans">
+                          {dec}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </aside>
           </div>
+
         )}
       </div>
     </div>

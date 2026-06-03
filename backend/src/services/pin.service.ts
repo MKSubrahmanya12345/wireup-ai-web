@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // ??$$$ newer code — Coordinate Space Alignment & Pin Service
 import crypto from "crypto";
 

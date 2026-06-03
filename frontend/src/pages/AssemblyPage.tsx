@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ FORGE: AssemblyPage.jsx — Stage 4: Algorithmic enclosure layout
 // Left: DimensionForm (pocket/desk/wall/custom)

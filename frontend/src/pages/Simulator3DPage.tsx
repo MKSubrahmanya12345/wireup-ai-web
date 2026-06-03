@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ 3D Simulator Production Engine - Unified Interaction Model
 import React, { Suspense, useState, useRef, useMemo, useEffect, useImperativeHandle, forwardRef } from "react";

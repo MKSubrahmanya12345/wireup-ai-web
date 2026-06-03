@@ -1,3 +1,4 @@
+// ??$$$ group 1 - Landing Page & Authentication
 // @ts-nocheck
 import { initializeApp } from "firebase/app";
 import { getAnalytics, isSupported } from "firebase/analytics";

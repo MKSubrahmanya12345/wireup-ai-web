@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // @ts-nocheck
 import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { Search, X, BookOpen, Plus, Trash2, Loader2 } from 'lucide-react';

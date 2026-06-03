@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2), group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 // ??$$$ 3D Simulator Production State Store (Zustand) - Unified Interaction Model
 import { create } from "zustand";

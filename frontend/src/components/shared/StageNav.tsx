@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useProjectStore } from '../../store/useProjectStore.js';
 import { useThemeStore } from '../../store/useThemeStore.js';

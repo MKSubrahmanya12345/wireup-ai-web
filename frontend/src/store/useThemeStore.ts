@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 import { create } from "zustand";
 
 type Theme = "dark" | "light";

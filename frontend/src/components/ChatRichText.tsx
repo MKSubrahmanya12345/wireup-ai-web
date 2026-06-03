@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // @ts-nocheck
 const splitBoldSegments = (text = "") => {
   const source = String(text);

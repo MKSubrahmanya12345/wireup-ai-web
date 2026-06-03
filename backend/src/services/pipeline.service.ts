@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 // @ts-nocheck
 // ??$$$ FORGE: pipeline.service.js — Stage orchestrator for the 6-stage FORGE pipeline
 // All stage transitions go through here. Never mutate stageStatus directly in controllers.

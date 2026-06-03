@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // ??$$$ newer code — Headless Blender CLI Conversion Service
 import { exec, spawn } from "child_process";
 import fs from "fs";

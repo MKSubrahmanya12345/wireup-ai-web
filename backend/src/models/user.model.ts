@@ -1,3 +1,4 @@
+// ??$$$ group 1 - Landing Page & Authentication
 import mongoose, { Document, Schema } from "mongoose";
 
 export interface IUser extends Document {

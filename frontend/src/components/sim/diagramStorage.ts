@@ -1,3 +1,4 @@
+// ??$$$ group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 // ??$$$ Default diagram for Mega mode
 export const DEFAULT_DIAGRAM = {

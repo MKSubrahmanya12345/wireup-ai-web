@@ -1,3 +1,4 @@
+// ??$$$ group 4 - Build & Firmware Compilation (Phase 3)
 // @ts-nocheck
 // ??$$$ FORGE: BuildPage.tsx — Stage 3: Milestone Runner & Debug Workspace
 // Three-panel: Milestone Sidebar | Code/Simulator Workspace | Test/Debug Coach

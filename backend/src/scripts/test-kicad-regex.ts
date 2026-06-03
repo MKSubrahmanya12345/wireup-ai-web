@@ -1,3 +1,4 @@
+// ??$$$ non-important
 // ??$$$ newer code — KiCad S-Expression parsing verification script
 async function main() {
   const url = "https://raw.githubusercontent.com/KiCad/kicad-footprints/master/Package_TO_SOT_THT.pretty/TO-92_Inline.kicad_mod";

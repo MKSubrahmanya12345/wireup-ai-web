@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /*
   Note: this file was migrated from JS. The next edits add minimal

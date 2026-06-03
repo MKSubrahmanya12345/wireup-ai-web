@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // @ts-nocheck
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";

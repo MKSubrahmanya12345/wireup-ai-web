@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // ??$$$ NEW FLOW
 import { SchemaType } from "@google/generative-ai";
 

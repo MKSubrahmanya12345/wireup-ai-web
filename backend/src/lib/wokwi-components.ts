@@ -1,3 +1,4 @@
+// ??$$$ group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 const baseCatalog = [
   { label: "Arduino Uno", partType: "wokwi-arduino-uno", aliases: ["uno", "arduino uno"] },

@@ -1,4 +1,5 @@
 {
+  "//_comment": "??$$$ non-important",
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",

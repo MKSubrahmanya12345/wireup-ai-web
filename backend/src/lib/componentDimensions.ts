@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ FORGE: componentDimensions.js — Physical dimension DB for 50 common components
 // Fields: width_mm, height_mm, depth_mm, mountingHoles, requiresExposure, exposureSide,

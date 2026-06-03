@@ -1,3 +1,4 @@
+// ??$$$ group 7 - Shopping & Costing (Phase 6)
 // @ts-nocheck
 // ??$$$ FORGE: ShoppingPage.jsx — Stage 5: Price table + Jugaad alternatives
 // Table: Component | Qty | Unit | Total | Store | Buy | Jugaad Alt

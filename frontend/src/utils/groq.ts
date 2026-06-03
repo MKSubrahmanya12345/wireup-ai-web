@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // @ts-nocheck
 // ??$$$ - Groq client handler for 3D model generation
 

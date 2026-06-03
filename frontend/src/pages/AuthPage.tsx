@@ -1,3 +1,4 @@
+// ??$$$ group 1 - Landing Page & Authentication
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";

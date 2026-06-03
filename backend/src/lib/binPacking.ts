@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ FORGE: binPacking.js — Guillotine 2D bin packing algorithm
 // Assigns x, y coordinates to components within a given 2D area.

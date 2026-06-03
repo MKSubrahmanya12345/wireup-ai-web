@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ Simulator3D Component - Professional Integrated View with GLTF Support
 import React, { Suspense, useState, useRef, useMemo, useEffect, useImperativeHandle, forwardRef } from "react";
@@ -13,9 +14,9 @@ const nodeRefs = {};
 const GRID_SIZE = 5; 
 const snapToGrid = (val) => Math.round(val / GRID_SIZE) * GRID_SIZE;
 
-// ??`$ NEW FLOW — pin type debug sphere colors
+// ??`$ NEW FLOW ï¿½ pin type debug sphere colors
 const PIN_TYPE_COLORS = { power: "#ef4444", gnd: "#6b7280", digital: "#3b82f6", analog: "#22c55e", nc: "#ffffff" };
-// ??`$ NEW FLOW — 1mm = 0.1 Three.js units
+// ??`$ NEW FLOW ï¿½ 1mm = 0.1 Three.js units
 const MM_TO_UNITS = 0.1;
 
 // ??$$$ - ErrorBoundary to catch model loading errors and fallback to procedural meshes
@@ -144,7 +145,7 @@ const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelecte
 
   useCursor(hovered && mode === "IDLE");
 
-  // ??$$$ NEW FLOW — attach SnapEDA pin anchors to the store after mount
+  // ??$$$ NEW FLOW ï¿½ attach SnapEDA pin anchors to the store after mount
   useEffect(() => {
     if (!groupRef.current) return;
     const pins = bomItem?.pins || [];
@@ -168,7 +169,7 @@ const DraggableComponent = forwardRef(({ id, type, position, rotation, isSelecte
 
   useImperativeHandle(ref, () => ({
     getPinWorldPos: (pinId) => {
-      // ??$$$ NEW FLOW — prefer SnapEDA anchor, fall back to registry def pin
+      // ??$$$ NEW FLOW ï¿½ prefer SnapEDA anchor, fall back to registry def pin
       const storeAnchors = useSimulatorStore.getState().pinAnchors;
       const anchor = storeAnchors[`${id}:${pinId}`];
       if (anchor) {

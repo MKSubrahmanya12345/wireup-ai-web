@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // @ts-nocheck
 import React from 'react';
 import { Cpu, Zap, ToggleLeft, CircleDot } from 'lucide-react';

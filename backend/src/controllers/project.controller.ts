@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 import mongoose, { Types } from "mongoose";
 import Project from "../models/project.model";
 import Part from "../models/part.model";

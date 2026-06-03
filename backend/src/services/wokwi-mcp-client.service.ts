@@ -1,3 +1,4 @@
+// ??$$$ group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 import crypto from "node:crypto";
 import path from "node:path";

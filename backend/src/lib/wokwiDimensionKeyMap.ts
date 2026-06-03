@@ -1,3 +1,4 @@
+// ??$$$ group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 // ??$$$ FORGE: wokwiDimensionKeyMap.js — Maps Wokwi part types → dimension DB keys
 // Solves the silent mismatch: AI outputs wokwiPartType, assembly needs dimension DB key.

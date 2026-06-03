@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 // ??$$$ newer code
 import type { ReactNode } from "react";
 import { lazy, Suspense, useEffect } from "react";

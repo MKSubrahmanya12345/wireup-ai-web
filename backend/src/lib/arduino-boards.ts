@@ -1,3 +1,4 @@
+// ??$$$ group 4 - Build & Firmware Compilation (Phase 3)
 // @ts-nocheck
 export const ARDUINO_UNO_PIN_DEFINITIONS = {
   board: "Arduino Uno (ATmega328P)",

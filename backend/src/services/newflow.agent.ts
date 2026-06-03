@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // ??$$$ NEW FLOW
 // ??$$$ old code
 /*
@@ -167,6 +168,18 @@ export class GroqAdapter implements LLMAdapter {
   }
 }
 
+// ??$$$ newer code
+function parseJsonRecursively(val: any): any {
+  if (typeof val === "string") {
+    try {
+      return parseJsonRecursively(JSON.parse(val));
+    } catch {
+      return val;
+    }
+  }
+  return val;
+}
+
 // Intercept and implement save_progress for NewFlowSession
 async function saveSessionProgress(sessionId: string, type: string, data: any) {
   const session = await NewFlowSession.findById(sessionId);
@@ -174,6 +187,8 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
     throw new Error("NewFlowSession not found");
   }
 
+  // ??$$$ old code
+  /*
   let parsedData = data;
   if (typeof data === "string") {
     try {
@@ -182,6 +197,9 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
       console.error("[Agent2] Failed to parse stringified progress data:", e);
     }
   }
+  */
+  // ??$$$ newer code
+  let parsedData = parseJsonRecursively(data);
 
   const io = (global as any).io;
 
@@ -343,6 +361,8 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
       io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
     }
   } else if (type === "milestone") {
+    // ??$$$ old code
+    /*
     const list = Array.isArray(parsedData) ? parsedData : [parsedData];
     list.forEach(m => {
       // Bug 3: Avoid duplication by checking order + subsystem, title, or id
@@ -353,6 +373,59 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
       );
       if (existingIdx > -1) {
         session.milestones[existingIdx] = m;
+      } else {
+        session.milestones.push(m);
+      }
+    });
+    */
+
+    // ??$$$ newer code
+    let milestoneList = parsedData;
+    if (parsedData && typeof parsedData === "object" && !Array.isArray(parsedData)) {
+      if (Array.isArray(parsedData.milestones)) {
+        milestoneList = parsedData.milestones;
+      } else if (Array.isArray(parsedData.milestone)) {
+        milestoneList = parsedData.milestone;
+      } else if (Array.isArray(parsedData.steps)) {
+        milestoneList = parsedData.steps;
+      } else if (parsedData.milestone && typeof parsedData.milestone === "object") {
+        milestoneList = [parsedData.milestone];
+      }
+    }
+
+    const rawList = Array.isArray(milestoneList) ? milestoneList : [milestoneList];
+    const normalizedMilestones = rawList
+      .filter((m: any) => m && typeof m === "object")
+      .map((m: any, idx: number) => {
+        return {
+          id: m.id || `milestone_${m.order || idx + 1 || Date.now()}`,
+          order: typeof m.order === "number" ? m.order : (idx + 1),
+          title: m.title || "Untitled Milestone",
+          objective: m.objective || "",
+          subsystem: m.subsystem || "General",
+          partsInvolved: Array.isArray(m.partsInvolved) ? m.partsInvolved : (Array.isArray(m.componentsInvolved) ? m.componentsInvolved : []),
+          wiringInstructions: m.wiringInstructions || "",
+          code: m.code || "",
+          explanation: m.explanation || "",
+          expectedOutput: m.expectedOutput || m.expectedSerialOutput || "",
+          passCondition: m.passCondition || "",
+          commonProblems: Array.isArray(m.commonProblems) ? m.commonProblems : [],
+          simulatable: typeof m.simulatable === "boolean" ? m.simulatable : true,
+          requiredLibraries: Array.isArray(m.requiredLibraries) ? m.requiredLibraries : []
+        };
+      });
+
+    normalizedMilestones.forEach(m => {
+      const existingIdx = session.milestones.findIndex(em =>
+        em.id === m.id ||
+        em.title === m.title ||
+        (em.order === m.order && em.subsystem === m.subsystem)
+      );
+      if (existingIdx > -1) {
+        // ??$$$ old code
+        // session.milestones[existingIdx].set(m);
+        // ??$$$ newer code
+        (session.milestones[existingIdx] as any).set(m);
       } else {
         session.milestones.push(m);
       }

@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // ??$$$ NEW FLOW — Pin Resolver Service
 // Resolves SnapEDA pin metadata for BOM items after Agent 2 completes
 // Runs in background — never blocks BOM response to frontend

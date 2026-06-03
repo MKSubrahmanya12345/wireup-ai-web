@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 import { readFileSync } from "node:fs";
 import path from "node:path";
 

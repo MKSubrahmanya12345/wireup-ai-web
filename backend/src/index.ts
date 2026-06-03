@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 console.log("🔥 INDEX FILE STARTED");
 
 import express, { Request, Response, NextFunction } from "express";

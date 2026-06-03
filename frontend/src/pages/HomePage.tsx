@@ -1,3 +1,4 @@
+// ??$$$ group 1 - Landing Page & Authentication
 import { useEffect, useRef, useState, KeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";

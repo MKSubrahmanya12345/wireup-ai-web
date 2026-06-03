@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // ??$$$ FORGE: InteractiveNodeGraph.tsx — Visual pin-routing canvas with drag-and-drop and phase filtering
 import React, { useState, useEffect, useRef } from "react";
 import { axiosInstance } from "../lib/axios";

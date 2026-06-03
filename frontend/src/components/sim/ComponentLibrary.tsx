@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // @ts-nocheck
 import React, { useState } from 'react';
 import { Search, X } from 'lucide-react';

@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ Model Conversion Service for fetching and converting STEP to GLB models
 import Part from "../models/part.model";

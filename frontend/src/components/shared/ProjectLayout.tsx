@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 // ??$$$ FORGE: ProjectLayout.jsx — Shared layout wrapper for all /project/:id/* routes
 // Renders: StageNav (top) + ErrorBoundary + <Outlet> (child page)
 // Handles project loading and last-project persistence.

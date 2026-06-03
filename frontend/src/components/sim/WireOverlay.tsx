@@ -1,3 +1,4 @@
+// ??$$$ group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 // pinInfo.x/y from @wokwi/elements pinInfo (top-left origin within component box)
 const PIN_LOCAL = {

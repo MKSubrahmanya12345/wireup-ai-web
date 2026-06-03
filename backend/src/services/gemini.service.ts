@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // ??$$$ newer code
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import mongoose from "mongoose";

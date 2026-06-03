@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // @ts-nocheck
 // ??$$$ FORGE: parseAIResponse.js — Bulletproof AI output parser
 // Never throws. Always returns something or null with a reason field.

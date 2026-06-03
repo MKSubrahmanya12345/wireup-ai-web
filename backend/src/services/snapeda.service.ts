@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // ??$$$ NEW FLOW — SnapEDA Service: pin metadata only (no model downloads)
 // GLB models come from MongoDB Part.glbUrl (isCurated parts only)
 // Uses native fetch (Node 18+) — no axios dependency needed

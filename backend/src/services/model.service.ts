@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // ??$$$ newer code — Component Ingestion & Model Pipeline Orchestrator
 import fs from "fs";
 import path from "path";

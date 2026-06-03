@@ -1,3 +1,4 @@
+<!-- ??$$$ non-important -->
 # Codebase Documentation: Wireup.ai
 
 This document serves as the absolute technical reference and architecture blueprint for the Wireup.ai hardware project builder application. It is designed to be read by developer agents to facilitate onboarding, feature extensions, and system verification.

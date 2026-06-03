@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 // @ts-nocheck
 // ??$$$ FORGE: pipeline.controller.js — Stage transition logic for the NovaAI pipeline
 import { advanceStage, getStageStatus } from '../services/pipeline.service';

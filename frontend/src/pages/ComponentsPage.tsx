@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // @ts-nocheck
 // ??$$$ FORGE: ComponentsPage.jsx — Stage 2: BOM table + pin assignment card
 // Left: BOMTable with swap modal, skeleton loaders

@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // ??$$$ newer code — Extended Part Schema for Ingestion Pipeline
 import mongoose, { Document, Schema } from "mongoose";
 

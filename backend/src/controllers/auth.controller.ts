@@ -1,3 +1,4 @@
+// ??$$$ group 1 - Landing Page & Authentication
 import { Request, Response } from "express";
 import { generateToken } from "../lib/utils";
 import User from "../models/user.model";

@@ -1,3 +1,4 @@
+// ??$$$ group 2 - Ideation Stage (Phase 1)
 // ??$$$ NEW FLOW
 import { Router } from "express";
 import { protectRoute } from "../middleware/auth.middleware";

@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 import mongoose from "mongoose";
 
 export const connectDB = async (): Promise<void> => {

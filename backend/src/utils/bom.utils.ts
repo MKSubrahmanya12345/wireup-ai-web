@@ -1,3 +1,4 @@
+// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 // @ts-nocheck
 export const deriveBOMKey = (name = '') => {
   const n = name.toLowerCase();

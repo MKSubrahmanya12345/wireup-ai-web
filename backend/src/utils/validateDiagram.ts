@@ -1,3 +1,4 @@
+// ??$$$ group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 // ??$$$ FORGE: validateDiagram.js — Wokwi diagram.json integrity checker
 

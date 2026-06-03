@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ FORGE: svgLayout.js — Generates print-ready SVG layout for the enclosure
 // Uses red for cut lines, blue for valley folds, green for mountain folds.

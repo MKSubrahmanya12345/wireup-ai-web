@@ -1,3 +1,4 @@
+// ??$$$ group 4 - Build & Firmware Compilation (Phase 3), group 5 - Circuit Simulation (Phase 4)
 // @ts-nocheck
 import React from 'react';
 import Editor from '@monaco-editor/react';

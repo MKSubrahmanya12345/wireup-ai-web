@@ -1,3 +1,4 @@
+// ??$$$ group 4 - Build & Firmware Compilation (Phase 3)
 // @ts-nocheck
 import { mkdtemp, mkdir, writeFile, rm } from 'fs/promises';
 import { existsSync } from 'fs';

@@ -1,3 +1,4 @@
+// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
 // @ts-nocheck
 // ??$$$ - 3D Render Canvas Viewport with physics integration
 import React, { useEffect, useRef, useState } from 'react';

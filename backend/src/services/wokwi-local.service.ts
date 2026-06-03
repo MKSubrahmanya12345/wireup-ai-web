@@ -1,3 +1,4 @@
+// ??$$$ group 4 - Build & Firmware Compilation (Phase 3)
 // @ts-nocheck
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";

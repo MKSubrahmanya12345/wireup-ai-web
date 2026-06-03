@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 // @ts-nocheck
 import { motion, AnimatePresence } from "framer-motion";
 import { useEffect, useRef, useState } from "react";

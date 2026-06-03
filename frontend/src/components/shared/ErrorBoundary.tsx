@@ -1,3 +1,4 @@
+// ??$$$ group 8 - Core Platform & Shared Infrastructure
 // ??$$$ FORGE: ErrorBoundary.tsx — Structural error boundary for every pipeline page
 
 import React, { Component, type ReactNode, type ErrorInfo } from 'react';
