@@ -407,7 +407,7 @@ function parseJsonRecursively(val: any): any {
 }
 
 // Intercept and implement save_progress for NewFlowSession
-async function saveSessionProgress(sessionId: string, type: string, data: any) {
+export async function saveSessionProgress(sessionId: string, type: string, data: any) {
   const session = await NewFlowSession.findById(sessionId);
   if (!session) {
     throw new Error("NewFlowSession not found");
@@ -1240,14 +1240,15 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
   let adapter: LLMAdapter;
   // ??$$$ newer code - track mode flags for per-turn chain building
   const isHybridMode = modelName.startsWith("hybrid:");
-  const isPureOllama = modelName === "ollama/minimax-m3";
+  const isPureOllama = modelName.toLowerCase().startsWith("ollama");
   // ??$$$ newer code - for hybrid mode, extract the primary provider from "hybrid:modelName"
   const hybridPrimaryModel = isHybridMode ? modelName.substring("hybrid:".length) : "";
 
   if (isPureOllama) {
-    // Pure Ollama — minimax-m3:cloud only, no cloud fallbacks
-    adapter = new OllamaAdapter("minimax-m3:cloud");
-    console.log("[Agent2] Mode: Pure Ollama (minimax-m3:cloud). No cloud fallbacks.");
+    // Pure Ollama — use local Ollama model directly, no cloud fallbacks at all
+    const localModel = modelName.includes("/") ? modelName.split("/")[1] : (modelName.substring(7) || "minimax-m3:cloud");
+    adapter = new OllamaAdapter(localModel);
+    console.log(`[Agent2] Mode: Pure Ollama (${localModel}). No cloud fallbacks.`);
   } else if (isHybridMode) {
     // Hybrid — start with the chosen primary cloud provider
     const groqKey = process.env.GROQ_API_KEY;
