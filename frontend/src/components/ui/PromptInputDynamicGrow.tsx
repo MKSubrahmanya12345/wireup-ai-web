@@ -91,11 +91,10 @@ function SendButton({ isDisabled }) {
       type="submit"
       aria-label="Send message"
       disabled={isDisabled}
-      className={`ml-auto h-9 w-9 shrink-0 rounded-full transition-all ${
-        isDisabled
+      className={`ml-auto h-9 w-9 shrink-0 rounded-full transition-all ${isDisabled
           ? "opacity-40 cursor-not-allowed bg-gray-400 text-white/60"
           : "opacity-90 bg-[#1a1a1a] text-white hover:opacity-100 hover:shadow-lg"
-      }`}
+        }`}
     >
       <svg
         width="32"
@@ -257,11 +256,10 @@ export default function PromptInputDynamicGrow({
               aria-label="Message input"
               rows={1}
               disabled={disabled}
-              className={`min-h-12 max-h-36 w-full resize-none bg-transparent px-4 py-2 text-base font-medium leading-[26px] outline-none ${
-                isShaderTone
+              className={`min-h-12 max-h-36 w-full resize-none bg-transparent px-4 py-2 text-base font-medium leading-[26px] outline-none ${isShaderTone
                   ? "text-[#f4f1ff] placeholder:text-[#b8b0d4]"
                   : "text-white/90 placeholder:text-white/55"
-              }`}
+                }`}
             />
             <div className={`mt-2 px-4 text-xs font-medium ${isShaderTone ? "text-[#b9b2d2]" : "text-white/60"}`}>
               {helperText}
@@ -270,11 +268,10 @@ export default function PromptInputDynamicGrow({
           <button
             type="submit"
             disabled={isSubmitDisabled}
-            className={`shrink-0 rounded-2xl px-5 py-2.5 text-sm font-semibold transition ${
-              isSubmitDisabled
+            className={`shrink-0 rounded-2xl px-5 py-2.5 text-sm font-semibold transition ${isSubmitDisabled
                 ? "cursor-not-allowed bg-[#4f4965]/70 text-[#b7b2c7]"
                 : "bg-gradient-to-r from-[#6e63ff] to-[#8a56ff] text-white hover:from-[#7a70ff] hover:to-[#9a63ff]"
-            }`}
+              }`}
           >
             {submitLabel}
             <span className="ml-2">→</span>

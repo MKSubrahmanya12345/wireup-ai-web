@@ -94,12 +94,21 @@ export class GeminiAdapter implements LLMAdapter {
 // Groq Adapter implementation
 export class GroqAdapter implements LLMAdapter {
   private modelName: string;
-  constructor(modelName: string) {
+  private directApiKey?: string; // ??$$$ newer code - optional direct key, bypasses rotation service
+  constructor(modelName: string, directApiKey?: string) {
     this.modelName = modelName;
+    this.directApiKey = directApiKey;
   }
 
   async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
-    const client = await rotationService.getClient();
+    // ??$$$ newer code - use direct key if provided (for hybrid chain), else use rotation service
+    let client: any;
+    if (this.directApiKey) {
+      const Groq = require("groq-sdk");
+      client = new Groq.default({ apiKey: this.directApiKey });
+    } else {
+      client = await rotationService.getClient();
+    }
 
     // Map messages into Groq format
     const groqMessages = [
@@ -150,7 +159,8 @@ export class GroqAdapter implements LLMAdapter {
       text: () => message.content || "",
       functionCalls: () => {
         if (!message.tool_calls) return [];
-        return message.tool_calls.map(tc => {
+        return message.tool_calls.map((tc: any) => {
+
           let parsedArgs = {};
           try {
             parsedArgs = JSON.parse(tc.function.arguments);
@@ -252,6 +262,135 @@ export class CerebrasAdapter implements LLMAdapter {
         });
       }
     };
+  }
+}
+
+// ??$$$ newer code - Ollama Adapter implementation for local orchestration
+export class OllamaAdapter implements LLMAdapter {
+  private model: string;
+  private baseUrl: string;
+
+  constructor(model = "qwen2.5:3b", baseUrl = "http://localhost:11434") {
+    this.model = model;
+    this.baseUrl = baseUrl;
+  }
+
+  async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
+    const tools = GROQ_AGENT2_TOOLS;
+    
+    // Format messages for Ollama OpenAI-compatible chat completions API
+    const ollamaMessages = [
+      { role: "system", content: systemPrompt },
+      ...messages.map(m => {
+        if (m.role === "function") {
+          return {
+            role: "tool",
+            tool_call_id: m.tool_call_id || ("call_" + m.name),
+            name: m.name,
+            content: typeof m.content === "string" ? m.content : JSON.stringify(m.content)
+          };
+        }
+
+        const role = m.role === "model" || m.role === "assistant" ? "assistant" : "user";
+        const msgObj: any = {
+          role,
+          content: m.content || ""
+        };
+
+        if (m.functionCalls && m.functionCalls.length > 0) {
+          msgObj.tool_calls = m.functionCalls.map((fc: any) => ({
+            id: fc.id || ("call_" + fc.name),
+            type: "function",
+            function: {
+              name: fc.name,
+              arguments: JSON.stringify(fc.args)
+            }
+          }));
+        }
+
+        return msgObj;
+      })
+    ];
+
+    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        messages: ollamaMessages,
+        tools: tools.length > 0 ? tools : undefined,
+        tool_choice: tools.length > 0 ? "auto" : undefined,
+        temperature: 0.2,
+        options: { num_ctx: 8192 }
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Ollama failed: ${response.statusText} - ${errText}`);
+    }
+
+    const data: any = await response.json();
+    const message = data.choices[0]?.message;
+
+    return {
+      text: () => message?.content || "",
+      functionCalls: () => {
+        if (!message?.tool_calls) return [];
+        return message.tool_calls.map((tc: any) => {
+          let parsedArgs = {};
+          try {
+            parsedArgs = typeof tc.function.arguments === "string"
+              ? JSON.parse(tc.function.arguments)
+              : tc.function.arguments;
+          } catch (e) {
+            console.error("Failed to parse Ollama tool call args:", tc.function.arguments);
+          }
+          return {
+            id: tc.id,
+            name: tc.function.name,
+            args: parsedArgs
+          };
+        });
+      }
+    };
+  }
+}
+
+// ??$$$ newer code - Check if local Ollama is active
+async function checkOllama(baseUrl = "http://localhost:11434"): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
+// ??$$$ newer code - Get the first preferred model pulled in Ollama
+async function getOllamaModel(baseUrl = "http://localhost:11434"): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2000);
+    const res = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    if (!res.ok) return null;
+    const data: any = await res.json();
+    if (data.models && data.models.length > 0) {
+      const preferred = ["qwen2.5:3b", "qwen2.5:7b", "llama3.2:3b", "mistral:7b"];
+      for (const pref of preferred) {
+        if (data.models.some((m: any) => m.name.toLowerCase().includes(pref))) {
+          return pref;
+        }
+      }
+      return data.models[0].name;
+    }
+    return "qwen2.5:3b";
+  } catch {
+    return null;
   }
 }
 
@@ -400,6 +539,7 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
     });
 
     session.bom = normalizedBOM;
+    session.markModified("bom"); // ??$$$ newer code
     await session.save();
     if (io) {
       io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
@@ -440,6 +580,7 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
       }));
     });
 
+    session.markModified("wiring"); // ??$$$ newer code
     session.markModified("bom");
     await session.save();
 
@@ -448,24 +589,6 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
       io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
     }
   } else if (type === "milestone") {
-    // ??$$$ old code
-    /*
-    const list = Array.isArray(parsedData) ? parsedData : [parsedData];
-    list.forEach(m => {
-      // Bug 3: Avoid duplication by checking order + subsystem, title, or id
-      const existingIdx = session.milestones.findIndex(em =>
-        em.id === m.id ||
-        em.title === m.title ||
-        (em.order === m.order && em.subsystem === m.subsystem)
-      );
-      if (existingIdx > -1) {
-        session.milestones[existingIdx] = m;
-      } else {
-        session.milestones.push(m);
-      }
-    });
-    */
-
     // ??$$$ newer code
     let milestoneList = parsedData;
     if (parsedData && typeof parsedData === "object" && !Array.isArray(parsedData)) {
@@ -502,16 +625,14 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
         };
       });
 
+    // ??$$$ newer code — match existing milestones by order, id, or case-insensitive title to prevent duplicates and keep indexes aligned
     normalizedMilestones.forEach(m => {
       const existingIdx = session.milestones.findIndex(em =>
         em.id === m.id ||
-        em.title === m.title ||
-        (em.order === m.order && em.subsystem === m.subsystem)
+        em.order === m.order ||
+        em.title.toLowerCase().trim() === m.title.toLowerCase().trim()
       );
       if (existingIdx > -1) {
-        // ??$$$ old code
-        // session.milestones[existingIdx].set(m);
-        // ??$$$ newer code
         (session.milestones[existingIdx] as any).set(m);
       } else {
         session.milestones.push(m);
@@ -521,6 +642,7 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
     if (session.milestones.length > 0) {
       session.milestones.sort((a, b) => a.order - b.order);
     }
+    session.markModified("milestones"); // ??$$$ newer code
     await session.save();
 
     if (io) {
@@ -554,6 +676,7 @@ async function saveSessionProgress(sessionId: string, type: string, data: any) {
     }
 
     session.diagram = diagramData;
+    session.markModified("diagram"); // ??$$$ newer code
     await session.save();
 
     if (io) {
@@ -942,6 +1065,11 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     throw new Error(`Session not found: ${sessionId}`);
   }
 
+  // ??$$$ newer code - Check if local Ollama is available and find preferred model
+  const ollamaModelName = await getOllamaModel();
+  const isOllamaAvailable = ollamaModelName !== null;
+
+
   const io = (global as any).io;
 
   const logAndEmit = async (logObj: {
@@ -1000,35 +1128,39 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   });
 
   // Build the formulation agent system prompt
-  // ??$$$ newer code — refined system prompt with bug fixes for BOM shape, MCU key, milestone duplication, and partId format
-  const systemPrompt = `You are an autonomous hardware engineering agent working on formulating a project.
-Your task is to take the finalized project context and produce:
-1. A finalized Bill of Materials (BOM) using components from the library.
-2. Electrical wiring connections between these components.
-3. A step-by-step milestone curriculum to build the project.
-4. A simulator diagram.json config.
+  // ??$$$ newer code — refined system prompt with role-split, orchestration, and sequential pipeline constraints
+  const systemPrompt = `You are an autonomous hardware project formulation agent.
 
-You have access to a set of tools to search, analyze, and build.
-Work step by step:
-1. Search the library to find the best components for the compute and subsystems specified in the project context.
-2. Get details and check compatibility for candidates.
-3. Once components are finalized, save the BOM using save_progress(type="bom").
-4. Generate the wiring connections using generate_wiring and validate them.
-5. Save wiring using save_progress(type="wiring").
-6. Generate the build milestones one by one using generate_milestone. Milestone 1 must be a bare MCU blink.
-7. Save milestones using save_progress(type="milestone").
-8. Generate the simulation diagram.json using generate_diagram_json.
-9. Save diagram using save_progress(type="diagram").
+## Your Role
+Your job is ONLY to orchestrate, plan, and call tools. You call tools to search parts, generate wiring, save progress, and plan milestones. You do NOT write code yourself.
 
-Follow these guidelines:
-- CRITICAL: When calling save_progress(type="bom"), the data must be a JSON array of components where each component is a flat object directly containing: key, partId (use the database _id string from get_part_details, NEVER the MPN string), mpn, displayName, purpose, subsystem, qty, price, interfaces, pinConnections. Do NOT wrap under a 'components' key.
-- CRITICAL: The MCU must always use the key 'mcu' everywhere — in the BOM, in generate_wiring, and in generate_diagram_json. Never use 'brain' as a key. The id field in diagram.parts must match the BOM key (which is 'mcu').
-- CRITICAL: Call generate_milestone exactly once per milestone. Do not call it twice. Check the session first to see if a milestone with the same order, title, or subsystem already exists.
-- CRITICAL: The partId field in save_progress for the BOM must be the exact database _id string returned by get_part_details (e.g. '6a13ec800c47f410601cfea7'), not the MPN string.
-- MCU pin layout and wiring must be compatible.
-- All milestones must be step-by-step.
-- You must call save_progress at each step to persist data and update the frontend UI.
-- When done, state that formulation is complete.`;
+## Tool Responsibilities  
+- search_library, get_part_details, check_compatibility → find and validate parts
+- generate_wiring, validate_pin_assignment → plan connections
+- save_progress → persist BOM, wiring, milestones, diagram
+- get_wokwi_part_type, generate_diagram_json → simulation setup
+- generate_milestone → delegates code generation to a separate capable model (NOT you)
+- generate_final_sketch → delegates final code generation to a separate capable model (NOT you)
+
+## Critical Rules
+1. NEVER write Arduino/C++ code yourself in your responses.
+2. ALWAYS use generate_milestone to produce milestone code — never inline it.
+3. ALWAYS use generate_final_sketch for the final sketch — never inline it.
+4. Keep your thinking responses short — you are an orchestrator, not a code writer.
+5. Follow this exact order every time:
+   - Search + select parts → save BOM
+   - Generate wiring → save wiring
+   - Generate ALL milestones via generate_milestone → save each milestone
+   - Get Wokwi part types → generate diagram → save diagram
+   - Generate final sketch via generate_final_sketch
+6. Do NOT call generate_diagram_json until ALL milestones are saved.
+7. Do NOT call generate_final_sketch more than once.
+8. CRITICAL: When calling save_progress(type="bom"), the data must be a JSON array of components where each component is a flat object directly containing: key, partId (use the database _id string from get_part_details, NEVER the MPN string), mpn, displayName, purpose, subsystem, qty, price, interfaces, pinConnections. Do NOT wrap under a 'components' key.
+9. CRITICAL: The MCU must always use the key 'mcu' everywhere — in the BOM, in generate_wiring, and in generate_diagram_json. Never use 'brain' as a key. The id field in diagram.parts must match the BOM key (which is 'mcu').
+10. CRITICAL: The partId field in save_progress for the BOM must be the exact database _id string returned by get_part_details (e.g. '6a13ec800c47f410601cfea7'), not the MPN string.
+
+## You are running on a small local model. Stay focused, use tools, don't ramble.`;
+
 
   const contextStr = `Project Context:
 Core Purpose: ${session.context.corePurpose}
@@ -1104,9 +1236,26 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
   //   }
   //   adapter = new GroqAdapter(actualModel);
   // }
-  // ??$$$ newer code - Instantiate adapter (including Cerebras models support)
+  // ??$$$ newer code - Instantiate adapter (including Cerebras, Ollama, and hybrid chain support)
   let adapter: LLMAdapter;
-  if (modelName.toLowerCase().includes("gemini")) {
+  // ??$$$ newer code - track mode flags for per-turn chain building
+  const isHybridMode = modelName.startsWith("hybrid:");
+  const isPureOllama = modelName === "ollama/minimax-m3";
+  // ??$$$ newer code - for hybrid mode, extract the primary provider from "hybrid:modelName"
+  const hybridPrimaryModel = isHybridMode ? modelName.substring("hybrid:".length) : "";
+
+  if (isPureOllama) {
+    // Pure Ollama — minimax-m3:cloud only, no cloud fallbacks
+    adapter = new OllamaAdapter("minimax-m3:cloud");
+    console.log("[Agent2] Mode: Pure Ollama (minimax-m3:cloud). No cloud fallbacks.");
+  } else if (isHybridMode) {
+    // Hybrid — start with the chosen primary cloud provider
+    const groqKey = process.env.GROQ_API_KEY;
+    if (!groqKey) throw new Error("GROQ_API_KEY is missing for hybrid mode");
+    const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "meta-llama/llama-4-scout-17b-16e-instruct";
+    adapter = new GroqAdapter(primaryGroqModel, groqKey);
+    console.log(`[Agent2] Mode: Hybrid. Primary: Groq (${primaryGroqModel}). Chain: Groq KEY -> Groq FALLBACK -> Cerebras -> OllamaAdapter MiniMax-M3`);
+  } else if (modelName.toLowerCase().includes("gemini")) {
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
     adapter = new GeminiAdapter(geminiKey);
@@ -1123,6 +1272,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     }
     adapter = new GroqAdapter(actualModel);
   }
+
 
   let turns = 0;
   const maxTurns = 30; // ??$$$ newer code - set max turns to 30
@@ -1191,18 +1341,46 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
       let success = false;
       const sanitizedMessages = sanitizeMessageHistory(messages);
 
-      // Build active rotation chain starting with current primary adapter
-      const fallbackAdapters: LLMAdapter[] = [adapter];
-      if (process.env.GEMINI_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "GeminiAdapter")) {
-        fallbackAdapters.push(new GeminiAdapter(process.env.GEMINI_API_KEY));
+      // ??$$$ newer code - Build failover chain based on selected mode
+
+      let fallbackAdapters: LLMAdapter[];
+
+      if (isPureOllama) {
+        // Pure Ollama mode — only MiniMax-M3 locally, no cloud fallbacks at all
+        fallbackAdapters = [adapter];
+        console.log("[Agent2 Failover] Pure Ollama mode — no cloud fallbacks.");
+      } else if (isHybridMode) {
+        // Hybrid mode — explicit ordered chain: Groq(KEY) -> Groq(FALLBACK) -> Cerebras -> Ollama MiniMax-M3
+        const groqKey = process.env.GROQ_API_KEY;
+        const groqFallback = process.env.GROQ_API_FALLBACK;
+        const cerebrasKey = process.env.CEREBRAS_API_KEY;
+        const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "meta-llama/llama-4-scout-17b-16e-instruct";
+
+        fallbackAdapters = [adapter]; // primary = GroqAdapter(GROQ_API_KEY) set above
+        if (groqFallback && groqFallback !== groqKey) {
+          fallbackAdapters.push(new GroqAdapter(primaryGroqModel, groqFallback));
+        }
+        if (cerebrasKey) {
+          fallbackAdapters.push(new CerebrasAdapter(cerebrasKey, "gpt-oss-120b"));
+        }
+        // Last resort: local Ollama minimax-m3:cloud
+        fallbackAdapters.push(new OllamaAdapter("minimax-m3:cloud"));
+        console.log(`[Agent2 Failover] Hybrid chain built: ${fallbackAdapters.map(a => a.constructor.name).join(" -> ")}`);
+      } else {
+        // Default generic chain: primary adapter + any available providers
+        fallbackAdapters = [adapter];
+        if (process.env.GEMINI_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "GeminiAdapter")) {
+          fallbackAdapters.push(new GeminiAdapter(process.env.GEMINI_API_KEY));
+        }
+        const hasGroqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY_3;
+        if (hasGroqKey && !fallbackAdapters.some(a => a.constructor.name === "GroqAdapter")) {
+          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct"));
+        }
+        if (process.env.CEREBRAS_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "CerebrasAdapter")) {
+          fallbackAdapters.push(new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b"));
+        }
       }
-      const hasGroqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY_3;
-      if (hasGroqKey && !fallbackAdapters.some(a => a.constructor.name === "GroqAdapter")) {
-        fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct"));
-      }
-      if (process.env.CEREBRAS_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "CerebrasAdapter")) {
-        fallbackAdapters.push(new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b"));
-      }
+
 
       // Try each adapter sequentially. If rate limited, fall back to next one
       for (let i = 0; i < fallbackAdapters.length; i++) {

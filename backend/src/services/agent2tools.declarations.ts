@@ -21,7 +21,8 @@ export const GEMINI_AGENT2_TOOLS = {
           category: {
             type: SchemaType.STRING,
             description: "Category filter",
-            enum: ["MCU", "sensor", "motor", "ESC", "display", "power", "communication"]
+            // ??$$$ newer code - added passive, actuator, connector to prevent Groq schema validation crashes
+            enum: ["MCU", "sensor", "motor", "ESC", "display", "power", "communication", "passive", "actuator", "connector"]
           }
         },
         required: ["query"]

@@ -7,6 +7,8 @@ import { useProjectStore } from '../../store/useProjectStore';
 import { Arduino } from './Arduino';
 import { LED } from './LED';
 import { Button } from './Button';
+// ??$$$ newer code
+import { LCD16x2 } from './LCD16x2';
 import { Wire } from './Wire';
 import { WebGLErrorBoundary } from './ErrorBoundary';
 import { SchematicView } from './SchematicView';
@@ -101,7 +103,7 @@ const checkWebGLSupport = (): boolean => {
 };
 
 export const Scene: React.FC = () => {
-  const { project, showWires } = useProjectStore();
+  const { project, showWires, simulationRunning, lcdLine1, lcdLine2 } = useProjectStore();
   const bomItems = Array.isArray(project?.bom) ? project.bom : [];
   
   // ??$$$
@@ -217,6 +219,20 @@ export const Scene: React.FC = () => {
                     position={position}
                     componentKey={String(item?.key || `button${index + 1}`)}
                     displayName={String(item?.displayName || `Button ${index + 1}`)}
+                  />
+                );
+              }
+
+              if (itemType === 'display' || itemName.includes('lcd') || itemName.includes('screen') || itemName.includes('oled')) {
+                return (
+                  <LCD16x2
+                    key={item?.key || `lcd-${index}`}
+                    position={position}
+                    componentKey={String(item?.key || `lcd${index + 1}`)}
+                    displayName={String(item?.displayName || `LCD ${index + 1}`)}
+                    textLine1={lcdLine1}
+                    textLine2={lcdLine2}
+                    backlight={simulationRunning}
                   />
                 );
               }

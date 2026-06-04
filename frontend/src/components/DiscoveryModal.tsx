@@ -160,6 +160,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const virtualPlaygroundUrl = (import.meta.env.VITE_VIRTUAL_PLAYGROUND_URL || "http://localhost:5174").replace(/\/$/, "");
   // ??$$$ NEW FLOW
   const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
+  // ??$$$ newer code - hybrid primary provider selection
+  const [hybridPrimary, setHybridPrimary] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
   const [phase, setPhase] = useState<1 | 2>(1);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -205,7 +207,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const progressPercent = useMemo(() => {
     if (isCompleted) return 100;
     if (isFailed) return 0;
-    
+
     let base = 5;
     if (bom && bom.length > 0) {
       base = 25;
@@ -225,7 +227,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const progressStatus = useMemo(() => {
     if (isCompleted) return "Formulation completed successfully!";
     if (isFailed) return "Formulation paused/interrupted.";
-    
+
     if (progressPercent === 5) return "Discovering and sourcing components...";
     if (progressPercent === 25) return "Generating wiring connection matrix...";
     if (progressPercent === 50) return "Structuring code milestones and test parameters...";
@@ -654,8 +656,10 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     try {
       const res = await axiosInstance.post("/new-flow/start", {
         idea: initialIdea,
-        model
+        // ??$$$ newer code - send hybridPrimary as the model value when hybrid mode, else send model directly
+        model: model === "hybrid" ? `hybrid:${hybridPrimary}` : model
       });
+
       setSessionId(res.data.sessionId);
       localStorage.setItem("wireup_discovery_session_id", res.data.sessionId);
       setQuestion(res.data.question);
@@ -741,7 +745,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           */
           // ??$$$ newer code
           toast(`Agent failed over to fallback: ${data.model}`);
-          
+
           // Beep once using Web Audio API
           try {
             const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
@@ -749,14 +753,14 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
               const audioCtx = new AudioContextClass();
               const oscillator = audioCtx.createOscillator();
               const gainNode = audioCtx.createGain();
-              
+
               oscillator.connect(gainNode);
               gainNode.connect(audioCtx.destination);
-              
+
               oscillator.type = "sine";
               oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // 440Hz (A4 note)
               gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-              
+
               oscillator.start();
               oscillator.stop(audioCtx.currentTime + 0.15); // beep for 150ms
             }
@@ -1062,38 +1066,80 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 Choose the AI model you'd like to use for the discovery and formulation, then start.
               </p>
             </div>
-            <div className="w-full space-y-4">
-              <div className="flex flex-col items-start gap-1.5 text-left">
-                <label className="text-xs font-semibold text-zinc-400">Select AI Brain:</label>
-                <select
-                  value={model}
-                  onChange={(e) => setModel(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-200 outline-none focus:border-emerald-500 transition-colors"
+            {/* ??$$$ newer code - Two mode cards: Pure Ollama + Hybrid */}
+            <div className="w-full space-y-3">
+              <label className="text-xs font-semibold text-zinc-400 block text-left">Choose Formulation Mode:</label>
+
+              {/* Card 1: Pure Ollama */}
+              <button
+                id="mode-pure-ollama"
+                onClick={() => setModel("ollama/minimax-m3:cloud")}
+                className={`w-full flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${model === "ollama/minimax-m3:cloud"
+                    ? "border-emerald-500 bg-emerald-500/10"
+                    : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-700"
+                  }`}
+              >
+                <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border ${model === "ollama/minimax-m3:cloud"
+                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                    : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                  }`}>
+                  <HardDrive className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <div className={`text-sm font-bold ${model === "ollama/minimax-m3:cloud" ? "text-emerald-300" : "text-zinc-200"
+                    }`}>Pure Ollama</div>
+                  <div className="text-[11px] text-zinc-500 mt-0.5">minimax-m3:cloud:cloud · 100% local · Zero API limits</div>
+                </div>
+                {model === "ollama/minimax-m3:cloud" && (
+                  <CheckCircle className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                )}
+              </button>
+
+              {/* Card 2: Hybrid */}
+              <div className={`w-full rounded-xl border transition-all overflow-hidden ${model === "hybrid"
+                  ? "border-blue-500 bg-blue-500/10"
+                  : "border-zinc-800 bg-zinc-900/60"
+                }`}>
+                <button
+                  id="mode-hybrid"
+                  onClick={() => setModel("hybrid")}
+                  className="w-full flex items-center gap-3 p-4 text-left"
                 >
-                  /* old code
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
-                  <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
-                  <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
-                  <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
-                  <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
-                  <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
-                  <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
-                  <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
-                  */
-                  {/* ??$$$ newer code */}
-                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                  <option value="gpt-oss-120b">Cerebras gpt-oss-120b</option>
-                  <option value="zai-glm-4.7">Cerebras zai-glm-4.7</option>
-                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
-                  <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
-                  <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
-                  <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
-                  <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
-                  <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
-                  <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
-                  <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
-                </select>
+                  <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border ${model === "hybrid"
+                      ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                      : "bg-zinc-800 text-zinc-400 border-zinc-700"
+                    }`}>
+                    <Layers className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1">
+                    <div className={`text-sm font-bold ${model === "hybrid" ? "text-blue-300" : "text-zinc-200"
+                      }`}>Hybrid</div>
+                    <div className="text-[11px] text-zinc-500 mt-0.5">GROQ_KEY → GROQ_FALLBACK → Cerebras → Ollama</div>
+                  </div>
+                  {model === "hybrid" && (
+                    <CheckCircle className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                  )}
+                </button>
+                {/* Sub-dropdown only visible when Hybrid is selected */}
+                {model === "hybrid" && (
+                  <div className="px-4 pb-4 border-t border-blue-500/20">
+                    <label className="text-[10px] font-semibold text-zinc-500 block mt-3 mb-1.5 uppercase tracking-wider">Primary Cloud Provider:</label>
+                    <select
+                      id="hybrid-primary-select"
+                      value={hybridPrimary}
+                      onChange={(e) => setHybridPrimary(e.target.value)}
+                      className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500 transition-colors"
+                    >
+                      <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq · Llama 4 Scout</option>
+                      <option value="qwen/qwen3-32b">Groq · Qwen3-32B</option>
+                      <option value="gpt-oss-120b">Cerebras · gpt-oss-120b</option>
+                      <option value="zai-glm-4.7">Cerebras · zai-glm-4.7</option>
+                    </select>
+                    <p className="text-[9px] text-zinc-600 mt-2 leading-relaxed">
+                      Auto-failover chain: GROQ_API_KEY → GROQ_API_FALLBACK → CEREBRAS_API_KEY → minimax-m3:cloud:cloud
+                    </p>
+                  </div>
+                )}
               </div>
               <button
                 onClick={handleStartSession}
@@ -1149,11 +1195,10 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                               }
                             }}
                             disabled={submitting}
-                            className={`rounded-xl border p-4 text-left text-sm font-medium transition-all active:scale-[0.98] ${
-                              opt === "Other / Custom"
+                            className={`rounded-xl border p-4 text-left text-sm font-medium transition-all active:scale-[0.98] ${opt === "Other / Custom"
                                 ? "border-dashed border-zinc-700 bg-zinc-950/20 text-zinc-400 hover:border-emerald-500/50 hover:text-emerald-450"
                                 : "border-zinc-800 bg-zinc-900/40 text-zinc-300 hover:border-emerald-500/50 hover:bg-zinc-900"
-                            }`}
+                              }`}
                           >
                             {opt}
                           </button>
@@ -1334,7 +1379,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             </aside>
           </div>
         ) : (
-                    /* PHASE 2: AUTOMATED FORMULATION LOOP */
+          /* PHASE 2: AUTOMATED FORMULATION LOOP */
           // ??$$$ newer code
           <div className="flex h-full overflow-hidden">
             {/* Left/Center Main Workspace (Main panel for progress) */}

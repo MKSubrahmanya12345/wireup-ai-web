@@ -50,6 +50,9 @@ interface ProjectState {
   simulationRunning: boolean;
   ledState: boolean;
   buttonPressed: boolean;
+  // ??$$$ newer code - lcd screen content lines
+  lcdLine1: string;
+  lcdLine2: string;
   logs: LogEntry[];
   selectedFile: string;
   selectedComponent: string | null;
@@ -81,6 +84,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   simulationRunning: false,
   ledState: false,
   buttonPressed: false,
+  // ??$$$ newer code
+  lcdLine1: '',
+  lcdLine2: '',
   logs: [],
   selectedFile: 'sketch.ino',
   selectedComponent: null,
@@ -175,18 +181,22 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           return;
         }
 
+        const tempVal = 22.0 + Math.random() * 4.0;
+        const humVal = 50 + Math.random() * 15;
+        const distVal = 10 + Math.random() * 150;
+
         if (hasSoil) {
           const moisture = Math.floor(400 + Math.random() * 80);
           const state = moisture > 600 ? "Dry" : (moisture > 300 ? "Optimal" : "Wet");
           get().addLog('[OUTPUT] Soil Moisture: ' + moisture + ' (' + state + ')', 'output');
         }
         if (hasTemp) {
-          const temp = (22.0 + Math.random() * 4.0).toFixed(1);
-          const hum = (50 + Math.random() * 15).toFixed(0);
+          const temp = tempVal.toFixed(1);
+          const hum = humVal.toFixed(0);
           get().addLog('[OUTPUT] Temperature: ' + temp + 'C | Humidity: ' + hum + '%', 'output');
         }
         if (hasDistance) {
-          const dist = Math.floor(10 + Math.random() * 150);
+          const dist = Math.floor(distVal);
           get().addLog('[OUTPUT] Measured Distance: ' + dist + ' cm', 'output');
         }
         if (hasLdr) {
@@ -197,10 +207,52 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
           const val = Math.floor(Math.random() * 1024);
           get().addLog('[OUTPUT] Potentiometer Read: ' + val, 'output');
         }
+
+        // ??$$$ newer code - extract LCD text and update store state
+        const lines = ['', ''];
+        
+        // Pattern 1: static strings — lcd.print("Hello World")
+        const staticMatches = [...sketch.matchAll(/lcd\.print\s*\(\s*"([^"]+)"\s*\)/g)];
+        if (staticMatches[0]) lines[0] = staticMatches[0][1].slice(0, 16);
+        if (staticMatches[1]) lines[1] = staticMatches[1][1].slice(0, 16);
+        
+        // Pattern 2: sensor display — lcd.print(temp) near known variable
+        const hasTempVar = /float\s+temp|int\s+temp/i.test(sketch);
+        const hasHumVar = /float\s+hum|int\s+hum/i.test(sketch);
+        const hasDist = /distance|dist/i.test(sketch);
+        
+        if (hasTempVar && lines[0] === '') 
+          lines[0] = `Temp: ${tempVal.toFixed(1)}C`;
+        if (hasHumVar && lines[1] === '') 
+          lines[1] = `Hum: ${humVal.toFixed(0)}%`;
+        if (hasDist && lines[0] === '') 
+          lines[0] = `Dist: ${Math.floor(distVal)}cm`;
+        
+        // Pattern 3: lcd.setCursor(0,0) followed by print
+        const cursorBlocks = [...sketch.matchAll(
+          /lcd\.setCursor\s*\(\s*0\s*,\s*(\d)\s*\)[\s\S]*?lcd\.print\s*\(\s*"([^"]+)"\s*\)/g
+        )];
+        for (const match of cursorBlocks) {
+          const row = parseInt(match[1]);
+          if (row === 0) lines[0] = match[2].slice(0, 16);
+          if (row === 1) lines[1] = match[2].slice(0, 16);
+        }
+
+        // Fallback: If the code has "welcome" or "hello" startup prints, display them
+        if (lines[0] === '' && lines[1] === '') {
+          if (sketch.includes('lcd.print("')) {
+            const firstPrint = sketch.match(/lcd\.print\s*\(\s*"([^"]+)"\s*\)/);
+            if (firstPrint) {
+              lines[0] = firstPrint[1].slice(0, 16);
+            }
+          }
+        }
+
+        set({ lcdLine1: lines[0], lcdLine2: lines[1] });
       }, 2500);
 
     } else {
-      set({ voltage: 0.0, cpuUsage: 0 });
+      set({ voltage: 0.0, cpuUsage: 0, lcdLine1: '', lcdLine2: '' });
       get().addLog('[SYSTEM] Simulation paused', 'system');
     }
   },
@@ -299,6 +351,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       buttonPressed: normalized.editableJson.buttonInitialState,
       voltage: 0.0,
       cpuUsage: 0,
+      // ??$$$ newer code
+      lcdLine1: '',
+      lcdLine2: ''
     });
     get().clearLogs();
     get().addLog('[SYSTEM] Simulation reset completed', 'system');
