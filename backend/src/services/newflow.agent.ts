@@ -16,7 +16,19 @@ import Part from "../models/part.model";
 import { executeTool } from "./agent2tools.service";
 import { GEMINI_AGENT2_TOOLS, GROQ_AGENT2_TOOLS } from "./agent2tools.declarations";
 import { resolveAllPins } from "./pinResolver.service";
+import {
+  LLMResponse,
+  LLMAdapter,
+  GeminiAdapter,
+  GroqAdapter,
+  CerebrasAdapter,
+  OllamaAdapter,
+  checkOllama,
+  getOllamaModel
+} from "../agents/shared/adapters";
 
+// ??$$$ old code
+/*
 export interface LLMResponse {
   text(): string;
   functionCalls(): { name: string; args: any }[];
@@ -393,6 +405,9 @@ async function getOllamaModel(baseUrl = "http://localhost:11434"): Promise<strin
     return null;
   }
 }
+*/
+
+// ??$$$ newer code
 
 // ??$$$ newer code
 function parseJsonRecursively(val: any): any {
