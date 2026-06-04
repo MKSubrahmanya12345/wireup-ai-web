@@ -26,6 +26,8 @@ import {
   checkOllama,
   getOllamaModel
 } from "../agents/shared/adapters";
+// ??$$$ newer code
+import { parseJsonRecursively } from "../agents/shared/jsonRepair";
 
 // ??$$$ old code
 /*
@@ -410,6 +412,8 @@ async function getOllamaModel(baseUrl = "http://localhost:11434"): Promise<strin
 // ??$$$ newer code
 
 // ??$$$ newer code
+// ??$$$ old code
+/*
 function parseJsonRecursively(val: any): any {
   if (typeof val === "string") {
     try {
@@ -420,6 +424,7 @@ function parseJsonRecursively(val: any): any {
   }
   return val;
 }
+*/
 
 // Intercept and implement save_progress for NewFlowSession
 export async function saveSessionProgress(sessionId: string, type: string, data: any) {

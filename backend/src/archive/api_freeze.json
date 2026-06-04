@@ -1,0 +1,343 @@
+{
+  "systemconfigs": {
+    "_id": "ObjectId",
+    "key": "string",
+    "__v": "number",
+    "createdAt": "Date",
+    "updatedAt": "Date",
+    "value": "number"
+  },
+  "newflowsessions": {
+    "_id": "ObjectId",
+    "owner": "ObjectId",
+    "selectedModel": "string",
+    "idea": "string",
+    "qaHistory": [],
+    "phase1Complete": "boolean",
+    "phase2Complete": "boolean",
+    "projectId": null,
+    "context": {
+      "corePurpose": "string",
+      "mcu": "string",
+      "subsystems": [
+        "string"
+      ],
+      "constraints": [],
+      "powerSource": "string",
+      "connectivity": "string",
+      "openQuestions": [
+        "string"
+      ]
+    },
+    "agentLog": [],
+    "bom": [],
+    "wiring": [],
+    "milestones": [],
+    "createdAt": "Date",
+    "__v": "number"
+  },
+  "users": {
+    "_id": "ObjectId",
+    "email": "string",
+    "fullName": "string",
+    "password": "string (masked)",
+    "profilePic": "string",
+    "createdAt": "Date",
+    "updatedAt": "Date",
+    "__v": "number"
+  },
+  "components": {
+    "_id": "ObjectId",
+    "name": "string",
+    "category": "string",
+    "electrical": {
+      "minVoltage": "number",
+      "maxVoltage": "number",
+      "typicalCurrentDrawmA": "number",
+      "isPowerSource": "boolean"
+    },
+    "pins": [
+      {
+        "name": "string",
+        "wokwiId": "string",
+        "capabilities": [
+          "string"
+        ],
+        "peripheralBlock": "string",
+        "voltageLevel": "number",
+        "_id": "ObjectId"
+      }
+    ],
+    "protocols": {
+      "i2c": {
+        "isDevice": "boolean",
+        "defaultAddress": "string",
+        "alternativeAddresses": [
+          "string"
+        ]
+      },
+      "spi": {
+        "isDevice": "boolean",
+        "maxSpeedHz": "number"
+      }
+    },
+    "firmware": {
+      "requiredLibraries": [
+        "string"
+      ],
+      "sampleIncludes": [
+        "string"
+      ],
+      "setupTemplate": "string"
+    },
+    "simulator": {
+      "wokwiPartType": "string",
+      "defaultAttributes": {},
+      "dimensions": {
+        "widthMm": "number",
+        "heightMm": "number"
+      }
+    },
+    "__v": "number",
+    "createdAt": "Date",
+    "updatedAt": "Date"
+  },
+  "parts": {
+    "_id": "ObjectId",
+    "mpn": "string",
+    "__v": "number",
+    "available": "number",
+    "category": "string",
+    "createdAt": "Date",
+    "datasheetUrl": "string",
+    "description": "string",
+    "imageUrl": "string",
+    "isCurated": "boolean",
+    "manufacturer": "string",
+    "name": "string",
+    "price": "number",
+    "specs": {
+      "Core": "string",
+      "WiFi": "string",
+      "Bluetooth": "string",
+      "SRAM": "string",
+      "Flash": "string"
+    },
+    "updatedAt": "Date",
+    "wokwiPartType": "string",
+    "assetVersion": "number",
+    "componentFormatVersion": "string",
+    "footprint": {},
+    "glbUrl": "string",
+    "mesh": {
+      "vertices": "number",
+      "materials": "number",
+      "optimized": "boolean"
+    },
+    "package": {
+      "type": "string",
+      "pitch_mm": "number",
+      "mounting": "string"
+    },
+    "pins": [],
+    "pinsCachedAt": "Date",
+    "pipelineVersion": "string",
+    "source": "string",
+    "sourceId": "string",
+    "symbol": {},
+    "transform": {
+      "position": {
+        "x": "number",
+        "y": "number",
+        "z": "number"
+      },
+      "rotation": {
+        "x": "number",
+        "y": "number",
+        "z": "number"
+      },
+      "scale": {
+        "x": "number",
+        "y": "number",
+        "z": "number"
+      }
+    }
+  },
+  "projects": {
+    "_id": "ObjectId",
+    "owner": "ObjectId",
+    "description": "string",
+    "wokwiUrl": "string",
+    "wokwiProjectPath": "string",
+    "messages": [
+      {
+        "role": "string",
+        "content": "string"
+      }
+    ],
+    "ideaState": {
+      "summary": "string",
+      "requirements": [
+        "string"
+      ],
+      "unknowns": [
+        "string"
+      ]
+    },
+    "meta": {
+      "stage": "string",
+      "board": "string",
+      "powerSource": "string",
+      "language": "string",
+      "componentCount": "number",
+      "detectedAt": "Date"
+    },
+    "generationProfile": {
+      "board": "string",
+      "boardPartType": "string",
+      "powerSource": "string",
+      "language": "string",
+      "firmwareTarget": "string",
+      "simulationTarget": "string",
+      "runtimeHints": [
+        "string"
+      ],
+      "profileVersion": "number",
+      "updatedAt": "Date"
+    },
+    "sketch": "string",
+    "stageStatus": {
+      "ideation": "string",
+      "components": "string",
+      "build": "string",
+      "simulation": "string",
+      "assembly": "string",
+      "shopping": "string"
+    },
+    "architectureState": {
+      "summary": "string",
+      "pattern": "string",
+      "sourceStrategy": "string",
+      "entryFile": "string",
+      "files": [
+        {
+          "path": "string",
+          "role": "string",
+          "responsibility": "string"
+        }
+      ],
+      "libraries": [],
+      "pinAssignments": [],
+      "runtimeFlow": [
+        "string"
+      ],
+      "assumptions": [
+        "string"
+      ],
+      "openDecisions": [
+        "string"
+      ],
+      "updatedAt": "Date"
+    },
+    "componentsMessages": [],
+    "componentsState": {
+      "architecture": "string",
+      "components": [],
+      "apiEndpoints": []
+    },
+    "designMessages": [],
+    "designState": {
+      "screens": [],
+      "theme": "string",
+      "uxFlow": []
+    },
+    "projectAiMessages": [],
+    "projectAiState": {
+      "summary": "string",
+      "hardwarePath": "string",
+      "files": [],
+      "notes": [],
+      "lastContextAt": null
+    },
+    "wokwiEvidence": {
+      "lastLint": null,
+      "lastRun": null,
+      "lastScenario": null,
+      "lastSerialCapture": null,
+      "updatedAt": null
+    },
+    "extractedContext": {
+      "board": "string",
+      "sensors": [],
+      "outputs": [
+        "string"
+      ],
+      "connectivity": "string",
+      "power": null,
+      "projectSummary": null,
+      "confidence": {
+        "board": "number",
+        "sensors": "number",
+        "outputs": "number",
+        "connectivity": "number",
+        "power": "number",
+        "projectSummary": "number"
+      },
+      "rawConversation": []
+    },
+    "bom": [],
+    "lastCompilation": {
+      "hex": "string",
+      "compilationErrors": [],
+      "warnings": [],
+      "compiledAt": null
+    },
+    "assemblyLayout": {
+      "svgString": "string",
+      "dimensions": {
+        "width_mm": "number",
+        "height_mm": "number",
+        "depth_mm": "number"
+      },
+      "componentPositions": [],
+      "sizePreference": "string",
+      "warnings": [],
+      "generatedAt": null
+    },
+    "createdAt": "Date",
+    "updatedAt": "Date",
+    "__v": "number",
+    "ideation": {
+      "messages": [
+        {
+          "role": "string",
+          "content": "string",
+          "timestamp": "Date"
+        }
+      ],
+      "snapshot": {
+        "corePurpose": "string",
+        "computeCore": "string",
+        "inputs": [],
+        "outputs": [
+          "string"
+        ],
+        "communication": [
+          "string"
+        ],
+        "power": "string",
+        "constraints": [
+          "string"
+        ],
+        "openQuestions": [
+          "string"
+        ]
+      },
+      "thinking": "string",
+      "confidence": "number",
+      "finalized": "boolean",
+      "finalizedAt": "Date",
+      "finalizationReason": "string"
+    }
+  }
+}
