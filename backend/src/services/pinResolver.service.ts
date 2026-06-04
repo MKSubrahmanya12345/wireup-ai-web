@@ -343,3 +343,179 @@ export async function resolveAllPins(
     console.error("[PinResolver] resolveAllPins error:", err.message);
   }
 }
+
+// ??$$$ newer code
+export interface IWiringConnection {
+  id: string;
+  from: string;
+  to: string;
+  net: string;
+  color: string;
+  description: string;
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  conflicts: any[];
+  invalidPins: string[];
+  missingConnections: string[];
+  warnings: string[];
+  summary: string;
+}
+
+export function getComponentPins(wokwiPartType: string): Record<string, string> {
+  const norm = (wokwiPartType || "").toLowerCase();
+  if (norm.includes("ssd1306") || norm.includes("lcd1602") || norm.includes("mpu6050")) {
+    return { SDA: "SDA", SCL: "SCL", VCC: "VCC", GND: "GND" };
+  }
+  if (norm.includes("dht22") || norm.includes("dht11")) {
+    return { SDA: "SDA", VCC: "VCC", GND: "GND" };
+  }
+  if (norm.includes("servo")) {
+    return { PWM: "PWM", VCC: "VCC", GND: "GND" };
+  }
+  if (norm.includes("button") || norm.includes("pushbutton")) {
+    return { SIG: "SIG", GND: "GND" };
+  }
+  if (norm.includes("led")) {
+    return { A: "A", C: "C" };
+  }
+  if (norm.includes("resistor")) {
+    return { "1": "1", "2": "2" };
+  }
+  return { SIG: "SIG", VCC: "VCC", GND: "GND" };
+}
+
+export function resolveWiring(bom: any[], mcu: string): IWiringConnection[] {
+  const connections: IWiringConnection[] = [];
+  let connCounter = 1;
+
+  const assignPin = (fromPin: string, toPin: string, net: string, color: string, desc: string) => {
+    connections.push({
+      id: `conn_${connCounter++}`,
+      from: fromPin,
+      to: toPin,
+      net,
+      color,
+      description: desc
+    });
+  };
+
+  const isEsp32 = (mcu || "").toLowerCase().includes("esp32");
+
+  bom.forEach((p: any) => {
+    if (p.role === "controller") return;
+
+    const pKey = p.key;
+    const pName = (p.name || p.mpn || "").toLowerCase();
+
+    if (pName.includes("mpu6050") || pName.includes("gyro") || pName.includes("i2c")) {
+      // I2C mapping
+      assignPin(`mcu.${isEsp32 ? "GPIO21" : "A4"}`, `${pKey}.SDA`, "I2C_SDA", "#0066ff", "I2C data line");
+      assignPin(`mcu.${isEsp32 ? "GPIO22" : "A5"}`, `${pKey}.SCL`, "I2C_SCL", "#ffcc00", "I2C clock line");
+      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "VCC power supply");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
+    } else if (pName.includes("led")) {
+      assignPin("mcu.GPIO13", `${pKey}.A`, "LED_ANODE", "#00ccff", "LED Anode Control");
+      assignPin("mcu.GND", `${pKey}.C`, "POWER_GND", "#000000", "LED Cathode Ground");
+    } else if (pName.includes("dht")) {
+      assignPin("mcu.GPIO15", `${pKey}.SDA`, "DHT_DATA", "#00ccff", "DHT data signal");
+      assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "DHT VCC");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "DHT Ground");
+    } else if (pName.includes("button") || pName.includes("switch") || pName.includes("tact")) {
+      assignPin(`mcu.${isEsp32 ? "GPIO2" : "D2"}`, `${pKey}.SIG`, "BUTTON_SIG", "#00cc66", "Button signal input");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Button Ground");
+    } else if (pName.includes("servo") || pName.includes("motor")) {
+      assignPin(`mcu.${isEsp32 ? "GPIO4" : "D4"}`, `${pKey}.PWM`, "SERVO_PWM", "#ff6600", "Servo control line");
+      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Servo VCC");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Servo Ground");
+    } else {
+      // Generic defaults
+      assignPin("mcu.GPIO4", `${pKey}.SIG`, "SIGNAL", "#00ccff", "Signal line");
+      assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Power VCC");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
+    }
+  });
+
+  return connections;
+}
+
+export function validateWiring(connections: IWiringConnection[], mcu: string = "esp32"): ValidationResult {
+  const conflicts: any[] = [];
+  const invalidPins: string[] = [];
+  const missingConnections: string[] = [];
+  const warnings: string[] = [];
+
+  const availablePins: string[] = mcu.toLowerCase().includes("esp32")
+    ? ["GPIO21", "GPIO22", "GPIO23", "GPIO19", "GPIO18", "GPIO1", "GPIO3", "GPIO13", "GPIO15", "GPIO2", "GPIO4", "3V3", "5V", "GND"]
+    : ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13", "A0", "A1", "A2", "A3", "A4", "A5", "5V", "3V3", "GND"];
+
+  // Duplicate usage check
+  const pinMap: Record<string, string[]> = {};
+  connections.forEach((as: any) => {
+    const fromMatch = as.from.match(/mcu\.(.+)/);
+    if (fromMatch) {
+      const pin = fromMatch[1];
+      if (!pinMap[pin]) pinMap[pin] = [];
+      pinMap[pin].push(as.to);
+    }
+  });
+
+  for (const [pin, users] of Object.entries(pinMap)) {
+    if (users.length > 1) {
+      const isI2C = users.every(u => u.toLowerCase().includes("sda") || u.toLowerCase().includes("scl") || u.toLowerCase().includes("i2c"));
+      const isPower = pin.toLowerCase().includes("vcc") || pin.toLowerCase().includes("gnd") || pin.toLowerCase().includes("3v3") || pin.toLowerCase().includes("5v");
+      
+      if (isI2C) {
+        warnings.push(`Pin ${pin} is shared by multiple I2C lines: ${users.join(", ")}. This is standard I2C bus sharing.`);
+      } else if (isPower) {
+        // Power lines can be shared infinitely
+      } else {
+        conflicts.push({
+          pin,
+          usedBy: users,
+          fix: "Reassign one of the peripherals to another GPIO pin."
+        });
+      }
+    }
+  }
+
+  // Invalid pins check
+  connections.forEach((as: any) => {
+    const fromMatch = as.from.match(/mcu\.(.+)/);
+    if (fromMatch) {
+      const pin = fromMatch[1];
+      const found = availablePins.some(p => p.toLowerCase() === pin.toLowerCase());
+      if (!found) {
+        invalidPins.push(`${pin} does not exist on ${mcu}`);
+      }
+    }
+  });
+
+  // Check input only pins (e.g. GPIO34-39 on ESP32)
+  connections.forEach((as: any) => {
+    const fromMatch = as.from.match(/mcu\.(.+)/);
+    if (fromMatch) {
+      const pin = fromMatch[1];
+      if (mcu.toLowerCase().includes("esp32") && ["gpio34", "gpio35", "gpio36", "gpio37", "gpio38", "gpio39"].includes(pin.toLowerCase())) {
+        if (!as.to.toLowerCase().includes("input") && !as.to.toLowerCase().includes("sda") && !as.to.toLowerCase().includes("scl") && !as.to.toLowerCase().includes("rx")) {
+          warnings.push(`${pin} is input-only on ESP32, cannot use for output signal: ${as.to}`);
+        }
+      }
+    }
+  });
+
+  const valid = conflicts.length === 0 && invalidPins.length === 0;
+
+  return {
+    valid,
+    conflicts,
+    invalidPins,
+    missingConnections,
+    warnings,
+    summary: valid 
+      ? `All pin assignments valid for ${mcu}. No conflicts detected.` 
+      : `${conflicts.length + invalidPins.length} issues found. See conflicts and invalidPins.`
+  };
+}
+

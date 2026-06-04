@@ -8,6 +8,7 @@ import { searchLibrary } from "./library.service";
 import rotationService from "./keyRotation.service";
 // ??$$$ newer code
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { resolveWiring } from "./pinResolver.service";
 
 // ??$$$ NEW FLOW
 function parseIfString(val: any): any {
@@ -693,6 +694,8 @@ async function executeGenerateWiring(args: any) {
   const parts = parseIfString(args.parts);
 
   try {
+    // ??$$$ old code
+    /*
     const registry = getRegistry();
     let mcuEntry: any = null;
 
@@ -726,28 +729,6 @@ async function executeGenerateWiring(args: any) {
       const pName = p.name.toLowerCase();
 
       // Simple wire definitions
-      /* old code
-      if (pName.includes("mpu6050") || pName.includes("gyro") || pName.includes("i2c")) {
-        // I2C mapping
-        assignPin(`mcu.${isEsp32 ? "GPIO21" : "A4"}`, `${pKey}.SDA`, "I2C_SDA", "#0066ff", "I2C data line");
-        assignPin(`mcu.${isEsp32 ? "GPIO22" : "A5"}`, `${pKey}.SCL`, "I2C_SCL", "#ffcc00", "I2C clock line");
-        assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "VCC power supply");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
-      } else if (pName.includes("led")) {
-        assignPin("mcu.GPIO13", `${pKey}.A`, "LED_ANODE", "#00ccff", "LED Anode Control");
-        assignPin("mcu.GND", `${pKey}.C`, "POWER_GND", "#000000", "LED Cathode Ground");
-      } else if (pName.includes("dht")) {
-        assignPin("mcu.GPIO15", `${pKey}.SDA`, "DHT_DATA", "#00ccff", "DHT data signal");
-        assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "DHT VCC");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "DHT Ground");
-      } else {
-        // Generic defaults
-        assignPin("mcu.GPIO4", `${pKey}.SIG`, "SIGNAL", "#00ccff", "Signal line");
-        assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Power VCC");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
-      }
-      */
-      // ??$$$ newer code - add dedicated button and servo pins to avoid GPIO4 collisions and self-correction loops
       if (pName.includes("mpu6050") || pName.includes("gyro") || pName.includes("i2c")) {
         // I2C mapping
         assignPin(`mcu.${isEsp32 ? "GPIO21" : "A4"}`, `${pKey}.SDA`, "I2C_SDA", "#0066ff", "I2C data line");
@@ -775,6 +756,10 @@ async function executeGenerateWiring(args: any) {
         assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
       }
     });
+    */
+
+    // ??$$$ newer code
+    const connections = resolveWiring(parts, mcu);
 
     // Generate pinUsage summary
     const pinUsage: Record<string, any> = {};
