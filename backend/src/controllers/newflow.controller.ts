@@ -25,6 +25,118 @@ const pickPinPosition = (index: number) => {
   };
 };
 
+
+// ??$$ newer code
+const ARDUINO_UNO_PINS = [
+  { id: "RESET", x: -0.6, y: 0.1, z: 1.05, type: "system" },
+  { id: "3.3V", x: -0.4, y: 0.1, z: 1.05, type: "power" },
+  { id: "5V", x: -0.2, y: 0.1, z: 1.05, type: "power" },
+  { id: "GND", x: 0.0, y: 0.1, z: 1.05, type: "gnd" },
+  { id: "GND.2", x: 0.2, y: 0.1, z: 1.05, type: "gnd" },
+  { id: "VIN", x: 0.4, y: 0.1, z: 1.05, type: "power" },
+  { id: "A0", x: 0.6, y: 0.1, z: 1.05, type: "analog" },
+  { id: "A1", x: 0.75, y: 0.1, z: 1.05, type: "analog" },
+  { id: "A2", x: 0.9, y: 0.1, z: 1.05, type: "analog" },
+  { id: "A3", x: 1.05, y: 0.1, z: 1.05, type: "analog" },
+  { id: "A4", x: 1.2, y: 0.1, z: 1.05, type: "analog" },
+  { id: "A5", x: 1.35, y: 0.1, z: 1.05, type: "analog" },
+  { id: "RX", x: 1.4, y: 0.1, z: -1.05, type: "serial" },
+  { id: "TX", x: 1.25, y: 0.1, z: -1.05, type: "serial" },
+  { id: "D2", x: 1.1, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D3", x: 0.95, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D4", x: 0.8, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D5", x: 0.65, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D6", x: 0.5, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D7", x: 0.35, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D8", x: 0.2, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D9", x: 0.05, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D10", x: -0.1, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D11", x: -0.25, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D12", x: -0.4, y: 0.1, z: -1.05, type: "digital" },
+  { id: "D13", x: -0.55, y: 0.1, z: -1.05, type: "digital" },
+  { id: "SDA", x: -0.7, y: 0.1, z: -1.05, type: "i2c" },
+  { id: "SCL", x: -0.85, y: 0.1, z: -1.05, type: "i2c" }
+];
+
+const getFallbackPinsForComponent = (displayName: string, wokwiPartType?: string) => {
+  const name = displayName.toLowerCase();
+  if (name.includes("soil") || name.includes("moisture")) {
+    return [
+      { id: "VCC", x: -0.3, y: 0.02, z: -0.2, type: "power" },
+      { id: "GND", x: -0.1, y: 0.02, z: -0.2, type: "power" },
+      { id: "SIG", x: 0.1, y: 0.02, z: -0.2, type: "signal" },
+      { id: "D0", x: 0.3, y: 0.02, z: -0.2, type: "signal" }
+    ];
+  }
+  if (name.includes("dht") || name.includes("temp") || name.includes("humidity")) {
+    return [
+      { id: "VCC", x: -0.2, y: 0.02, z: -0.2, type: "power" },
+      { id: "GND", x: 0.0, y: 0.02, z: -0.2, type: "power" },
+      { id: "SDA", x: 0.2, y: 0.02, z: -0.2, type: "signal" }
+    ];
+  }
+  if (name.includes("mpu") || name.includes("gyro") || name.includes("accelerometer")) {
+    return [
+      { id: "VCC", x: -0.3, y: 0.02, z: -0.2, type: "power" },
+      { id: "GND", x: -0.15, y: 0.02, z: -0.2, type: "power" },
+      { id: "SDA", x: 0.0, y: 0.02, z: -0.2, type: "i2c" },
+      { id: "SCL", x: 0.15, y: 0.02, z: -0.2, type: "i2c" },
+      { id: "INT", x: 0.3, y: 0.02, z: -0.2, type: "signal" }
+    ];
+  }
+  if (name.includes("led")) {
+    return [
+      { id: "A", x: -0.1, y: 0.02, z: 0.0, type: "signal" },
+      { id: "C", x: 0.1, y: 0.02, z: 0.0, type: "signal" }
+    ];
+  }
+  if (name.includes("button") || name.includes("switch")) {
+    return [
+      { id: "1.l", x: -0.2, y: 0.02, z: -0.2, type: "signal" },
+      { id: "2.l", x: 0.2, y: 0.02, z: -0.2, type: "signal" },
+      { id: "1.r", x: -0.2, y: 0.02, z: 0.2, type: "signal" },
+      { id: "2.r", x: 0.2, y: 0.02, z: 0.2, type: "signal" }
+    ];
+  }
+  return [
+    { id: "VCC", x: -0.2, y: 0.02, z: -0.2, type: "power" },
+    { id: "GND", x: 0.0, y: 0.02, z: -0.2, type: "power" },
+    { id: "SIG", x: 0.2, y: 0.02, z: -0.2, type: "signal" }
+  ];
+};
+
+const normalizeMcuPin = (pinStr: string): string => {
+  const parts = String(pinStr || "").split(".");
+  if (parts.length < 2) return pinStr;
+  const partKey = parts[0];
+  const pinId = parts[1];
+  
+  if (partKey.toLowerCase() === "mcu" || partKey.toLowerCase() === "arduino") {
+    let pin = pinId.toUpperCase().trim();
+    if (pin === "GPIO21" || pin === "SDA" || pin === "I2C_SDA") return "mcu.SDA";
+    if (pin === "GPIO22" || pin === "SCL" || pin === "I2C_SCL") return "mcu.SCL";
+    if (pin === "GPIO13" || pin === "13") return "mcu.D13";
+    if (pin === "GPIO12" || pin === "12") return "mcu.D12";
+    if (pin === "GPIO11" || pin === "11") return "mcu.D11";
+    if (pin === "GPIO10" || pin === "10") return "mcu.D10";
+    if (pin === "GPIO9" || pin === "9") return "mcu.D9";
+    if (pin === "GPIO8" || pin === "8") return "mcu.D8";
+    if (pin === "GPIO7" || pin === "7") return "mcu.D7";
+    if (pin === "GPIO6" || pin === "6") return "mcu.D6";
+    if (pin === "GPIO5" || pin === "5") return "mcu.D5";
+    if (pin === "GPIO4" || pin === "4") return "mcu.D4";
+    if (pin === "GPIO3" || pin === "3") return "mcu.D3";
+    if (pin === "GPIO2" || pin === "2") return "mcu.D2";
+    if (pin === "GPIO1" || pin === "1" || pin === "TX") return "mcu.TX";
+    if (pin === "GPIO0" || pin === "0" || pin === "RX") return "mcu.RX";
+    if (pin === "3V3" || pin === "3.3V") return "mcu.3.3V";
+    if (pin === "5V" || pin === "VCC") return "mcu.5V";
+    if (pin === "GND") return "mcu.GND";
+    return `mcu.${pin}`;
+  }
+  return pinStr;
+};
+
 const mapSessionToVirtualProject = (session: any) => {
   const bom = Array.isArray(session?.bom) ? session.bom : [];
   const wiring = Array.isArray(session?.wiring) ? session.wiring : [];
@@ -49,6 +161,7 @@ const mapSessionToVirtualProject = (session: any) => {
       componentType = "button";
     }
 
+        /* old code
     const pins = Array.isArray(item?.pins) && item.pins.length > 0
       ? item.pins.map((pin: any, pinIndex: number) => {
         const fallback = pickPinPosition(pinIndex);
@@ -64,6 +177,22 @@ const mapSessionToVirtualProject = (session: any) => {
         { id: "P1", x: -0.25, y: 0.02, z: -0.2, type: "signal" },
         { id: "P2", x: 0.25, y: 0.02, z: 0.2, type: "signal" }
       ];
+    */
+    // ??$$ newer code
+    const pins = Array.isArray(item?.pins) && item.pins.length > 0
+      ? item.pins.map((pin: any, pinIndex: number) => {
+        const fallback = pickPinPosition(pinIndex);
+        return {
+          id: String(pin?.id || pin?.name || `P${pinIndex + 1}`),
+          x: Number.isFinite(pin?.x_mm) ? Number(pin.x_mm) / 10 : fallback.x,
+          y: Number.isFinite(pin?.z_mm) ? Number(pin.z_mm) / 10 : fallback.y,
+          z: Number.isFinite(pin?.y_mm) ? Number(pin.y_mm) / 10 : fallback.z,
+          type: String(pin?.type || "signal")
+        };
+      })
+      : (componentType === "microcontroller"
+        ? ARDUINO_UNO_PINS
+        : getFallbackPinsForComponent(displayName, item?.wokwiPartType));
 
     const key = safeId(item?.key || item?.displayName, `component-${index + 1}`);
 
@@ -82,12 +211,26 @@ const mapSessionToVirtualProject = (session: any) => {
     };
   });
 
+    /* old code
   const mappedWiring = wiring
     .map((wire: any) => ({
       from: String(wire?.from || ""),
       to: String(wire?.to || ""),
       color: String(wire?.color || "#1d4ed8")
     }))
+    .filter((wire: any) => wire.from && wire.to);
+  */
+  // ??$$ newer code
+  const mappedWiring = wiring
+    .map((wire: any) => {
+      const from = normalizeMcuPin(String(wire?.from || ""));
+      const to = normalizeMcuPin(String(wire?.to || ""));
+      return {
+        from,
+        to,
+        color: String(wire?.color || "#1d4ed8")
+      };
+    })
     .filter((wire: any) => wire.from && wire.to);
 
   // ??$$$ old code
@@ -173,7 +316,10 @@ You must respond ONLY with a JSON object, without markdown, without backticks:
 
 // Helper to call LLM for Discovery Agent
 async function callDiscovery(modelName: string, promptText: string): Promise<any> {
+  /* old code
   const isGemini = modelName.toLowerCase().includes("gemini");
+  const isDeepSeek = modelName.toLowerCase().includes("deepseek");
+  const isOllama = modelName.toLowerCase().includes("ollama");
 
   if (isGemini) {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -187,6 +333,121 @@ async function callDiscovery(modelName: string, promptText: string): Promise<any
 
     const result = await model.generateContent(promptText);
     const text = result.response.text().trim();
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } else if (isDeepSeek) {
+  */
+  // ??$$$ newer code
+  const isGemini = modelName.toLowerCase().includes("gemini");
+  const isCerebras = modelName.toLowerCase().includes("gpt-oss") || modelName.toLowerCase().includes("zai-glm") || modelName.toLowerCase().includes("cerebras");
+  const isDeepSeek = modelName.toLowerCase().includes("deepseek");
+  const isOllama = modelName.toLowerCase().includes("ollama");
+
+  if (isGemini) {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) throw new Error("GEMINI_API_KEY is missing in env");
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      systemInstruction: AGENT1_SYSTEM_PROMPT
+    });
+
+    const result = await model.generateContent(promptText);
+    const text = result.response.text().trim();
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } else if (isCerebras) {
+    const apiKey = process.env.CEREBRAS_API_KEY;
+    if (!apiKey) throw new Error("CEREBRAS_API_KEY is missing in env");
+
+    const actualModel = modelName.includes("zai-glm") ? "zai-glm-4.7" : "gpt-oss-120b";
+    const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: actualModel,
+        messages: [
+          { role: "system", content: AGENT1_SYSTEM_PROMPT },
+          { role: "user", content: promptText }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Cerebras API call failed: ${response.statusText} - ${errText}`);
+    }
+
+    const data: any = await response.json();
+    const text = data.choices[0]?.message?.content?.trim() || "";
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } else if (isDeepSeek) {
+    // ??$$$ newer code
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) throw new Error("DEEPSEEK_API_KEY is missing in env");
+
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          { role: "system", content: AGENT1_SYSTEM_PROMPT },
+          { role: "user", content: promptText }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`DeepSeek API call failed: ${response.statusText} - ${errText}`);
+    }
+
+    const data: any = await response.json();
+    const text = data.choices[0]?.message?.content?.trim() || "";
+    const clean = text.replace(/```json|```/g, "").trim();
+    return JSON.parse(clean);
+  } else if (isOllama) {
+    // ??$$$ newer code
+    const modelTag = modelName.split("/")[1] || "qwen2.5:3b";
+    const response = await fetch("http://localhost:11434/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: modelTag,
+        messages: [
+          { role: "system", content: AGENT1_SYSTEM_PROMPT },
+          { role: "user", content: promptText }
+        ],
+        response_format: { type: "json_object" },
+        temperature: 0.7,
+        options: {
+          num_ctx: 8192
+        }
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Ollama API call failed: ${response.statusText} - ${errText}`);
+    }
+
+    const data: any = await response.json();
+    const text = data.choices[0]?.message?.content?.trim() || "";
     const clean = text.replace(/```json|```/g, "").trim();
     return JSON.parse(clean);
   } else {
@@ -561,11 +822,18 @@ export const exportLocalSession = async (req: Request, res: Response) => {
     const sketchCode = firstCodeMilestone?.code
       || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
     */
-    // ??$$$ newer code
+    // ??$$$ old code
+    /*
     const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
     const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
     const sketchCode = latestCodeMilestone?.code
       || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+    */
+    // ??$$$ newer code
+    const sketchCode = session.finalSketch || (
+      [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))
+      .find((m: any) => String(m?.code || "").trim().length > 0)?.code
+    ) || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
     fs.writeFileSync(path.join(exportDir, "sketch.ino"), sketchCode, "utf8");
 
     // Also write a sketch.json wrapper containing code, as expected by the compilation service

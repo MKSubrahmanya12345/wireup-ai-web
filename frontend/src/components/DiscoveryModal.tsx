@@ -528,6 +528,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           setLogs(res.data.agentLog || []);
           setStarted(true); // ??$$$ newer code - mark as started
 
+          /* old code
           if (res.data.phase2Complete) {
             setIsCompleted(true);
             setCompletedProjectId(projectId);
@@ -549,6 +550,32 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
               setShouldAutoFormulate(false);
             }
           }
+          */
+
+          // ??$$$ newer code - force Phase 2 if phase2Complete is true to show the completion view correctly
+          if (res.data.phase2Complete) {
+            setIsCompleted(true);
+            setCompletedProjectId(projectId);
+            setPhase(2);
+            setShouldAutoFormulate(false);
+          } else {
+            if (initialPhase) {
+              setPhase(initialPhase);
+              if (initialPhase === 2 && (!res.data.agentLog || res.data.agentLog.length === 0)) {
+                setShouldAutoFormulate(true);
+              } else {
+                setShouldAutoFormulate(false);
+              }
+            } else {
+              const nextPhase = res.data.phase1Complete ? 2 : 1;
+              setPhase(nextPhase);
+              if (nextPhase === 2 && (!res.data.agentLog || res.data.agentLog.length === 0)) {
+                setShouldAutoFormulate(true);
+              } else {
+                setShouldAutoFormulate(false);
+              }
+            }
+          }
         } else {
           // Try to resume from cached localStorage session first
           const cachedSessionId = localStorage.getItem("wireup_discovery_session_id");
@@ -566,6 +593,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 setMilestones(res.data.milestones || []);
                 setLogs(res.data.agentLog || []);
                 setStarted(true); // ??$$$ newer code - mark as started
+                /* old code
                 if (res.data.phase2Complete) {
                   setIsCompleted(true);
                   if (res.data.projectId) {
@@ -578,6 +606,25 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                   setShouldAutoFormulate(true);
                 } else {
                   setShouldAutoFormulate(false);
+                }
+                */
+
+                // ??$$$ newer code - force Phase 2 if phase2Complete is true to show completion view correctly
+                if (res.data.phase2Complete) {
+                  setIsCompleted(true);
+                  setPhase(2);
+                  setShouldAutoFormulate(false);
+                  if (res.data.projectId) {
+                    setCompletedProjectId(res.data.projectId);
+                  }
+                } else {
+                  const nextPhase = res.data.phase1Complete ? 2 : 1;
+                  setPhase(nextPhase);
+                  if (nextPhase === 2 && (!res.data.agentLog || res.data.agentLog.length === 0)) {
+                    setShouldAutoFormulate(true);
+                  } else {
+                    setShouldAutoFormulate(false);
+                  }
                 }
                 setLoading(false);
                 return;
@@ -683,6 +730,40 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       socket.on("agent2:resumed", (data: any) => {
         toast.success("Formulation resumed!");
         setIsFailed(false);
+      });
+
+      socket.on("agent2:model_changed", (data: any) => {
+        // ??$$$ newer code - update dropdown model name, alert the user, and beep!
+        if (data.model) {
+          setModel(data.model);
+          /* old code
+          toast.info(`Agent failed over to fallback: ${data.model}`);
+          */
+          // ??$$$ newer code
+          toast(`Agent failed over to fallback: ${data.model}`);
+          
+          // Beep once using Web Audio API
+          try {
+            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioContextClass) {
+              const audioCtx = new AudioContextClass();
+              const oscillator = audioCtx.createOscillator();
+              const gainNode = audioCtx.createGain();
+              
+              oscillator.connect(gainNode);
+              gainNode.connect(audioCtx.destination);
+              
+              oscillator.type = "sine";
+              oscillator.frequency.setValueAtTime(440, audioCtx.currentTime); // 440Hz (A4 note)
+              gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+              
+              oscillator.start();
+              oscillator.stop(audioCtx.currentTime + 0.15); // beep for 150ms
+            }
+          } catch (e) {
+            console.error("Audio Context beep failed:", e);
+          }
+        }
       });
 
       socket.on("disconnect", () => {
@@ -924,13 +1005,29 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 onChange={(e) => setModel(e.target.value)}
                 className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-emerald-500 transition-colors"
               >
+                /* old code
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                 <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
-                {/* old code
-                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Qwen2.5-32B</option>
-                */}
-                {/* ??$$$ newer code */}
                 <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
+                <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
+                <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
+                <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
+                <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
+                <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
+                <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
+                */
+                {/* ??$$$ newer code */}
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gpt-oss-120b">Cerebras gpt-oss-120b</option>
+                <option value="zai-glm-4.7">Cerebras zai-glm-4.7</option>
+                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
+                <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
+                <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
+                <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
+                <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
+                <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
+                <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
+                <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
               </select>
             </div>
           )}
@@ -973,13 +1070,29 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                   onChange={(e) => setModel(e.target.value)}
                   className="w-full rounded-xl border border-zinc-800 bg-zinc-900 px-4 py-3 text-sm text-zinc-200 outline-none focus:border-emerald-500 transition-colors"
                 >
+                  /* old code
                   <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                   <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
-                  {/* old code
-                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Qwen2.5-32B</option>
-                  */}
-                  {/* ??$$$ newer code */}
                   <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
+                  <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
+                  <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
+                  <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
+                  <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
+                  <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
+                  <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
+                  */
+                  {/* ??$$$ newer code */}
+                  <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  <option value="gpt-oss-120b">Cerebras gpt-oss-120b</option>
+                  <option value="zai-glm-4.7">Cerebras zai-glm-4.7</option>
+                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
+                  <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
+                  <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
+                  <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
+                  <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
+                  <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
+                  <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
+                  <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
                 </select>
               </div>
               <button

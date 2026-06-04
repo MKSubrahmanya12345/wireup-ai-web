@@ -19,11 +19,46 @@ export const Arduino: React.FC<ArduinoProps> = ({
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const meshRef = useRef<any>(null);
 
+  /* old code
   const pins = [
     { id: "5V", pos: [-1.2, 0.1, 0.4], label: "5V Power", type: "power" },
     { id: "GND", pos: [-1.2, 0.1, 0.8], label: "Ground", type: "gnd" },
     { id: "D7", pos: [1.2, 0.1, -0.4], label: "Digital Out D7", type: "digital" },
     { id: "D2", pos: [1.2, 0.1, -0.8], label: "Digital In D2", type: "digital" }
+  ];
+  */
+
+  // ??$$$ newer code
+  const pins = [
+    { id: "RESET", pos: [-0.6, 0.1, 1.05], label: "Reset", type: "system" },
+    { id: "3.3V", pos: [-0.4, 0.1, 1.05], label: "3.3V Power", type: "power" },
+    { id: "5V", pos: [-0.2, 0.1, 1.05], label: "5V Power", type: "power" },
+    { id: "GND", pos: [0.0, 0.1, 1.05], label: "Ground", type: "gnd" },
+    { id: "GND.2", pos: [0.2, 0.1, 1.05], label: "Ground", type: "gnd" },
+    { id: "VIN", pos: [0.4, 0.1, 1.05], label: "VIN Power", type: "power" },
+    { id: "A0", pos: [0.6, 0.1, 1.05], label: "Analog A0", type: "analog" },
+    { id: "A1", pos: [0.75, 0.1, 1.05], label: "Analog A1", type: "analog" },
+    { id: "A2", pos: [0.9, 0.1, 1.05], label: "Analog A2", type: "analog" },
+    { id: "A3", pos: [1.05, 0.1, 1.05], label: "Analog A3", type: "analog" },
+    { id: "A4", pos: [1.2, 0.1, 1.05], label: "Analog A4 / SDA", type: "analog" },
+    { id: "A5", pos: [1.35, 0.1, 1.05], label: "Analog A5 / SCL", type: "analog" },
+    
+    { id: "RX", pos: [1.4, 0.1, -1.05], label: "Serial RX D0", type: "serial" },
+    { id: "TX", pos: [1.25, 0.1, -1.05], label: "Serial TX D1", type: "serial" },
+    { id: "D2", pos: [1.1, 0.1, -1.05], label: "Digital D2", type: "digital" },
+    { id: "D3", pos: [0.95, 0.1, -1.05], label: "Digital D3", type: "digital" },
+    { id: "D4", pos: [0.8, 0.1, -1.05], label: "Digital D4", type: "digital" },
+    { id: "D5", pos: [0.65, 0.1, -1.05], label: "Digital D5", type: "digital" },
+    { id: "D6", pos: [0.5, 0.1, -1.05], label: "Digital D6", type: "digital" },
+    { id: "D7", pos: [0.35, 0.1, -1.05], label: "Digital D7", type: "digital" },
+    { id: "D8", pos: [0.2, 0.1, -1.05], label: "Digital D8", type: "digital" },
+    { id: "D9", pos: [0.05, 0.1, -1.05], label: "Digital D9", type: "digital" },
+    { id: "D10", pos: [-0.1, 0.1, -1.05], label: "Digital D10", type: "digital" },
+    { id: "D11", pos: [-0.25, 0.1, -1.05], label: "Digital D11", type: "digital" },
+    { id: "D12", pos: [-0.4, 0.1, -1.05], label: "Digital D12", type: "digital" },
+    { id: "D13", pos: [-0.55, 0.1, -1.05], label: "Digital D13 / Built-in LED", type: "digital" },
+    { id: "SDA", pos: [-0.7, 0.1, -1.05], label: "I2C SDA", type: "i2c" },
+    { id: "SCL", pos: [-0.85, 0.1, -1.05], label: "I2C SCL", type: "i2c" }
   ];
 
   const isSelected = selectedComponent === componentKey;

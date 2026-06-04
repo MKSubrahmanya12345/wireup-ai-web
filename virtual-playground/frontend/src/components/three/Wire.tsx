@@ -5,6 +5,38 @@ import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 import { useProjectStore } from '../../store/useProjectStore';
 
+// ??$$$ newer code
+const ARDUINO_UNO_PINS = [
+  { id: "RESET", x: -0.6, y: 0.1, z: 1.05 },
+  { id: "3.3v", x: -0.4, y: 0.1, z: 1.05 },
+  { id: "5v", x: -0.2, y: 0.1, z: 1.05 },
+  { id: "gnd", x: 0.0, y: 0.1, z: 1.05 },
+  { id: "gnd.2", x: 0.2, y: 0.1, z: 1.05 },
+  { id: "vin", x: 0.4, y: 0.1, z: 1.05 },
+  { id: "a0", x: 0.6, y: 0.1, z: 1.05 },
+  { id: "a1", x: 0.75, y: 0.1, z: 1.05 },
+  { id: "a2", x: 0.9, y: 0.1, z: 1.05 },
+  { id: "a3", x: 1.05, y: 0.1, z: 1.05 },
+  { id: "a4", x: 1.2, y: 0.1, z: 1.05 },
+  { id: "a5", x: 1.35, y: 0.1, z: 1.05 },
+  { id: "rx", x: 1.4, y: 0.1, z: -1.05 },
+  { id: "tx", x: 1.25, y: 0.1, z: -1.05 },
+  { id: "d2", x: 1.1, y: 0.1, z: -1.05 },
+  { id: "d3", x: 0.95, y: 0.1, z: -1.05 },
+  { id: "d4", x: 0.8, y: 0.1, z: -1.05 },
+  { id: "d5", x: 0.65, y: 0.1, z: -1.05 },
+  { id: "d6", x: 0.5, y: 0.1, z: -1.05 },
+  { id: "d7", x: 0.35, y: 0.1, z: -1.05 },
+  { id: "d8", x: 0.2, y: 0.1, z: -1.05 },
+  { id: "d9", x: 0.05, y: 0.1, z: -1.05 },
+  { id: "d10", x: -0.1, y: 0.1, z: -1.05 },
+  { id: "d11", x: -0.25, y: 0.1, z: -1.05 },
+  { id: "d12", x: -0.4, y: 0.1, z: -1.05 },
+  { id: "d13", x: -0.55, y: 0.1, z: -1.05 },
+  { id: "sda", x: -0.7, y: 0.1, z: -1.05 },
+  { id: "scl", x: -0.85, y: 0.1, z: -1.05 }
+];
+
 interface WireProps {
   from: string;
   to: string;
@@ -22,6 +54,7 @@ export const Wire: React.FC<WireProps> = ({ from, to, color }) => {
 
     const bom = Array.isArray(project?.bom) ? project.bom : [];
     const part = bom.find((item: any) => String(item?.key || '').toLowerCase() === partKey.toLowerCase());
+    /* old code
     if (part && Array.isArray(part.position)) {
       const base = part.position;
       const pin = Array.isArray(part.pins)
@@ -35,39 +68,123 @@ export const Wire: React.FC<WireProps> = ({ from, to, color }) => {
           })
         : null;
 
-      const px = Number(base[0] || 0) + Number(pin?.x_mm ?? pin?.x ?? 0) * 0.1;
-      const py = Number(base[1] || 0.1) + Number(pin?.y_mm ?? pin?.y ?? 0) * 0.1;
-      const pz = Number(base[2] || 0) + Number(pin?.z_mm ?? pin?.z ?? 0) * 0.1;
-      return [px, py, pz];
+      if (pin) {
+        const dx = Number.isFinite(pin.x_mm) ? Number(pin.x_mm) * 0.1 : Number(pin.x ?? 0);
+        const dy = Number.isFinite(pin.y_mm) ? Number(pin.y_mm) * 0.1 : Number(pin.y ?? 0);
+        const dz = Number.isFinite(pin.z_mm) ? Number(pin.z_mm) * 0.1 : Number(pin.z ?? 0);
+        return [
+          Number(base[0] || 0) + dx,
+          Number(base[1] || 0.1) + dy,
+          Number(base[2] || 0) + dz
+        ];
+      }
     }
-
-    // Legacy fallback map for older hardcoded payloads.
-    // ??$$$ commented old code
-    /*
-    switch (pinStr) {
-      case 'arduino.5V':
-      case 'mcu.5V':
-        return [-1.2, 0.15, 0.4];
-      case 'arduino.GND':
-      case 'mcu.GND':
-        return [-1.2, 0.15, 0.8];
-      case 'arduino.D7':
-      case 'mcu.D7':
-        return [1.2, 0.15, -0.4];
-      case 'arduino.D2':
-      case 'mcu.D2':
-        return [1.2, 0.15, -0.8];
-      default:
-        return [0, 0, 0];
-    }
-    */
     const pinLower = pinId.toLowerCase();
     if (partKey.toLowerCase() === 'mcu' || partKey.toLowerCase() === 'arduino') {
-      if (pinLower === '5v' || pinLower === 'vcc') return [Number(part?.position?.[0] || 0) - 1.2, 0.15, Number(part?.position?.[2] || 0) + 0.4];
-      if (pinLower === 'gnd') return [Number(part?.position?.[0] || 0) - 1.2, 0.15, Number(part?.position?.[2] || 0) + 0.8];
-      if (pinLower === 'd7' || pinLower === 'gpio13' || pinLower === '13') return [Number(part?.position?.[0] || 0) + 1.2, 0.15, Number(part?.position?.[2] || 0) - 0.4];
-      if (pinLower === 'd2' || pinLower === 'gpio4' || pinLower === '4') return [Number(part?.position?.[0] || 0) + 1.2, 0.15, Number(part?.position?.[2] || 0) - 0.8];
+      const knownPin = ARDUINO_UNO_PINS.find(p => p.id.toLowerCase() === pinLower);
+      if (knownPin) {
+        const mcuPart = bom.find(item => {
+          const typeHint = `${item?.displayName} ${item?.purpose}`.toLowerCase();
+          return item?.key === 'mcu' || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint);
+        });
+        const mcuPos = mcuPart?.position || [0, 0, 0];
+        return [
+          Number(mcuPos[0] || 0) + knownPin.x,
+          Number(mcuPos[1] || 0.1) + knownPin.y,
+          Number(mcuPos[2] || 0) + knownPin.z
+        ];
+      }
     }
+    return [0, 0.1, 0];
+    */
+
+    // ??$$$ newer code
+    const pinLower = pinId.toLowerCase();
+
+    // 1. Check if it's the microcontroller (MCU)
+    if (partKey.toLowerCase() === 'mcu' || partKey.toLowerCase() === 'arduino') {
+      let normalizedSearch = pinLower;
+      if (normalizedSearch.startsWith("gpio")) {
+        normalizedSearch = normalizedSearch.substring(4);
+      }
+      const knownPin = ARDUINO_UNO_PINS.find(p => {
+        const pid = p.id.toLowerCase();
+        return pid === normalizedSearch || 
+               pid === `d${normalizedSearch}` || 
+               pid === `a${normalizedSearch}` ||
+               (normalizedSearch === "gnd.2" && pid === "gnd") ||
+               (normalizedSearch === "3v3" && pid === "3.3v");
+      });
+
+      if (knownPin) {
+        /* old code
+        const mcuPart = bom.find(item => {
+          const typeHint = `${item?.displayName} ${item?.purpose}`.toLowerCase();
+          return item?.key === 'mcu' || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint);
+        });
+        */
+        // ??$$$ newer code
+        const mcuPart = bom.find((item: any) => {
+          const typeHint = `${item?.displayName} ${item?.purpose}`.toLowerCase();
+          return item?.key === 'mcu' || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint);
+        });
+        const mcuPos = mcuPart?.position || [0, 0, 0];
+        return [
+          Number(mcuPos[0] || 0) + knownPin.x,
+          Number(mcuPos[1] || 0.1) + knownPin.y,
+          Number(mcuPos[2] || 0) + knownPin.z
+        ];
+      }
+    }
+
+    // 2. Check general BOM components
+    if (part && Array.isArray(part.position)) {
+      const base = part.position;
+      const pin = Array.isArray(part.pins)
+        ? part.pins.find((p: any) => {
+            const pid = String(p?.id || '').toLowerCase();
+            const pName = String(p?.name || '').toLowerCase();
+            const target = pinId.toLowerCase();
+            return pid === target || pName === target ||
+                   pid.replace(/^gpio/, '') === target.replace(/^gpio/, '') ||
+                   pName.replace(/^gpio/, '') === target.replace(/^gpio/, '');
+          })
+        : null;
+
+      /* old code
+      const activePin = pin || (Array.isArray(part.pins) && part.pins.length > 0 ? part.pins[0] : null);
+      if (activePin) {
+        const dx = Number.isFinite(activePin.x_mm) ? Number(activePin.x_mm) * 0.1 : Number(activePin.x ?? 0);
+        const dy = Number.isFinite(activePin.y_mm) ? Number(activePin.y_mm) * 0.1 : Number(activePin.y ?? 0);
+        const dz = Number.isFinite(activePin.z_mm) ? Number(activePin.z_mm) * 0.1 : Number(activePin.z ?? 0);
+        return [
+          Number(base[0] || 0) + dx,
+          Number(base[1] || 0.1) + dy,
+          Number(base[2] || 0) + dz
+        ];
+      }
+      */
+      // ??$$$ newer code
+      const activePin: any = pin || (Array.isArray(part.pins) && part.pins.length > 0 ? part.pins[0] : null);
+      if (activePin) {
+        const dx = Number.isFinite(activePin.x_mm) ? Number(activePin.x_mm) * 0.1 : Number(activePin.x ?? 0);
+        const dy = Number.isFinite(activePin.y_mm) ? Number(activePin.y_mm) * 0.1 : Number(activePin.y ?? 0);
+        const dz = Number.isFinite(activePin.z_mm) ? Number(activePin.z_mm) * 0.1 : Number(activePin.z ?? 0);
+        return [
+          Number(base[0] || 0) + dx,
+          Number(base[1] || 0.1) + dy,
+          Number(base[2] || 0) + dz
+        ];
+      } else {
+        // Fallback to component center coordinate
+        return [
+          Number(base[0] || 0),
+          Number(base[1] || 0.1),
+          Number(base[2] || 0)
+        ];
+      }
+    }
+
     return [0, 0.1, 0];
   };
 

@@ -37,7 +37,9 @@ const buildPlaygroundProject = (rawProject: any) => {
   const bom = Array.isArray(rawProject?.bom) ? rawProject.bom : [];
   const wiring = Array.isArray(rawProject?.wiring) ? rawProject.wiring : [];
   const milestones = Array.isArray(rawProject?.milestones) ? rawProject.milestones : [];
+  /* old code
   const componentCount = Math.max(bom.length, 1);
+  */
 
   // ??$$$ newer code: Expand BOM items by quantity
   const normalizedBom: any[] = [];

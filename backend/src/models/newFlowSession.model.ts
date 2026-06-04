@@ -118,6 +118,8 @@ export interface INewFlowSession extends Document {
   phase2Complete: boolean;
   projectId: Types.ObjectId | null;
   createdAt: Date;
+  // ??$$$ newer code
+  finalSketch?: string;
 }
 
 const qaHistorySchema = new Schema<IQaHistory>({
@@ -237,7 +239,9 @@ const newFlowSessionSchema = new Schema<INewFlowSession>({
   diagram: { type: Schema.Types.Mixed, default: () => ({}) },
   phase2Complete: { type: Boolean, default: false },
   projectId: { type: Schema.Types.ObjectId, ref: "Project", default: null },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
+  // ??$$$ newer code
+  finalSketch: { type: String, default: "" }
 });
 
 const NewFlowSession = mongoose.model<INewFlowSession>("NewFlowSession", newFlowSessionSchema);

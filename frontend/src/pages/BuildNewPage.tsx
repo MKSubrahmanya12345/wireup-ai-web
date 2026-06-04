@@ -38,7 +38,11 @@ export default function BuildNewPage() {
   const [issueDescription, setIssueDescription] = useState("");
   const [reportingIssue, setReportingIssue] = useState(false);
 
+  /* old code
   const saveTimer = useRef<NodeJS.Timeout | null>(null);
+  */
+  // ??$$$ newer code
+  const saveTimer = useRef<any>(null);
 
   // Load project on mount
   useEffect(() => {
@@ -291,8 +295,14 @@ export default function BuildNewPage() {
               <div className="p-5 border-b border-zinc-850 bg-zinc-900/10 space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
+                    {/* old code
                     <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                       Step {milestone.order} · {milestone.subsystem || "Core"}
+                    </span>
+                    */}
+                    // ??$$$ newer code
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                      Step {milestone.order} · {(milestone as any).subsystem || "Core"}
                     </span>
                     <h2 className="text-base font-bold text-zinc-100 mt-2">{milestone.title}</h2>
                   </div>

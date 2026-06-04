@@ -101,6 +101,20 @@ const CURATED_PARTS = [
     wokwiPartType: "wokwi-dht22",
     specs: { "Temp Range": "-40 to 80 °C", "Temp Accuracy": "±0.5 °C", "Humidity Range": "0-100% RH", "Humidity Accuracy": "±2% RH" }
   },
+  // ??$$$ newer code
+  {
+    mpn: "SOIL-MOISTURE-SEN",
+    name: "Soil Moisture Sensor Module",
+    manufacturer: "Generic",
+    description: "Analog soil moisture sensor module, outputs analog voltage representing soil moisture levels.",
+    imageUrl: "https://robu.in/wp-content/uploads/2015/09/soil-moisture-sensor.jpg",
+    datasheetUrl: "https://cdn.sparkfun.com/datasheets/Sensors/Biometrics/Soil_Moisture_Sensor.pdf",
+    available: 2000,
+    price: 120,
+    category: "Sensors",
+    wokwiPartType: "wokwi-potentiometer",
+    specs: { "Operating Voltage": "3.3V - 5V", "Output": "Analog (SIG)" }
+  },
   {
     mpn: "MPU-6050",
     name: "MPU6050 6-Axis Gyro & Accelerometer",

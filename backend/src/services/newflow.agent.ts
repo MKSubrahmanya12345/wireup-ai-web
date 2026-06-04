@@ -168,6 +168,93 @@ export class GroqAdapter implements LLMAdapter {
   }
 }
 
+// ??$$$ newer code - Cerebras Adapter implementation
+export class CerebrasAdapter implements LLMAdapter {
+  private apiKey: string;
+  private modelName: string;
+  constructor(apiKey: string, modelName: string) {
+    this.apiKey = apiKey;
+    this.modelName = modelName;
+  }
+
+  async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
+    const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + this.apiKey
+      },
+      body: JSON.stringify({
+        model: this.modelName,
+        messages: [
+          { role: "system", content: systemPrompt },
+          ...messages.map(m => {
+            if (m.role === "function") {
+              return {
+                role: "tool",
+                tool_call_id: m.tool_call_id || ("call_" + m.name),
+                name: m.name,
+                content: typeof m.content === "string" ? m.content : JSON.stringify(m.content)
+              };
+            }
+
+            const role = m.role === "model" || m.role === "assistant" ? "assistant" : "user";
+            const msgObj: any = {
+              role,
+              content: m.content || ""
+            };
+
+            if (m.functionCalls && m.functionCalls.length > 0) {
+              msgObj.tool_calls = m.functionCalls.map((fc: any) => ({
+                id: fc.id || ("call_" + fc.name),
+                type: "function",
+                function: {
+                  name: fc.name,
+                  arguments: JSON.stringify(fc.args)
+                }
+              }));
+            }
+
+            return msgObj;
+          })
+        ],
+        tools: GROQ_AGENT2_TOOLS as any,
+        tool_choice: "auto",
+        temperature: 0.2
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error("Cerebras API call failed: " + response.statusText + " - " + errText);
+    }
+
+    const data: any = await response.json();
+    const choice = data.choices[0];
+    const message = choice.message;
+
+    return {
+      text: () => message.content || "",
+      functionCalls: () => {
+        if (!message.tool_calls) return [];
+        return message.tool_calls.map((tc: any) => {
+          let parsedArgs = {};
+          try {
+            parsedArgs = JSON.parse(tc.function.arguments);
+          } catch (e) {
+            console.error("Failed to parse tool call args:", tc.function.arguments);
+          }
+          return {
+            id: tc.id,
+            name: tc.function.name,
+            args: parsedArgs
+          };
+        });
+      }
+    };
+  }
+}
+
 // ??$$$ newer code
 function parseJsonRecursively(val: any): any {
   if (typeof val === "string") {
@@ -783,7 +870,7 @@ function getRateLimitDelay(err: any): number {
   return 60; // fallback to 60 seconds
 }
 
-// ??$$$ newer code — sanitize messages to prevent consecutive same-role messages
+// ??$$$ newer code — sanitize messages to prevent consecutive same-role messages and ensure unique, matching tool call IDs
 function sanitizeMessageHistory(messages: any[]): any[] {
   const sanitized: any[] = [];
   for (const msg of messages) {
@@ -802,13 +889,55 @@ function sanitizeMessageHistory(messages: any[]): any[] {
     }
     sanitized.push(msg);
   }
-  return sanitized;
+
+  // ??$$$ newer code - ensure all tool calls and matching responses have unique, non-duplicate IDs
+  const processed = JSON.parse(JSON.stringify(sanitized));
+  const nameCounters: Record<string, number> = {};
+  let pendingToolCalls: { name: string; assignedId: string }[] = [];
+
+  for (let i = 0; i < processed.length; i++) {
+    const msg = processed[i];
+    
+    if (msg.role === "assistant" || msg.role === "model") {
+      if (msg.functionCalls && msg.functionCalls.length > 0) {
+        pendingToolCalls = [];
+        msg.functionCalls.forEach((fc: any) => {
+          if (!nameCounters[fc.name]) {
+            nameCounters[fc.name] = 0;
+          }
+          if (!fc.id) {
+            fc.id = `call_${fc.name}_${nameCounters[fc.name]++}`;
+          }
+          pendingToolCalls.push({ name: fc.name, assignedId: fc.id });
+        });
+      }
+    } else if (msg.role === "function") {
+      const matchIndex = pendingToolCalls.findIndex(tc => tc.name === msg.name);
+      if (matchIndex > -1) {
+        msg.tool_call_id = pendingToolCalls[matchIndex].assignedId;
+        pendingToolCalls.splice(matchIndex, 1);
+      } else {
+        if (!nameCounters[msg.name]) {
+          nameCounters[msg.name] = 0;
+        }
+        if (!msg.tool_call_id) {
+          msg.tool_call_id = `call_${msg.name}_${nameCounters[msg.name]++}`;
+        }
+      }
+    }
+  }
+
+  return processed;
 }
 
 // ??$$$ NEW FLOW
 // ??$$$ newer code — Added isResume flag
 export async function runAgent2(sessionId: string, modelName: string, isResume = false) {
+  /* old code
   const session = await NewFlowSession.findById(sessionId);
+  */
+  // ??$$$ newer code - let declaration to allow reloading the session document from DB later
+  let session = await NewFlowSession.findById(sessionId);
   if (!session) {
     throw new Error(`Session not found: ${sessionId}`);
   }
@@ -837,11 +966,11 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
       freshSession.agentLog.push(logItem);
       await freshSession.save();
       // Keep local session fields updated
-      session.agentLog = freshSession.agentLog;
-      session.bom = freshSession.bom;
-      session.wiring = freshSession.wiring;
-      session.milestones = freshSession.milestones;
-      session.diagram = freshSession.diagram;
+      session!.agentLog = freshSession.agentLog;
+      session!.bom = freshSession.bom;
+      session!.wiring = freshSession.wiring;
+      session!.milestones = freshSession.milestones;
+      session!.diagram = freshSession.diagram;
       // Sync mongoose internal __v to avoid version error in other saves on local object
       (session as any).__v = freshSession.__v;
     }
@@ -952,22 +1081,42 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     { role: "user", content: initialPrompt }
   ];
 
-  // Instantiate adapter
+  // ??$$$ old code
+  // // Instantiate adapter
+  // let adapter: LLMAdapter;
+  // if (modelName.toLowerCase().includes("gemini")) {
+  //   const geminiKey = process.env.GEMINI_API_KEY;
+  //   if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
+  //   adapter = new GeminiAdapter(geminiKey);
+  // } else {
+  //   /* old code
+  //   // Map Llama and Qwen models
+  //   let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+  //   if (modelName.toLowerCase().includes("qwen")) {
+  //     actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+  //   }
+  //   adapter = new GroqAdapter(actualModel);
+  //   */
+  //   // ??$$$ Map Llama and Qwen models correctly to production string
+  //   let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+  //   if (modelName.toLowerCase().includes("qwen")) {
+  //     actualModel = "qwen/qwen3-32b";
+  //   }
+  //   adapter = new GroqAdapter(actualModel);
+  // }
+  // ??$$$ newer code - Instantiate adapter (including Cerebras models support)
   let adapter: LLMAdapter;
   if (modelName.toLowerCase().includes("gemini")) {
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
     adapter = new GeminiAdapter(geminiKey);
+  } else if (modelName.toLowerCase().includes("gpt-oss") || modelName.toLowerCase().includes("zai-glm") || modelName.toLowerCase().includes("cerebras")) {
+    const cerebrasKey = process.env.CEREBRAS_API_KEY;
+    if (!cerebrasKey) throw new Error("CEREBRAS_API_KEY is missing in env");
+    const actualModel = modelName.includes("zai-glm") ? "zai-glm-4.7" : "gpt-oss-120b";
+    adapter = new CerebrasAdapter(cerebrasKey, actualModel);
   } else {
-    /* old code
-    // Map Llama and Qwen models
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-    if (modelName.toLowerCase().includes("qwen")) {
-      actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-    }
-    adapter = new GroqAdapter(actualModel);
-    */
-    // ??$$$ Map Llama and Qwen models correctly to production string
+    // Map Llama and Qwen models correctly to production string
     let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
@@ -1002,43 +1151,103 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     }
 
     try {
-      /* old code
-      const response = await adapter.chat(systemPrompt, messages);
-      capacityRetryCount = 0; // ??$$$ reset capacity retry count on successful response
-      const text = response.text();
-      const calls = response.functionCalls();
-      */
-      // ??$$$ newer code — Exponential backoff retry wrapper with Gemini fallback
+      // ??$$$ old code
+      // // ??$$$ newer code — Exponential backoff retry wrapper with Gemini fallback
+      // let response: LLMResponse | null = null;
+      // let lastError: any = null;
+      // const delays = [0, 2000, 5000];
+      // 
+      // const sanitizedMessages = sanitizeMessageHistory(messages);
+      // 
+      // for (let attempt = 1; attempt <= 4; attempt++) {
+      //   try {
+      //     if (attempt > 1) {
+      //       const delay = delays[attempt - 2] || 0;
+      //       console.log(`[Agent2 Retry] Rate limit or error. Attempt ${attempt} after ${delay}ms...`);
+      //       await new Promise(resolve => setTimeout(resolve, delay));
+      //     }
+      // 
+      //     if (attempt === 4 && !modelName.toLowerCase().includes("gemini")) {
+      //       console.log(`[Agent2 Retry] Attempt 4: Groq failed. Falling back to Gemini 2.5 Flash...`);
+      //       const geminiKey = process.env.GEMINI_API_KEY;
+      //       if (geminiKey) {
+      //         const fallbackAdapter = new GeminiAdapter(geminiKey);
+      //         response = await fallbackAdapter.chat(systemPrompt, sanitizedMessages);
+      //       } else {
+      //         throw new Error("GEMINI_API_KEY is missing for fallback");
+      //       }
+      //     } else {
+      //       response = await adapter.chat(systemPrompt, sanitizedMessages);
+      //     }
+      //     break; // Success!
+      //   } catch (err: any) {
+      //     console.error(`[Agent2 Retry] Attempt ${attempt} failed:`, err.message || err);
+      //     lastError = err;
+      //   }
+      // }
+      // ??$$$ newer code - Dynamic rotation / failover retry logic across all available providers
       let response: LLMResponse | null = null;
       let lastError: any = null;
-      const delays = [0, 2000, 5000];
-
+      let success = false;
       const sanitizedMessages = sanitizeMessageHistory(messages);
 
-      for (let attempt = 1; attempt <= 4; attempt++) {
+      // Build active rotation chain starting with current primary adapter
+      const fallbackAdapters: LLMAdapter[] = [adapter];
+      if (process.env.GEMINI_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "GeminiAdapter")) {
+        fallbackAdapters.push(new GeminiAdapter(process.env.GEMINI_API_KEY));
+      }
+      const hasGroqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY_3;
+      if (hasGroqKey && !fallbackAdapters.some(a => a.constructor.name === "GroqAdapter")) {
+        fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct"));
+      }
+      if (process.env.CEREBRAS_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "CerebrasAdapter")) {
+        fallbackAdapters.push(new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b"));
+      }
+
+      // Try each adapter sequentially. If rate limited, fall back to next one
+      for (let i = 0; i < fallbackAdapters.length; i++) {
+        const currentTryAdapter = fallbackAdapters[i];
+        const providerName = currentTryAdapter.constructor.name;
+        
         try {
-          if (attempt > 1) {
-            const delay = delays[attempt - 2] || 0;
-            console.log(`[Agent2 Retry] Rate limit or error. Attempt ${attempt} after ${delay}ms...`);
-            await new Promise(resolve => setTimeout(resolve, delay));
+          console.log(`[Agent2 Failover] Turn ${turns}: Attempting with ${providerName}...`);
+          if (i > 0) {
+            // Log rotation warnings to backend and user
+            await logAndEmit({
+              type: "rate_limit",
+              text: `Active provider rate-limited or failed. Rotating to fallback provider: ${providerName}.`
+            });
           }
 
-          if (attempt === 4 && !modelName.toLowerCase().includes("gemini")) {
-            console.log(`[Agent2 Retry] Attempt 4: Groq failed. Falling back to Gemini 2.5 Flash...`);
-            const geminiKey = process.env.GEMINI_API_KEY;
-            if (geminiKey) {
-              const fallbackAdapter = new GeminiAdapter(geminiKey);
-              response = await fallbackAdapter.chat(systemPrompt, sanitizedMessages);
-            } else {
-              throw new Error("GEMINI_API_KEY is missing for fallback");
+          response = await currentTryAdapter.chat(systemPrompt, sanitizedMessages);
+          
+          // Successful response! Make it the sticky primary adapter
+          if (currentTryAdapter !== adapter) {
+            console.log(`[Agent2 Failover] Successfully failed over. Promoting ${providerName} to primary.`);
+            adapter = currentTryAdapter;
+            
+            // ??$$$ newer code - Notify frontend about the model/agent change
+            let newModelValue = "gemini-2.5-flash";
+            if (providerName === "CerebrasAdapter") {
+              newModelValue = (currentTryAdapter as any).model || "gpt-oss-120b";
+            } else if (providerName === "GroqAdapter") {
+              newModelValue = (currentTryAdapter as any).model || "meta-llama/llama-4-scout-17b-16e-instruct";
             }
-          } else {
-            response = await adapter.chat(systemPrompt, sanitizedMessages);
+            
+            if (io) {
+              console.log(`[Agent2 Failover] Emitting model changed event to frontend: ${newModelValue}`);
+              io.to(sessionId).emit("agent2:model_changed", {
+                model: newModelValue
+              });
+            }
           }
-          break; // Success!
+          success = true;
+          break;
         } catch (err: any) {
-          console.error(`[Agent2 Retry] Attempt ${attempt} failed:`, err.message || err);
+          console.error(`[Agent2 Failover] ${providerName} attempt failed:`, err.message || err);
           lastError = err;
+          // Small delay before trying next fallback provider
+          await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
 
@@ -1087,24 +1296,95 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         // Reload session from DB to get latest state in case it updated in background/saveSessionProgress
         const updatedSession = await NewFlowSession.findById(sessionId);
         if (updatedSession) {
-          session.bom = updatedSession.bom;
-          session.wiring = updatedSession.wiring;
-          session.milestones = updatedSession.milestones;
-          session.diagram = updatedSession.diagram;
+          session!.bom = updatedSession.bom;
+          session!.wiring = updatedSession.wiring;
+          session!.milestones = updatedSession.milestones;
+          session!.diagram = updatedSession.diagram;
+          session!.finalSketch = updatedSession.finalSketch;
         }
 
-        const hasBOM = session.bom && session.bom.length > 0;
-        const hasWiring = session.wiring && session.wiring.length > 0;
-        const hasMilestones = session.milestones && session.milestones.length > 0;
-        const hasDiagram = session.diagram && Object.keys(session.diagram).length > 0;
+        const hasBOM = session!.bom && session!.bom.length > 0;
+        const hasWiring = session!.wiring && session!.wiring.length > 0;
+        const hasMilestones = session!.milestones && session!.milestones.length > 0;
+        const hasDiagram = session!.diagram && Object.keys(session!.diagram).length > 0;
 
         if (hasBOM && hasWiring && hasMilestones && hasDiagram) {
+          // ??$$$ old code
+          /*
           console.log("[Agent2 Debugger] Formulation complete. No further tools called.");
           await logAndEmit({
             type: "decision",
             text: "Agent has finalized the project formulation."
           });
           formulationSuccessful = true; // ??$$$ newer code
+          break;
+          */
+          // ??$$$ newer code
+          const milestonesWithoutCode = session!.milestones?.filter(
+            (m: any) => !m.code || m.code.trim().length === 0
+          );
+
+          if (milestonesWithoutCode && milestonesWithoutCode.length > 0) {
+            console.log(`[Agent2 Debugger] BOM, wiring, milestones, and diagram exist, but ${milestonesWithoutCode.length} milestones lack code. Prompting code generation...`);
+            messages.push({ role: "assistant", content: text || "Continuing..." });
+            messages.push({
+              role: "user",
+              content: `Code generation is incomplete. The following milestones still need code generated via generate_milestone:\n${
+                milestonesWithoutCode.map((m: any) => `- Milestone ${m.order}: "${m.title}" (subsystem: ${m.subsystem})`).join("\n")
+              }\nPlease call generate_milestone for each of these now, in order.`
+            });
+            continue;
+          }
+          
+          /* old code
+          const hasFinalSketch = updatedSession?.finalSketch && updatedSession.finalSketch.trim().length > 0;
+          if (!hasFinalSketch) {
+            console.log("[Agent2 Debugger] All milestones have code, but final integrated sketch is missing. Prompting final sketch generation...");
+            messages.push({ role: "assistant", content: text || "Continuing..." });
+            messages.push({
+              role: "user",
+              content: `All milestones have code. Now generate the final complete sketch.ino that integrates all subsystems into one working project. Call generate_final_sketch with the objective, mcu, allMilestones, bom, and wiring.`
+            });
+            continue;
+          }
+          */
+          // ??$$$ newer code - call generate_final_sketch directly to avoid a full LLM turn and save tokens
+          const hasFinalSketch = session!.finalSketch && session!.finalSketch.trim().length > 0;
+          if (!hasFinalSketch) {
+            console.log("[Agent2 Debugger] All milestones have code, but final integrated sketch is missing. Generating final integrated sketch directly...");
+            await logAndEmit({
+              type: "thinking",
+              text: "All milestones have code. Generating final integrated sketch directly to optimize token usage..."
+            });
+            const sketchResult = await executeTool("generate_final_sketch", {
+              objective: session!.context?.corePurpose || session!.idea || "",
+              mcu: session!.context?.mcu || "Arduino Uno",
+              allMilestones: session!.milestones,
+              bom: session!.bom,
+              wiring: session!.wiring
+            }, sessionId);
+
+            if (sketchResult?.success) {
+              console.log("[Agent2 Debugger] Direct final sketch generation succeeded.");
+              formulationSuccessful = true;
+              break;
+            } else {
+              console.error("[Agent2 Debugger] Direct final sketch generation failed:", sketchResult?.error);
+              messages.push({ role: "assistant", content: text || "Continuing..." });
+              messages.push({
+                role: "user",
+                content: `Direct final sketch generation failed: ${sketchResult?.error || "Unknown error"}. Please retry or fix.`
+              });
+              continue;
+            }
+          }
+
+          console.log("[Agent2 Debugger] Formulation complete. No further tools called.");
+          await logAndEmit({
+            type: "decision",
+            text: "Agent has finalized the project formulation."
+          });
+          formulationSuccessful = true;
           break;
         } else {
           console.log("[Agent2 Debugger] LLM returned no tool calls, but formulation is incomplete. Prompting to continue...");
@@ -1254,6 +1534,12 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
   // Create real Project document on completion
   let projectId: any = null;
   try {
+    // ??$$$ newer code - load fresh session document to ensure we have the absolute latest milestones, finalSketch, etc.
+    const freshSessionForProject = await NewFlowSession.findById(sessionId);
+    if (freshSessionForProject) {
+      session = freshSessionForProject;
+    }
+
     console.log("[Agent2 Debugger] Formulating Project document creation...");
     const newProject = new Project({
       owner: session.owner,
@@ -1332,14 +1618,15 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         serialOutput: "",
         completedAt: null,
         simulatable: m.simulatable,
-        dependsOn: idx === 0 ? [] : [session.milestones[idx - 1].id],
+        dependsOn: idx === 0 ? [] : [session!.milestones[idx - 1].id],
         debugMessages: [],
         requiredLibraries: m.requiredLibraries || []
       })),
       milestonesGenerated: true,
-      activeMilestoneId: session.milestones[0]?.id || "",
-      // ??$$$ newer code — map session.diagram (Wokwi format) to Project diagram field
-      diagram: session.diagram || session.wiring
+      activeMilestoneId: session!.milestones[0]?.id || "",
+      // ??$$$ newer code — map session.diagram (Wokwi format) to Project diagram field and set wiring
+      diagram: session!.diagram || session!.wiring,
+      wiring: session!.wiring || []
     });
 
     await newProject.save();
@@ -1367,11 +1654,11 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
       if (!fs.existsSync(exportDir)) {
         fs.mkdirSync(exportDir, { recursive: true });
       }
-      fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
-      fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
-      fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
-      fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
-      fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
+      fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session!.bom || [], null, 2), "utf8");
+      fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session!.wiring || [], null, 2), "utf8");
+      fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session!.milestones || [], null, 2), "utf8");
+      fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session!.diagram || {}, null, 2), "utf8");
+      fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session!.context || {}, null, 2), "utf8");
 
       // ??$$$ old code
       /*
@@ -1380,11 +1667,18 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
       const sketchCode = firstCodeMilestone?.code
         || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
       */
-      // ??$$$ newer code
+      // ??$$$ old code
+      /*
       const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
       const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
       const sketchCode = latestCodeMilestone?.code
         || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+      */
+      // ??$$$ newer code
+      const sketchCode = session!.finalSketch || (
+        [...(session!.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))
+        .find((m: any) => String(m?.code || "").trim().length > 0)?.code
+      ) || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
       fs.writeFileSync(path.join(exportDir, "sketch.ino"), sketchCode, "utf8");
 
       // Also write a sketch.json wrapper containing code, as expected by the compilation service
@@ -1406,8 +1700,8 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
 
   // ??$$$ NEW FLOW — resolve SnapEDA pin metadata in background (non-blocking)
   // Runs after agent2:complete is already emitted — frontend updates live via pins:ready events
-  if (projectId && session.bom && session.bom.length > 0) {
-    const bomForPins = session.bom
+  if (projectId && session!.bom && session!.bom.length > 0) {
+    const bomForPins = session!.bom
       .filter((b: any) => b.mpn)
       .map((b: any) => ({ mpn: b.mpn, key: b.key }));
     const ioRef = (global as any).io;

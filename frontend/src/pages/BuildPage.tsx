@@ -125,6 +125,10 @@ export default function BuildPage() {
   }, [project?.activeMilestoneId, project?.milestones]);
 
   const milestone = project?.milestones?.find(m => m.id === activeMilestoneId) || project?.milestones?.[0];
+  // ??$$$ newer code
+  const milestoneIndex = project?.milestones ? project.milestones.findIndex(m => m.id === (milestone?.id || activeMilestoneId)) : -1;
+  const previousMilestone = milestoneIndex > 0 ? project.milestones[milestoneIndex - 1] : null;
+  const isPreviousMilestoneConfirmed = previousMilestone ? (previousMilestone.userConfirmed || previousMilestone.status === 'passed') : true;
 
   // Sync local code state on milestone change
   useEffect(() => {
@@ -731,144 +735,186 @@ export default function BuildPage() {
 
           {centerTab === 'code' && (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: '380px' }}>
-              <div style={{
-                padding: '0.5rem',
-                background: isDark ? '#0b0f19' : '#f1f5f9',
-                borderRadius: '8px 8px 0 0',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                borderBottom: 'none'
-              }}>
-                <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 700 }}>sketch.ino</span>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    onClick={handleRegenerateCode}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ef4444',
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    🔄 Regenerate AI Code
-                  </button>
-                  <button
-                    onClick={handleCompileMilestone}
-                    disabled={compilingLocal}
-                    style={{
-                      padding: '0.25rem 0.75rem',
-                      background: '#22c55e',
-                      color: '#fff',
-                      borderRadius: '4px',
-                      border: 'none',
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {compilingLocal ? 'Compiling...' : '▶ Compile'}
-                  </button>
-                </div>
-              </div>
-              
-              {/* ??$$$ Required Libraries Status Badge List */}
-              {milestone.requiredLibraries && milestone.requiredLibraries.length > 0 && (
+              {!isPreviousMilestoneConfirmed ? (
                 <div style={{
-                  padding: '8px 12px',
-                  background: isDark ? 'rgba(30, 41, 59, 0.4)' : '#f8fafc',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                  borderBottom: 'none',
-                  fontSize: '0.75rem',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '4px'
-                }}>
-                  <div style={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#475569' }}>Required Libraries:</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {milestone.requiredLibraries.map((lib, idx) => {
-                      let icon = '✓';
-                      let color = '#22c55e';
-                      let statusText = 'installed';
-                      if (lib.type === 'core') {
-                        statusText = 'built-in';
-                      } else if (lib.type === 'library_manager') {
-                        const hasNoFileError = milestone.compilationErrors?.some(e => e.includes(lib.name) || e.includes("No such file or directory"));
-                        if (hasNoFileError) {
-                          icon = '⬇';
-                          color = '#fb923c';
-                          statusText = 'installing...';
-                        } else {
-                          statusText = 'installed';
-                        }
-                      } else if (lib.type === 'manual') {
-                        icon = '⚠';
-                        color = '#fb7185';
-                        statusText = milestone.manualLibsAcknowledged ? 'acknowledged' : 'manual install required';
-                      }
-                      return (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isDark ? '#1e293b' : '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
-                          <span style={{ color, fontWeight: 800 }}>{icon}</span>
-                          <span style={{ fontWeight: 600 }}>{lib.name}</span>
-                          <span style={{ fontSize: '0.65rem', color: '#64748b' }}>({statusText})</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              <textarea
-                value={localCode}
-                onChange={handleCodeChange}
-                spellCheck={false}
-                style={{
+                  alignItems: 'center',
+                  justifyContent: 'center',
                   flex: 1,
-                  minHeight: '260px',
-                  background: isDark ? '#070a13' : '#fff',
-                  color: isDark ? '#e2e8f0' : '#1e293b',
-                  fontFamily: '"Fira Code", monospace',
-                  fontSize: '0.8rem',
-                  lineHeight: 1.6,
-                  padding: '1rem',
-                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
-                  outline: 'none',
-                  resize: 'none',
-                }}
-              />
-              <div style={{
-                height: '140px',
-                background: '#000000', // ??$$$ pure black terminal
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
-                borderTop: 'none',
-                borderRadius: '0 0 8px 8px',
-                display: 'flex',
-                flexDirection: 'column',
-              }}>
-                <div style={{ padding: '4px 8px', background: '#111111', fontSize: '0.65rem', color: '#ffffff', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
-                  Compiler Output Terminal
+                  background: isDark ? 'rgba(30, 41, 59, 0.2)' : 'rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(12px)',
+                  borderRadius: '12px',
+                  border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
+                  padding: '2rem',
+                  textAlign: 'center',
+                }}>
+                  <span style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔒</span>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.5rem', color: isDark ? '#fff' : '#1e293b' }}>Code Editor Locked</h3>
+                  <p style={{ fontSize: '0.85rem', color: isDark ? '#94a3b8' : '#64748b', maxWidth: '360px', lineHeight: 1.5, margin: 0 }}>
+                    Please complete and pass the previous milestone <strong>Step {previousMilestone?.order}: "{previousMilestone?.title}"</strong> to unlock the code editor.
+                  </p>
                 </div>
-                <div style={{ flex: 1, padding: '8px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.7rem', color: '#ffffff' }}>
-                  {milestone.compilationErrors?.length > 0 ? (
-                    milestone.compilationErrors.map((err, idx) => (
-                      <div key={idx} style={{ color: '#ff3333' }}>{err}</div> // ??$$$ bright red error text
-                    ))
-                  ) : milestone.compiledHex ? (
-                    <div style={{ color: '#22c55e' }}>✓ Compilation successful. Firmware ready for Wokwi Simulation.</div>
-                  ) : (
-                    <div style={{ color: '#888888' }}>Idle. Click Compile to test the code.</div>
+              ) : (
+                <>
+                  <div style={{
+                    padding: '0.5rem',
+                    background: isDark ? '#0b0f19' : '#f1f5f9',
+                    borderRadius: '8px 8px 0 0',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                    borderBottom: 'none'
+                  }}>
+                    <span style={{ fontSize: '0.75rem', fontFamily: 'monospace', fontWeight: 700 }}>sketch.ino</span>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <button
+                        onClick={handleRegenerateCode}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          color: '#ef4444',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🔄 Regenerate AI Code
+                      </button>
+                      <button
+                        onClick={handleCompileMilestone}
+                        disabled={compilingLocal}
+                        style={{
+                          padding: '0.25rem 0.75rem',
+                          background: '#22c55e',
+                          color: '#fff',
+                          borderRadius: '4px',
+                          border: 'none',
+                          fontSize: '0.7rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {compilingLocal ? 'Compiling...' : '▶ Compile'}
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* ??$$$ Required Libraries Status Badge List */}
+                  {milestone.requiredLibraries && milestone.requiredLibraries.length > 0 && (
+                    <div style={{
+                      padding: '8px 12px',
+                      background: isDark ? 'rgba(30, 41, 59, 0.4)' : '#f8fafc',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                      borderBottom: 'none',
+                      fontSize: '0.75rem',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <div style={{ fontWeight: 700, color: isDark ? '#94a3b8' : '#475569' }}>Required Libraries:</div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                        {milestone.requiredLibraries.map((lib, idx) => {
+                          let icon = '✓';
+                          let color = '#22c55e';
+                          let statusText = 'installed';
+                          if (lib.type === 'core') {
+                            statusText = 'built-in';
+                          } else if (lib.type === 'library_manager') {
+                            const hasNoFileError = milestone.compilationErrors?.some(e => e.includes(lib.name) || e.includes("No such file or directory"));
+                            if (hasNoFileError) {
+                              icon = '⬇';
+                              color = '#fb923c';
+                              statusText = 'installing...';
+                            } else {
+                              statusText = 'installed';
+                            }
+                          } else if (lib.type === 'manual') {
+                            icon = '⚠';
+                            color = '#fb7185';
+                            statusText = milestone.manualLibsAcknowledged ? 'acknowledged' : 'manual install required';
+                          }
+                          return (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px', background: isDark ? '#1e293b' : '#e2e8f0', padding: '2px 6px', borderRadius: '4px' }}>
+                              <span style={{ color, fontWeight: 800 }}>{icon}</span>
+                              <span style={{ fontWeight: 600 }}>{lib.name}</span>
+                              <span style={{ fontSize: '0.65rem', color: '#64748b' }}>({statusText})</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
                   )}
-                </div>
-              </div>
+
+                  <textarea
+                    value={localCode}
+                    onChange={handleCodeChange}
+                    spellCheck={false}
+                    style={{
+                      flex: 1,
+                      minHeight: '260px',
+                      background: isDark ? '#070a13' : '#fff',
+                      color: isDark ? '#e2e8f0' : '#1e293b',
+                      fontFamily: '"Fira Code", monospace',
+                      fontSize: '0.8rem',
+                      lineHeight: 1.6,
+                      padding: '1rem',
+                      border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                      outline: 'none',
+                      resize: 'none',
+                    }}
+                  />
+                  <div style={{
+                    height: '140px',
+                    background: '#000000', // ??$$$ pure black terminal
+                    border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+                    borderTop: 'none',
+                    borderRadius: '0 0 8px 8px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                  }}>
+                    <div style={{ padding: '4px 8px', background: '#111111', fontSize: '0.65rem', color: '#ffffff', borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}` }}>
+                      Compiler Output Terminal
+                    </div>
+                    <div style={{ flex: 1, padding: '8px', overflowY: 'auto', fontFamily: 'monospace', fontSize: '0.7rem', color: '#ffffff' }}>
+                      {milestone.compilationErrors?.length > 0 ? (
+                        milestone.compilationErrors.map((err, idx) => (
+                          <div key={idx} style={{ color: '#ff3333' }}>{err}</div> // ??$$$ bright red error text
+                        ))
+                      ) : milestone.compiledHex ? (
+                        <div style={{ color: '#22c55e' }}>✓ Compilation successful. Firmware ready for Wokwi Simulation.</div>
+                      ) : (
+                        <div style={{ color: '#888888' }}>Idle. Click Compile to test the code.</div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {centerTab === 'simulator' && milestone?.simulatable && (
             <div style={{ height: '100%', minHeight: '380px', background: '#000', borderRadius: '12px', overflow: 'hidden' }}>
-              {project?.diagram && Object.keys(project.diagram).length > 0 ? (
+              {!isPreviousMilestoneConfirmed ? (
+                <div style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  height: '100%',
+                  background: isDark ? 'rgba(30, 41, 59, 0.2)' : 'rgba(255, 255, 255, 0.4)',
+                  backdropFilter: 'blur(12px)',
+                  padding: '2rem',
+                  textAlign: 'center',
+                }}>
+                  <span style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>🔒</span>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 800, marginBottom: '0.5rem', color: '#fff' }}>Simulator Locked</h3>
+                  <p style={{ fontSize: '0.85rem', color: '#94a3b8', maxWidth: '360px', lineHeight: 1.5, margin: 0 }}>
+                    Please complete and pass the previous milestone <strong>Step {previousMilestone?.order}: "{previousMilestone?.title}"</strong> to unlock the simulator.
+                  </p>
+                </div>
+              ) : project?.diagram && Object.keys(project.diagram).length > 0 ? (
                 simView === '2d' ? (
                   <WokwiSimulator
                     hexCode={milestone.compiledHex || ''}
@@ -939,7 +985,7 @@ export default function BuildPage() {
           <div style={{ display: 'flex', gap: '8px' }}>
             <button
               onClick={handleValidateSerial}
-              disabled={validatingSerial || !serialInput.trim()}
+              disabled={validatingSerial || !serialInput.trim() || !isPreviousMilestoneConfirmed}
               style={{
                 flex: 1,
                 padding: '0.4rem 0.75rem',
@@ -956,6 +1002,7 @@ export default function BuildPage() {
             </button>
             <button
               onClick={handleConfirmMilestone}
+              disabled={!isPreviousMilestoneConfirmed}
               style={{
                 padding: '0.4rem 0.75rem',
                 borderRadius: '8px',
@@ -971,6 +1018,7 @@ export default function BuildPage() {
             </button>
             <button
               onClick={handleReportFailure}
+              disabled={!isPreviousMilestoneConfirmed}
               style={{
                 padding: '0.4rem 0.75rem',
                 borderRadius: '8px',
@@ -1053,7 +1101,7 @@ export default function BuildPage() {
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder="Ask the coach for help..."
-              disabled={sendingChat}
+              disabled={sendingChat || !isPreviousMilestoneConfirmed}
               style={{
                 flex: 1,
                 padding: '0.5rem 0.75rem',
@@ -1067,7 +1115,7 @@ export default function BuildPage() {
             />
             <button
               type="submit"
-              disabled={sendingChat || !chatInput.trim()}
+              disabled={sendingChat || !chatInput.trim() || !isPreviousMilestoneConfirmed}
               style={{
                 padding: '0.5rem 1rem',
                 borderRadius: '8px',

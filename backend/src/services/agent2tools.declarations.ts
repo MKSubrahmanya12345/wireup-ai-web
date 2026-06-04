@@ -366,6 +366,60 @@ export const GEMINI_AGENT2_TOOLS = {
         },
         required: ["sessionId", "type", "data"]
       }
+    },
+    // ??$$$ newer code
+    {
+      name: "generate_final_sketch",
+      description: "Generate a single complete integrated sketch.ino combining all subsystems and milestone logic.",
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          objective: {
+            type: SchemaType.STRING,
+            description: "The project's objective"
+          },
+          mcu: {
+            type: SchemaType.STRING,
+            description: "MCU name"
+          },
+          allMilestones: {
+            type: SchemaType.ARRAY,
+            description: "List of milestones with their title and code",
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                order: { type: SchemaType.NUMBER },
+                title: { type: SchemaType.STRING },
+                code: { type: SchemaType.STRING }
+              },
+              required: ["order", "title", "code"]
+            }
+          },
+          bom: {
+            type: SchemaType.ARRAY,
+            description: "Bill of materials array",
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                key: { type: SchemaType.STRING },
+                displayName: { type: SchemaType.STRING }
+              }
+            }
+          },
+          wiring: {
+            type: SchemaType.ARRAY,
+            description: "Wiring connections list",
+            items: {
+              type: SchemaType.OBJECT,
+              properties: {
+                from: { type: SchemaType.STRING },
+                to: { type: SchemaType.STRING }
+              }
+            }
+          }
+        },
+        required: ["objective", "mcu", "allMilestones"]
+      }
     }
   ]
 };

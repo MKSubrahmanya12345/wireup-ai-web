@@ -380,6 +380,7 @@ export const InteractiveNodeGraph: React.FC<InteractiveNodeGraphProps> = ({
 
             return (
               <g key={idx} className="pointer-events-auto group">
+                {/* old code
                 <path
                   d={getBezierPath(fromCoords.x, fromCoords.y, toCoords.x, toCoords.y)}
                   stroke={strokeColor}
@@ -392,6 +393,21 @@ export const InteractiveNodeGraph: React.FC<InteractiveNodeGraphProps> = ({
                     handleRemoveConnection(idx);
                   }}
                 />
+                */}
+                // ??$$$ newer code
+                <path
+                  d={getBezierPath(fromCoords.x, fromCoords.y, toCoords.x, toCoords.y)}
+                  stroke={strokeColor}
+                  strokeWidth="3"
+                  fill="none"
+                  className="cursor-pointer hover:stroke-rose-500 transition-colors"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveConnection(idx);
+                  }}
+                >
+                  <title>Click to remove connection</title>
+                </path>
                 {/* Visual glow on hover */}
                 <path
                   d={getBezierPath(fromCoords.x, fromCoords.y, toCoords.x, toCoords.y)}
