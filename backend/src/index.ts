@@ -45,11 +45,7 @@ process.on("uncaughtException", (err) => {
 const app = express();
 const port = Number(process.env.PORT) || 5000;
 
-/**
- * -----------------------
- * CORS CONFIG
- * -----------------------
- */
+// ??$$$ newer code: Configure allowedOrigins to explicitly permit our production Vercel apps
 const allowedOrigins = new Set(
   [
     "http://localhost:5173",
@@ -58,6 +54,8 @@ const allowedOrigins = new Set(
     "http://127.0.0.1:5173",
     "http://127.0.0.1:5174",
     "http://127.0.0.1:4173",
+    "https://wireup-ai-web.vercel.app",
+    "https://wireup-ai-web-tgsm.vercel.app",
     process.env.FRONTEND_URL,
   ].filter(Boolean)
 );
@@ -82,13 +80,8 @@ app.use(
   })
 );
 
-
 app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
-
-/**
- * -----------------------
- * HEALTH CHECK
  * -----------------------
  */
 app.get("/health", (_req: Request, res: Response) => {
