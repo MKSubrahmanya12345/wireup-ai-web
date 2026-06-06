@@ -82,12 +82,15 @@ app.use(
 
 app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
+
+/**
+ * -----------------------
+ * HEALTH CHECK
  * -----------------------
  */
 app.get("/health", (_req: Request, res: Response) => {
   res.json({ ok: true, port });
 });
-
 /**
  * -----------------------
  * ROUTES
