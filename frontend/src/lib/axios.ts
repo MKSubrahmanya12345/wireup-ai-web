@@ -10,4 +10,8 @@ export const axiosInstance: AxiosInstance = axios.create({
       ? "http://localhost:5000/api"
       : "/api"),
   withCredentials: true,
+  headers: {
+    "ngrok-skip-browser-warning": "true",
+    "Bypass-Tunnel-Reminder": "true"
+  }
 });
