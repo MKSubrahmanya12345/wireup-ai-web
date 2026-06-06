@@ -21,6 +21,7 @@ import ideationRoutes from "./routes/ideation.route";
 import pipelineRoutes from "./routes/pipeline.route";
 import shoppingRoutes from "./routes/shopping.route";
 import voiceRoutes from "./routes/voice.route";
+import compileRoutes from "./routes/compile.route";
 // ??$$$ newer code
 import libraryRoutes from "./routes/library.route";
 // ??$$$ NEW FLOW
@@ -108,6 +109,7 @@ app.use("/api", buildRoutes);
 app.use("/api", assemblyRoutes);
 app.use("/api", shoppingRoutes);
 app.use("/api", voiceRoutes);
+app.use("/api", compileRoutes);
 app.use("/api", libraryRoutes);
 app.use("/api", newflowRoutes);
 app.use("/api", partRoutes);

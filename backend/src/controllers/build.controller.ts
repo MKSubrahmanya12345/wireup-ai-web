@@ -16,7 +16,7 @@ import { validateDiagram } from '../utils/validateDiagram';
 import { repairBoard } from '../utils/boardLock';
 import { setStageGenerating, setStageError, advanceStage, invalidateDownstream } from '../services/pipeline.service';
 import { deriveBOMKey } from '../utils/bom.utils';
-import { compileWokwiSketch } from '../services/wokwi-local.service';
+import { compileWokwiSketch, writeWokwiProjectFiles } from '../services/wokwi-local.service';
 import { triggerBOMModelFetchJob } from '../services/modelConversion.service';
 // ??$$$
 import {
@@ -559,6 +559,84 @@ export const compileBuild = async (req, res) => {
   } catch (err) {
     console.error('[build.controller] compileBuild error:', err);
     res.status(500).json({ error: err.message });
+  } finally {
+    if (tempDir) {
+      await rm(tempDir, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+};
+
+// ??$$$ newer code - compile a scratch Wokwi project and return raw HEX for the browser simulator
+export const compileLocalHex = async (req, res) => {
+  const {
+    projectId,
+    projectPath: requestedProjectPath,
+    sketchCode,
+    diagramJson,
+    fqbn = 'arduino:avr:mega'
+  } = req.body || {};
+
+  let tempDir = null;
+
+  try {
+    let projectPath = String(requestedProjectPath || '').trim();
+
+    if (!projectPath) {
+      tempDir = await mkdtemp(path.join(os.tmpdir(), 'wireup-wokwi-'));
+      projectPath = tempDir;
+    }
+
+    if (projectId && req.user?._id) {
+      const project = await Project.findOne({ _id: projectId, owner: req.user._id });
+      if (project?.wokwiProjectPath && existsSync(project.wokwiProjectPath)) {
+        projectPath = project.wokwiProjectPath;
+      }
+    }
+
+    await writeWokwiProjectFiles({
+      projectPath,
+      diagramJson: diagramJson || { parts: [], connections: [] },
+      sketchCode: sketchCode || ''
+    });
+
+    const compileResult = await compileWokwiSketch({
+      projectPath,
+      sketchFile: 'sketch.ino',
+      fqbn
+    });
+
+    if (!compileResult.ok) {
+      return res.status(500).json({
+        error: 'Compilation failed',
+        stdout: compileResult.stdoutTail,
+        stderr: compileResult.stderrTail,
+        summary: compileResult.summary
+      });
+    }
+
+    const firmwarePath = String(compileResult.metadata?.firmwarePath || '').trim();
+    if (!firmwarePath || !existsSync(firmwarePath)) {
+      return res.status(500).json({
+        error: 'Compile succeeded but firmware hex was not found',
+        stdout: compileResult.stdoutTail,
+        stderr: compileResult.stderrTail
+      });
+    }
+
+    const { readFile } = await import('fs/promises');
+    const hex = await readFile(firmwarePath, 'utf8');
+
+    return res.json({
+      success: true,
+      hex,
+      firmwarePath,
+      stdout: compileResult.stdoutTail,
+      stderr: compileResult.stderrTail,
+      durationMs: compileResult.durationMs
+    });
+  } catch (err: any) {
+    console.error('[build.controller] compileLocalHex error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to compile local Wokwi project' });
   } finally {
     if (tempDir) {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {});

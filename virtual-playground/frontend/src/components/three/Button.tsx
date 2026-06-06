@@ -83,6 +83,10 @@ export const Button: React.FC<ButtonProps> = ({
           e.stopPropagation();
           setButtonPressed(false);
         }}
+        onPointerCancel={(e) => {
+          e.stopPropagation();
+          setButtonPressed(false);
+        }}
         onPointerOver={() => setHovered(true)}
         onPointerOut={() => {
           setHovered(false);
@@ -125,7 +129,7 @@ export const Button: React.FC<ButtonProps> = ({
               {displayName}
             </span>
             <span className="text-[7px] text-slate-400 font-mono">
-              {buttonPressed ? 'STATE: CLOSED (HIGH)' : 'STATE: OPEN (LOW)'}
+              {buttonPressed ? 'STATE: PRESSED (LOW)' : 'STATE: RELEASED (HIGH)'}
             </span>
           </div>
         </Html>

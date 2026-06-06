@@ -110,7 +110,9 @@ export const Topbar: React.FC = () => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setSimulationRunning(true)}
+          onClick={() => {
+            void setSimulationRunning(true);
+          }}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium transition-all ${
             simulationRunning
               ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
@@ -126,7 +128,9 @@ export const Topbar: React.FC = () => {
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => setSimulationRunning(false)}
+          onClick={() => {
+            void setSimulationRunning(false);
+          }}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium transition-all ${
             !simulationRunning && cpuUsage > 0
               ? 'bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/50 shadow-[0_0_10px_rgba(245,158,11,0.3)]'

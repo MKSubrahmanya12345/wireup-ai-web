@@ -1143,7 +1143,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   };
 
   // ??$$$ newer code — Go to simulator workspace
-  const handleGoToSimulator = () => {
+  const handleGoToSimulator = async () => {
     if (!sessionId) {
       onClose();
       return;
@@ -1156,6 +1156,14 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
     if (completedProjectId) {
       params.set("projectId", completedProjectId);
+    }
+
+    try {
+      await axiosInstance.post("/new-flow/export-local", { sessionId });
+    } catch (err) {
+      console.error("Failed to export formulation before opening the playground:", err);
+      toast.error("Failed to export formulation data for the playground.");
+      return;
     }
 
     localStorage.removeItem("wireup_discovery_session_id");

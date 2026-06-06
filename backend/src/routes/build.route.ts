@@ -12,6 +12,7 @@ import {
   generateSketch,
   generateDiagram,
   compileBuild,
+  compileLocalHex,
   // ??$$$
   generateMilestones,
   getMilestones,
@@ -36,6 +37,7 @@ router.post('/build/sync',     protectRoute, syncBuild);
 router.get('/build/:projectId', protectRoute, getBuild);
 // ??$$$
 router.post('/build/compile', protectRoute, compileBuild);
+router.post('/wokwi/local/compile-hex', protectRoute, compileLocalHex);
 
 // ??$$$ Milestones endpoints
 router.post('/build/:id/milestones/generate', protectRoute, generateMilestones);

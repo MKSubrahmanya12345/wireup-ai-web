@@ -49,6 +49,8 @@ export default function SimulatorWorkspace({
   const [wiringFrom, setWiringFrom] = useState(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
+  const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
+
   const runHandleRef = useRef(null);
 
   const stopSim = useCallback(() => {
@@ -155,7 +157,7 @@ export default function SimulatorWorkspace({
     setLog('Compiling project...');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/wokwi/local/compile-hex', {
+      const res = await fetch(`${apiBaseUrl}/wokwi/local/compile-hex`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

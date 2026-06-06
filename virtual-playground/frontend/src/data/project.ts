@@ -1,102 +1,25 @@
-// ??$$$ non-important
-// ??$$$
 import type { ProjectData } from '../types/project';
 
 export const projectData: ProjectData = {
-  id: "project-001",
-  name: "Arduino LED Switch Demo",
-  description: "Basic interactive LED simulation",
-  author: "Virtual Playground",
-  createdAt: "2026-05-28",
-
-  bom: [
-    {
-      key: "arduino",
-      displayName: "Arduino Uno",
-      type: "microcontroller",
-      glbUrl: "/models/arduino.glb",
-      position: [0, 0.05, 0],
-      rotation: [0, 0, 0],
-      pins: [
-        { id: "5V", x: -1.2, y: 0.1, z: 0.4, type: "power" },
-        { id: "GND", x: -1.2, y: 0.1, z: 0.8, type: "gnd" },
-        { id: "D7", x: 1.2, y: 0.1, z: -0.4, type: "digital" },
-        { id: "D2", x: 1.2, y: 0.1, z: -0.8, type: "digital" }
-      ]
-    },
-
-    {
-      key: "led1",
-      displayName: "Red LED",
-      type: "led",
-      glbUrl: "/models/led.glb",
-      position: [2.5, 0.2, 0.5],
-      pins: [
-        { id: "A", x: 0, y: 0, z: 0, type: "anode" },
-        { id: "C", x: 0.3, y: 0, z: 0, type: "cathode" }
-      ]
-    },
-
-    {
-      key: "button1",
-      displayName: "Push Button",
-      type: "button",
-      glbUrl: "/models/button.glb",
-      position: [-2.5, 0.15, -0.5],
-      pins: [
-        { id: "1", x: 0, y: 0, z: 0, type: "digital" },
-        { id: "2", x: 0.3, y: 0, z: 0, type: "digital" }
-      ]
-    }
-  ],
-
-  wiring: [
-    {
-      from: "arduino.D7",
-      to: "led1.A",
-      color: "#ff0000"
-    },
-    {
-      from: "led1.C",
-      to: "arduino.GND",
-      color: "#000000"
-    },
-    {
-      from: "button1.1",
-      to: "arduino.D2",
-      color: "#00ffcc"
-    }
-  ],
-
+  id: 'starter-project',
+  name: 'Virtual Playground Starter',
+  description: 'Load a formulated project payload to simulate its real sketch, wiring, and components.',
+  author: 'Virtual Playground',
+  createdAt: '2026-06-06',
+  bom: [],
+  wiring: [],
   editableJson: {
     simulationSpeed: 1,
     ledInitialState: false,
     buttonInitialState: false
   },
-
-  sketch: `// Arduino LED Switch Demo Sketch
-const int ledPin = 7;
-const int buttonPin = 2;
+  sketch: `// Starter sketch placeholder.
+// Real behavior should come from the loaded project payload.
 
 void setup() {
-  pinMode(ledPin, OUTPUT);
-  pinMode(buttonPin, INPUT);
-  Serial.begin(9600);
-  Serial.println("[BOOT] Arduino initialized");
-  Serial.println("[INFO] Waiting for button input...");
 }
 
 void loop() {
-  int buttonState = digitalRead(buttonPin);
-  
-  if (buttonState == HIGH) {
-    digitalWrite(ledPin, HIGH);
-    Serial.println("[INPUT] Button pressed -> [OUTPUT] LED ON");
-  } else {
-    digitalWrite(ledPin, LOW);
-    Serial.println("[OUTPUT] LED OFF");
-  }
-  delay(200); // Debounce
 }
 `
 };

@@ -1,8 +1,8 @@
 // ??$$$ non-important
 // ??$$$
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, Html } from '@react-three/drei';
+import { OrbitControls, Grid, Html, useGLTF } from '@react-three/drei';
 import { useProjectStore } from '../../store/useProjectStore';
 import { Arduino } from './Arduino';
 import { LED } from './LED';
@@ -23,6 +23,13 @@ const GenericPart: React.FC<{
 }> = ({ position, rotation = [0, 0, 0], componentKey, displayName, type, glbUrl }) => {
   const { showLabels, selectedComponent, setSelectedComponent } = useProjectStore();
   const isSelected = selectedComponent === componentKey;
+  const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '').replace(/\/$/, '');
+  const resolvedModelUrl = useMemo(() => {
+    if (!glbUrl) return '';
+    if (/^https?:\/\//i.test(glbUrl)) return glbUrl;
+    if (glbUrl.startsWith('/')) return `${apiBase}${glbUrl}`;
+    return `${apiBase}/${glbUrl}`;
+  }, [apiBase, glbUrl]);
 
   /* old code
   const shapeColor = type === 'sensor'
@@ -60,10 +67,14 @@ const GenericPart: React.FC<{
         </mesh>
       )}
 
-      <mesh castShadow receiveShadow position={[0, 0.14, 0]}>
-        {type === 'led' ? <sphereGeometry args={[0.28, 24, 24]} /> : type === 'button' ? <cylinderGeometry args={[0.32, 0.34, 0.22, 18]} /> : <boxGeometry args={[0.85, 0.26, 0.6]} />}
-        <meshStandardMaterial color={shapeColor} roughness={0.45} metalness={0.25} emissive={type === 'led' ? '#111111' : '#000000'} emissiveIntensity={0.15} />
-      </mesh>
+      {resolvedModelUrl ? (
+        <ResolvedModel url={resolvedModelUrl} />
+      ) : (
+        <mesh castShadow receiveShadow position={[0, 0.14, 0]}>
+          {type === 'led' ? <sphereGeometry args={[0.28, 24, 24]} /> : type === 'button' ? <cylinderGeometry args={[0.32, 0.34, 0.22, 18]} /> : <boxGeometry args={[0.85, 0.26, 0.6]} />}
+          <meshStandardMaterial color={shapeColor} roughness={0.45} metalness={0.25} emissive={type === 'led' ? '#111111' : '#000000'} emissiveIntensity={0.15} />
+        </mesh>
+      )}
 
       <mesh position={[-0.25, 0.02, -0.18]}>
         <cylinderGeometry args={[0.02, 0.02, 0.22, 8]} />
@@ -85,7 +96,7 @@ const GenericPart: React.FC<{
       {glbUrl && (
         <Html distanceFactor={8} position={[0, 0.55, 0]} center>
           <div className="bg-slate-900/90 border border-slate-600 text-slate-200 text-[8px] font-mono px-2 py-0.5 rounded whitespace-nowrap">
-            3D asset linked
+            GLB loaded from backend
           </div>
         </Html>
       )}
@@ -99,6 +110,22 @@ const GenericPart: React.FC<{
       )}
     </group>
   );
+};
+
+const ResolvedModel: React.FC<{ url: string }> = ({ url }) => {
+  const { scene } = useGLTF(url);
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+
+  useEffect(() => {
+    cloned.traverse((child: any) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+  }, [cloned]);
+
+  return <primitive object={cloned} />;
 };
 
 // ??$$$
@@ -115,7 +142,7 @@ const checkWebGLSupport = (): boolean => {
 };
 
 export const Scene: React.FC = () => {
-  const { project, showWires, simulationRunning, lcdLine1, lcdLine2 } = useProjectStore();
+  const { project, showWires, lcdLine1, lcdLine2, lcdBacklight } = useProjectStore();
   const bomItems = Array.isArray(project?.bom) ? project.bom : [];
   
   // ??$$$
@@ -244,7 +271,7 @@ export const Scene: React.FC = () => {
                     displayName={String(item?.displayName || `LCD ${index + 1}`)}
                     textLine1={lcdLine1}
                     textLine2={lcdLine2}
-                    backlight={simulationRunning}
+                    backlight={lcdBacklight}
                   />
                 );
               }

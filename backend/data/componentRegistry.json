@@ -330,6 +330,24 @@
     ],
     "category": "actuator"
   },
+  "LCD1602": {
+    "wokwiType": "wokwi-lcd1602",
+    "attrs": {
+      "cols": { "type": "number", "default": 16 },
+      "rows": { "type": "number", "default": 2 },
+      "backlight": { "type": "boolean", "default": true },
+      "backlightColor": { "type": "string", "default": "#ffd54f" },
+      "contrast": { "type": "number", "default": 0.8 }
+    },
+    "pins": [
+      { "name": "GND", "signals": [{ "type": "power", "role": "GND" }] },
+      { "name": "VCC", "signals": [{ "type": "power", "role": "VCC", "voltage": 5 }] },
+      { "name": "SDA", "signals": [{ "type": "i2c", "role": "SDA" }] },
+      { "name": "SCL", "signals": [{ "type": "i2c", "role": "SCL" }] }
+    ],
+    "category": "display",
+    "gltf": "/models/lcd-16x2-i2c.glb"
+  },
   "NTC_TEMPERATURE_SENSOR": {
     "wokwiType": "wokwi-ntc-temperature-sensor",
     "attrs": {},

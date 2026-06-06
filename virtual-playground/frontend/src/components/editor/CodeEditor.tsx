@@ -27,12 +27,12 @@ export const CodeEditor: React.FC = () => {
         return JSON.stringify(project.editableJson, null, 2);
       case 'scenario.json':
         return JSON.stringify({
-          scenarioName: "LED Switch Interaction",
-          description: "Verify that D2 input (button) controls D7 output (LED).",
+          scenarioName: "Workspace Session",
+          description: "Compile the currently loaded sketch and drive the currently loaded components from the project payload.",
           objectives: [
-            { id: 1, text: "Wait for button input stream", status: "PENDING" },
-            { id: 2, text: "Drive LED output anode state high", status: "PENDING" },
-            { id: 3, text: "Output debug logs to serial", status: "PENDING" }
+            { id: 1, text: "Load BOM, wiring, and sketch from the active project", status: "PENDING" },
+            { id: 2, text: "Compile sketch.ino into AVR firmware", status: "PENDING" },
+            { id: 3, text: "Reflect real sketch outputs in the scene", status: "PENDING" }
           ],
           autorun: true,
           voltageVcc: 5.0
