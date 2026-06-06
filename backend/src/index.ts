@@ -60,25 +60,27 @@ const allowedOrigins = new Set(
   ].filter(Boolean)
 );
 
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin) return callback(null, true);
+// ??$$$ newer code: Configure CORS options and handle OPTIONS preflight explicitly
+const corsOptions = {
+  origin(origin: any, callback: any) {
+    if (!origin) return callback(null, true);
 
-      // Check if localhost or 127.0.0.1 with any port
-      if (/^https?:\/\/localhost:\d+$/.test(origin) || /^https?:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
-        return callback(null, true);
-      }
+    // Check if localhost or 127.0.0.1 with any port
+    if (/^https?:\/\/localhost:\d+$/.test(origin) || /^https?:\/\/127\.0\.0\.1:\d+$/.test(origin)) {
+      return callback(null, true);
+    }
 
-      if (allowedOrigins.has(origin)) return callback(null, true);
+    if (allowedOrigins.has(origin)) return callback(null, true);
 
-      if (origin.endsWith(".vercel.app")) return callback(null, true);
+    if (origin.endsWith(".vercel.app")) return callback(null, true);
 
-      return callback(new Error(`CORS blocked for origin: ${origin}`));
-    },
-    credentials: true,
-  })
-);
+    return callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
+  credentials: true,
+};
+
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 app.use(cookieParser());
 app.use(express.json({ limit: "50mb" }));
