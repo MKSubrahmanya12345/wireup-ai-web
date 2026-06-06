@@ -413,72 +413,64 @@ function App() {
   }
 
   return (
-    <div className="h-screen flex flex-col page-bg text-slate-800 dark:text-slate-100 overflow-hidden font-sans relative">
+    <div className="h-screen w-screen flex flex-col bg-[var(--bg)] text-[var(--text)] overflow-hidden font-sans relative">
       {loadingRemoteProject && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/35 backdrop-blur-sm">
-          <div className="surface rounded-xl px-6 py-4 text-sm font-semibold text-slate-800 dark:text-slate-100">
-            Loading formulated project...
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-8 py-5 text-sm font-semibold text-[var(--heading)] shadow-2xl">
+            Loading formulated project…
           </div>
         </div>
       )}
 
       <Topbar />
 
-      <div className="flex-1 flex min-h-0">
+      {/* body row — must be min-h-0 so it doesn't overflow the viewport */}
+      <div className="flex-1 flex min-h-0 overflow-hidden">
         <Sidebar />
 
-        <div className="flex-1 flex flex-col bg-slate-100 dark:bg-slate-950">
-          <div className="h-9 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 flex items-center px-4 space-x-3 text-xs select-none">
-            <span className="text-slate-600 dark:text-slate-300 font-mono text-[10px] uppercase tracking-wider mr-2">Workspace Canvas View:</span>
+        {/* centre column */}
+        <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--bg)]">
 
-            <button
-              onClick={() => setViewMode('split')}
-              className={`px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
-                viewMode === 'split' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              Split View
-            </button>
-
-            <button
-              onClick={() => setViewMode('three')}
-              className={`px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
-                viewMode === 'three' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              3D View Only
-            </button>
-
-            <button
-              onClick={() => setViewMode('code')}
-              className={`px-2.5 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
-                viewMode === 'code' ? 'bg-blue-100 text-blue-700 border border-blue-200' : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100'
-              }`}
-            >
-              IDE Code Only
-            </button>
+          {/* view-mode switcher */}
+          <div className="h-8 flex-shrink-0 bg-[var(--surface)] border-b border-[var(--border)] flex items-center px-4 gap-1 select-none">
+            <span className="text-[var(--text-muted)] font-sans text-[10px] uppercase tracking-widest mr-3">View</span>
+            {(['split', 'three', 'code'] as const).map((mode) => {
+              const labels = { split: 'Split View', three: '3D Only', code: 'Code Only' };
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    viewMode === mode
+                      ? 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30'
+                      : 'text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5 dark:hover:bg-white/5'
+                  }`}
+                >
+                  {labels[mode]}
+                </button>
+              );
+            })}
           </div>
 
-          <div className="flex-1 flex min-h-0 relative">
+          {/* canvas area — flex-1 min-h-0 is essential to prevent overflow */}
+          <div className="flex-1 min-h-0 flex overflow-hidden">
             {viewMode === 'split' && (
               <>
-                <div className="w-1/2 h-full flex flex-col">
+                <div className="w-1/2 h-full flex flex-col min-w-0 overflow-hidden border-r border-[var(--border)]">
                   <CodeEditor />
                 </div>
-                <div className="w-1/2 h-full relative">
+                <div className="w-1/2 h-full relative min-w-0 overflow-hidden">
                   <Scene />
                 </div>
               </>
             )}
-
             {viewMode === 'three' && (
-              <div className="w-full h-full relative">
+              <div className="w-full h-full relative overflow-hidden">
                 <Scene />
               </div>
             )}
-
             {viewMode === 'code' && (
-              <div className="w-full h-full flex flex-col">
+              <div className="w-full h-full flex flex-col overflow-hidden">
                 <CodeEditor />
               </div>
             )}

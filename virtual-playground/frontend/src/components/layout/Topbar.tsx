@@ -1,261 +1,178 @@
 // ??$$$ non-important
-// ??$$$
 import React, { useEffect } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
-// ??$$$ old code
-/*
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Eye, 
-  EyeOff, 
-  Cpu, 
-  Activity, 
-  LogOut 
-} from 'lucide-react';
-*/
-// ??$$$ newer code
-import { 
-  Play, 
-  Pause, 
-  RotateCcw, 
-  Eye, 
-  EyeOff, 
-  Cpu, 
-  Activity, 
-  LogOut,
-  HardDrive
+import {
+  Play, Pause, RotateCcw, Eye, EyeOff, Activity, LogOut, HardDrive
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const Topbar: React.FC = () => {
   const {
-    simulationRunning,
-    compiling,         // ??$$$ newer code
-    compilePhase,      // ??$$$ newer code
-    setSimulationRunning,
-    resetSimulation,
-    showWires,
-    toggleWires,
-    showLabels,
-    toggleLabels,
-    fps,
-    cpuUsage,
-    voltage,
-    tickTelemetry,
-    setTab
+    simulationRunning, compiling, compilePhase,
+    setSimulationRunning, resetSimulation,
+    showWires, toggleWires, showLabels, toggleLabels,
+    fps, cpuUsage, voltage, tickTelemetry, setTab
   } = useProjectStore();
 
-  // Telemetry tick loop
   useEffect(() => {
     let interval: any;
-    if (simulationRunning) {
-      interval = setInterval(() => {
-        tickTelemetry();
-      }, 1000);
-    }
+    if (simulationRunning) interval = setInterval(tickTelemetry, 1000);
     return () => clearInterval(interval);
   }, [simulationRunning, tickTelemetry]);
 
-  // ??$$$ newer code — export formulation files local E: handler
   const [exporting, setExporting] = React.useState(false);
   const handleExport = async () => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const sessionId = searchParams.get('sessionId');
-    if (!sessionId) {
-      alert("No active session ID was found in the URL. Export is unavailable.");
-      return;
-    }
-    
+    const sessionId = new URLSearchParams(window.location.search).get('sessionId');
+    if (!sessionId) { alert('No session ID in URL.'); return; }
     setExporting(true);
     try {
-      const apiBaseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
-      const res = await fetch(`${apiBaseUrl}/new-flow/export-local`, {
+      const base = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/$/, '');
+      const res = await fetch(`${base}/new-flow/export-local`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId }),
-        credentials: 'include'
+        credentials: 'include',
       });
-      if (res.ok) {
-        const data = await res.json();
-        alert(data.message || 'Formulation files (including sketch.ino) exported to local E: drive successfully!');
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.error || 'Failed to export files.');
-      }
-    } catch (err) {
-      alert('Error exporting files.');
-    } finally {
-      setExporting(false);
-    }
+      const data = await res.json().catch(() => ({}));
+      alert(res.ok ? data.message || 'Exported!' : data.error || 'Export failed.');
+    } catch { alert('Export error.'); }
+    finally { setExporting(false); }
   };
 
   return (
-    <header className="h-16 border-b border-[var(--border)] bg-[var(--surface)] px-6 flex items-center justify-between select-none relative z-10">
-      {/* Brand Logo & Title */}
-      <div className="flex items-center space-x-3">
-        <div className="relative flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 to-sky-500">
-          <Cpu className="w-5 h-5 text-white animate-pulse" />
+    <header className="h-12 flex-shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 flex items-center justify-between select-none z-10">
+
+      {/* Brand */}
+      <div className="flex items-center gap-2.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 shadow-sm shadow-indigo-500/30">
+          <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
         </div>
         <div>
-          <h1 className="text-sm font-semibold tracking-wider text-[var(--heading)] uppercase font-mono">
-            Virtual Hardware <span className="text-[var(--primary)]">Playground</span>
-          </h1>
-          <p className="text-[10px] text-[var(--text-muted)] font-mono">Arduino Workspace Runtime</p>
+          <p className="text-xs font-bold tracking-tight text-[var(--heading)] leading-none">Virtual Playground</p>
+          <p className="text-[9px] text-[var(--text-muted)] leading-none mt-0.5">Arduino Workspace Runtime</p>
         </div>
       </div>
 
-      {/* Simulator Action Controls */}
-      <div className="flex items-center space-x-2 bg-[var(--surface-alt)] border border-[var(--border)] p-1 rounded-lg">
-        {/* RUN — disabled while compiling */}
+      {/* Controls */}
+      <div className="flex items-center gap-1 bg-[var(--surface-alt)] border border-[var(--border)] rounded-xl p-1">
+        {/* RUN */}
         <motion.button
-          whileHover={{ scale: compiling ? 1 : 1.05 }}
           whileTap={{ scale: compiling ? 1 : 0.95 }}
-          onClick={() => {
-            if (!compiling) void setSimulationRunning(true);
-          }}
+          onClick={() => { if (!compiling) void setSimulationRunning(true); }}
           disabled={compiling}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium transition-all ${
+          title={compiling ? 'Compiling…' : 'Run'}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             compiling
-              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 cursor-not-allowed'
+              ? 'bg-amber-500/15 text-amber-400 border border-amber-500/30 cursor-not-allowed'
               : simulationRunning
-              ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
-              : 'text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5'
+              ? 'bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-sm'
+              : 'text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5 dark:hover:bg-white/5'
           }`}
-          title={compiling ? 'Compiling...' : 'Run Simulator'}
         >
-          {compiling ? (
-            <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
-            </svg>
-          ) : (
-            <Play className={`w-3.5 h-3.5 ${simulationRunning ? 'fill-current animate-pulse' : ''}`} />
-          )}
-          <span>{compiling ? 'COMPILING' : 'RUN'}</span>
+          {compiling
+            ? <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>
+            : <Play className={`w-3.5 h-3.5 ${simulationRunning ? 'fill-current' : ''}`} />
+          }
+          <span>{compiling ? 'Building' : 'Run'}</span>
         </motion.button>
 
         {/* PAUSE */}
         <motion.button
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            void setSimulationRunning(false);
-          }}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium transition-all ${
-            !simulationRunning && cpuUsage > 0
-              ? 'bg-[#f59e0b]/20 text-[#f59e0b] border border-[#f59e0b]/50 shadow-[0_0_10px_rgba(245,158,11,0.3)]'
-              : 'text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5'
-          }`}
-          title="Pause Simulator"
+          onClick={() => void setSimulationRunning(false)}
+          title="Pause"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5 dark:hover:bg-white/5 transition-all"
         >
           <Pause className="w-3.5 h-3.5" />
-          <span>PAUSE</span>
+          <span>Pause</span>
         </motion.button>
 
         {/* RESET */}
         <motion.button
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={resetSimulation}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium text-[var(--text-muted)] hover:text-[#ef4444] hover:bg-[#ef4444]/10 transition-all"
-          title="Reset System"
+          title="Reset"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-[var(--text-muted)] hover:text-red-500 hover:bg-red-500/10 transition-all"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>RESET</span>
+          <span>Reset</span>
         </motion.button>
 
-        <div className="w-px h-5 bg-[#1f1f45] mx-1"></div>
+        <div className="w-px h-4 bg-[var(--border)] mx-0.5" />
 
-        {/* TOGGLE WIRES */}
+        {/* WIRES */}
         <motion.button
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={toggleWires}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-all ${
-              showWires ? 'text-blue-600 bg-blue-100' : 'text-[var(--text-muted)] hover:bg-black/5'
+          title="Toggle Wires"
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            showWires
+              ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
+              : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5'
           }`}
-          title="Toggle Wire Rendering"
         >
           {showWires ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-          <span>WIRES</span>
+          <span>Wires</span>
         </motion.button>
 
-        {/* TOGGLE LABELS */}
+        {/* LABELS */}
         <motion.button
-          whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={toggleLabels}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono transition-all ${
-              showLabels ? 'text-blue-600 bg-blue-100' : 'text-[var(--text-muted)] hover:bg-black/5'
+          title="Toggle Labels"
+          className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+            showLabels
+              ? 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10'
+              : 'text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/5'
           }`}
-          title="Toggle Component Labels"
         >
           {showLabels ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-          <span>LABELS</span>
+          <span>Labels</span>
         </motion.button>
       </div>
 
-      {/* Live Hardware Telemetry Panel */}
-      <div className="flex items-center space-x-6 text-[11px] font-mono border-l border-[var(--border)] pl-6">
-        {/* ??$$$ newer code — compile phase status banner */}
+      {/* Right: telemetry + actions */}
+      <div className="flex items-center gap-4 text-xs font-mono border-l border-[var(--border)] pl-4">
+
+        {/* compile phase banner */}
         {compiling && (
           <motion.div
-            initial={{ opacity: 0, y: -6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
-            className="flex items-center space-x-2 px-3 py-1.5 bg-amber-950/50 border border-amber-700/40 rounded-lg text-amber-300 text-[10px] font-mono"
+            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-[10px]"
           >
             <svg className="w-3 h-3 animate-spin flex-shrink-0" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
             </svg>
-            <span className="truncate max-w-[200px]">{compilePhase || 'Compiling...'}</span>
+            <span className="truncate max-w-[160px]">{compilePhase || 'Compiling…'}</span>
           </motion.div>
         )}
 
-        <div className="flex items-center space-x-2">
-          <span className="text-[var(--text-muted)]">VCC:</span>
-          <span className={`font-semibold transition-colors ${simulationRunning ? 'text-emerald-400' : 'text-slate-500'}`}>
-            {voltage.toFixed(2)}V
+        {/* telemetry pills */}
+        <div className="flex items-center gap-3 text-[var(--text-muted)]">
+          <span>VCC: <span className={`font-semibold ${simulationRunning ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`}>{voltage.toFixed(2)}V</span></span>
+          <span>CPU: <span className={`font-semibold ${simulationRunning ? 'text-indigo-400' : 'text-[var(--text-muted)]'}`}>{cpuUsage}%</span>
+            {simulationRunning && <Activity className="inline w-3 h-3 text-indigo-400 ml-0.5 animate-pulse" />}
           </span>
+          <span>FPS: <span className={`font-semibold ${simulationRunning ? 'text-violet-400' : 'text-[var(--text-muted)]'}`}>{simulationRunning ? fps : 0}</span></span>
         </div>
 
-        <div className="flex items-center space-x-2">
-          <span className="text-[var(--text-muted)]">CPU:</span>
-          <span className={`font-semibold transition-colors ${simulationRunning ? 'text-cyan-400' : 'text-slate-500'}`}>
-            {cpuUsage}%
-          </span>
-          {simulationRunning && (
-            <Activity className="w-3 h-3 text-cyan-400 animate-pulse" />
-          )}
-        </div>
-
-        <div className="flex items-center space-x-2">
-          <span className="text-[var(--text-muted)]">FPS:</span>
-          <span className={`font-semibold transition-colors ${simulationRunning ? 'text-purple-400' : 'text-slate-500'}`}>
-            {simulationRunning ? fps : 0}
-          </span>
-        </div>
-
-        {/* ??$$$ newer code — EXPORT BUTTON */}
+        {/* Export */}
         <button
           onClick={handleExport}
           disabled={exporting}
-          className="flex items-center space-x-1.5 px-2.5 py-1 bg-emerald-950/40 text-emerald-400 border border-emerald-900/50 hover:bg-emerald-900/40 hover:text-emerald-300 rounded transition-all font-sans text-xs cursor-pointer ml-4 disabled:opacity-50"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text-muted)] hover:border-indigo-300 hover:text-indigo-600 dark:hover:border-indigo-500/40 dark:hover:text-indigo-400 text-xs font-sans transition-all disabled:opacity-50 cursor-pointer"
         >
-          <HardDrive className="w-3.5 h-3.5" />
-          <span>{exporting ? 'Exporting...' : 'Export'}</span>
+          <HardDrive className="w-3 h-3" />
+          <span>{exporting ? 'Exporting…' : 'Export'}</span>
         </button>
 
-        {/* EXIT BUTTON */}
+        {/* Exit */}
         <button
-          onClick={() => {
-            resetSimulation();
-            setTab('landing');
-          }}
-          className="flex items-center space-x-1.5 px-2.5 py-1 bg-red-950/40 text-red-400 border border-red-900/50 hover:bg-red-900/40 hover:text-red-300 rounded transition-all font-sans text-xs cursor-pointer ml-4"
+          onClick={() => { resetSimulation(); setTab('landing'); }}
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text-muted)] hover:border-red-300 hover:text-red-500 dark:hover:border-red-500/40 dark:hover:text-red-400 text-xs font-sans transition-all cursor-pointer"
         >
           <LogOut className="w-3 h-3" />
           <span>Exit</span>

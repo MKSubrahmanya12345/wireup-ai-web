@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { io, Socket } from "socket.io-client";
 import { axiosInstance } from "../lib/axios";
+import { useThemeStore } from "../store/useThemeStore";
 // ??$$$ old code
 // import { X, Send, Play, Terminal, Cpu, Database, Layers, CheckCircle, AlertTriangle, RefreshCw, EyeOff, Eye } from "lucide-react";
 // ??$$$ newer code
@@ -157,6 +158,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   onClose
 }) => {
   const navigate = useNavigate();
+  const { theme } = useThemeStore();
+  const dark = theme === "dark";
   const virtualPlaygroundUrl = (import.meta.env.VITE_VIRTUAL_PLAYGROUND_URL || "http://localhost:5174").replace(/\/$/, "");
   // ??$$$ NEW FLOW
   const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
@@ -464,15 +467,15 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
   const renderStepper = () => {
     const stages = [
-      { key: "requirements", label: "Requirements Analyzed" },
-      { key: "components", label: "Component Selection" },
-      { key: "wiring", label: "Wiring Design" },
-      { key: "validation", label: "Wiring & Pin Validation" },
-      { key: "curriculum", label: "Curriculum Generation" }
+      { key: "requirements", label: "Requirements" },
+      { key: "components", label: "Components" },
+      { key: "wiring", label: "Wiring" },
+      { key: "validation", label: "Validation" },
+      { key: "curriculum", label: "Curriculum" }
     ];
 
     return (
-      <div className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] items-center">
+      <div className="flex flex-wrap gap-x-1 gap-y-1 items-center">
         {stages.map((stage, idx) => {
           let status = "upcoming";
           if (isCompleted) {
@@ -485,24 +488,37 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             const stageOrder = ["requirements", "components", "wiring", "validation", "curriculum"];
             const currentIdx = stageOrder.indexOf(activeStage);
             const thisIdx = stageOrder.indexOf(stage.key);
-            if (thisIdx < currentIdx) {
-              status = "done";
-            }
+            if (thisIdx < currentIdx) status = "done";
           }
 
           return (
             <div key={stage.key} className="flex items-center gap-1">
-              {idx > 0 && <span className="text-zinc-700 mr-1">→</span>}
-              {status === "done" && <span className="text-emerald-500 font-bold">✓</span>}
-              {status === "active" && (
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-500"></span>
-                </span>
+              {idx > 0 && (
+                <svg className={`h-3 w-3 mx-0.5 ${status === "done" || status === "active" ? (dark ? "text-slate-600" : "text-slate-300") : (dark ? "text-slate-800" : "text-slate-200")}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
               )}
-              {status === "upcoming" && <span className="text-zinc-650">○</span>}
-              {status === "failed" && <span className="text-red-500">⚠</span>}
-              <span className={status === "active" ? "text-zinc-100 font-bold" : status === "done" ? "text-zinc-400" : "text-zinc-600"}>
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors ${
+                status === "active"
+                  ? dark ? "bg-indigo-500/15 text-indigo-300 border border-indigo-500/30" : "bg-indigo-50 text-indigo-700 border border-indigo-200"
+                  : status === "done"
+                  ? dark ? "text-slate-400" : "text-slate-500"
+                  : status === "failed"
+                  ? dark ? "text-red-400" : "text-red-500"
+                  : dark ? "text-slate-700" : "text-slate-300"
+              }`}>
+                {status === "active" && (
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                  </span>
+                )}
+                {status === "done" && (
+                  <svg className={`h-3 w-3 ${dark ? "text-slate-500" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+                {status === "failed" && <AlertTriangle className="h-3 w-3" />}
                 {stage.label}
               </span>
             </div>
@@ -1227,23 +1243,37 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     }
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-zinc-950 font-sans text-zinc-100 antialiased overflow-hidden">
-      {/* Glow effects */}
-      <div className="absolute top-0 left-1/4 h-[350px] w-[500px] -translate-y-1/2 rounded-full bg-emerald-500/10 blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-0 right-1/4 h-[350px] w-[500px] translate-y-1/2 rounded-full bg-blue-500/10 blur-[120px] pointer-events-none" />
+  // ── Derived theme tokens ──────────────────────────────────────────────────
+  const modalBg    = dark ? "bg-[#0d0d12]"                  : "bg-slate-50";
+  const headerBg   = dark ? "bg-[#0d0d12]/80 border-white/[0.06]" : "bg-white/80 border-slate-200";
+  const textHead   = dark ? "text-slate-100"                : "text-slate-800";
+  const textSub    = dark ? "text-slate-500"                : "text-slate-400";
+  const selectCls  = dark
+    ? "rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500/60 transition-colors"
+    : "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 transition-colors";
 
-      {/* Top Header */}
-      <header className="flex h-16 items-center justify-between border-b border-zinc-800 bg-zinc-900/60 px-6 backdrop-blur-md">
+  return (
+    <div className={`fixed inset-0 z-50 flex flex-col font-sans antialiased overflow-hidden ${dark ? "text-slate-100" : "text-slate-800"} ${modalBg}`}>
+      {/* Ambient glow */}
+      <div className="pointer-events-none absolute top-0 left-1/4 h-[400px] w-[600px] -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[130px]" />
+      <div className="pointer-events-none absolute bottom-0 right-1/4 h-[400px] w-[600px] translate-y-1/2 rounded-full bg-violet-500/8 blur-[130px]" />
+
+      {/* ── Top Header ── */}
+      <header className={`relative z-10 flex h-16 flex-shrink-0 items-center justify-between border-b px-6 backdrop-blur-xl ${headerBg}`}>
+        {/* top gradient line */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 opacity-60" />
+
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-            <Cpu className="h-5 w-5 animate-pulse" />
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${dark ? "border-indigo-500/30 bg-indigo-500/15 text-indigo-400" : "border-indigo-200 bg-indigo-50 text-indigo-600"}`}>
+            <svg className="h-4.5 w-4.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
           </div>
           <div>
-            <h1 className="text-base font-bold tracking-tight bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
-              ✦ AI Build Session
+            <h1 className={`text-sm font-bold tracking-tight ${textHead}`}>
+              AI Build Session
             </h1>
-            <p className="text-xs text-zinc-500">
+            <p className={`text-[11px] ${textSub}`}>
               {phase === 1 ? "Discovery Loop" : "Autonomous Formulation Pipeline"}
             </p>
           </div>
@@ -1251,13 +1281,13 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
         <div className="flex items-center gap-4">
           {/* Model Selector */}
-          {started && ( // ??$$$ newer code - show model selector in both phases once started
+          {started && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-zinc-400">Agent Brain:</span>
+              <span className={`text-xs ${textSub}`}>Agent Brain:</span>
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
-                className="rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs text-zinc-200 outline-none focus:border-emerald-500 transition-colors"
+                className={selectCls}
               >
                 /* old code
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
@@ -1289,114 +1319,199 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors"
+            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${dark ? "text-slate-400 hover:bg-white/8 hover:text-slate-200" : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"}`}
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
           </button>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-hidden">
+      <div className="relative z-10 flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-            <p className="text-sm text-zinc-400">Booting discovery pipelines...</p>
+          <div className="flex h-full flex-col items-center justify-center gap-4">
+            <div className={`h-8 w-8 animate-spin rounded-full border-[3px] border-t-transparent ${dark ? "border-indigo-500" : "border-indigo-400"}`} />
+            <p className={`text-sm ${textSub}`}>Booting discovery pipelines…</p>
           </div>
         ) : !started ? (
-          /* ??$$$ newer code — Pre-start setup screen to select AI Brain */
-          <div className="flex h-full flex-col items-center justify-center gap-6 max-w-md mx-auto text-center px-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <Cpu className="h-6 w-6 animate-pulse" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-xl font-bold text-zinc-100">Ready to build your idea?</h2>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                You've specified the project idea: <span className="text-emerald-450 font-semibold font-mono">"{initialIdea}"</span>.
-                Choose the AI model you'd like to use for the discovery and formulation, then start.
-              </p>
-            </div>
-            {/* ??$$$ newer code - Two mode cards: Pure Ollama + Hybrid */}
-            <div className="w-full space-y-3">
-              <label className="text-xs font-semibold text-zinc-400 block text-left">Choose Formulation Mode:</label>
+          /* ??$$$ newer code — Pre-start setup screen — startup-grade UI */
+          <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6">
 
-              {/* Card 1: Pure Ollama */}
-              <button
-                id="mode-pure-ollama"
-                onClick={() => setModel("ollama/minimax-m3:cloud")}
-                className={`w-full flex items-center gap-3 rounded-xl border p-4 text-left transition-all ${model === "ollama/minimax-m3:cloud"
-                    ? "border-emerald-500 bg-emerald-500/10"
-                    : "border-zinc-800 bg-zinc-900/60 hover:border-zinc-700"
-                  }`}
-              >
-                <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border ${model === "ollama/minimax-m3:cloud"
-                    ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                    : "bg-zinc-800 text-zinc-400 border-zinc-700"
-                  }`}>
-                  <HardDrive className="h-5 w-5" />
-                </div>
-                <div className="flex-1">
-                  <div className={`text-sm font-bold ${model === "ollama/minimax-m3:cloud" ? "text-emerald-300" : "text-zinc-200"
-                    }`}>Pure Ollama</div>
-                  <div className="text-[11px] text-zinc-500 mt-0.5">minimax-m3:cloud:cloud · 100% local · Zero API limits</div>
-                </div>
-                {model === "ollama/minimax-m3:cloud" && (
-                  <CheckCircle className="h-4 w-4 text-emerald-400 flex-shrink-0" />
-                )}
-              </button>
+            {/* background grid */}
+            <div
+              className="pointer-events-none absolute inset-0 opacity-[0.03]"
+              style={{
+                backgroundImage: "linear-gradient(rgba(99,102,241,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(99,102,241,0.6) 1px, transparent 1px)",
+                backgroundSize: "40px 40px",
+              }}
+            />
+            {/* radial fade over grid */}
+            <div className={`pointer-events-none absolute inset-0 ${dark ? "bg-[radial-gradient(ellipse_at_center,transparent_30%,#0d0d12_80%)]" : "bg-[radial-gradient(ellipse_at_center,transparent_30%,#f8fafc_80%)]"}`} />
 
-              {/* Card 2: Hybrid */}
-              <div className={`w-full rounded-xl border transition-all overflow-hidden ${model === "hybrid"
-                  ? "border-blue-500 bg-blue-500/10"
-                  : "border-zinc-800 bg-zinc-900/60"
-                }`}>
-                <button
-                  id="mode-hybrid"
-                  onClick={() => setModel("hybrid")}
-                  className="w-full flex items-center gap-3 p-4 text-left"
-                >
-                  <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border ${model === "hybrid"
-                      ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                      : "bg-zinc-800 text-zinc-400 border-zinc-700"
-                    }`}>
-                    <Layers className="h-5 w-5" />
-                  </div>
-                  <div className="flex-1">
-                    <div className={`text-sm font-bold ${model === "hybrid" ? "text-blue-300" : "text-zinc-200"
-                      }`}>Hybrid</div>
-                    <div className="text-[11px] text-zinc-500 mt-0.5">GROQ_KEY → GROQ_FALLBACK → Cerebras → Ollama</div>
-                  </div>
-                  {model === "hybrid" && (
-                    <CheckCircle className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                  )}
-                </button>
-                {/* Sub-dropdown only visible when Hybrid is selected */}
-                {model === "hybrid" && (
-                  <div className="px-4 pb-4 border-t border-blue-500/20">
-                    <label className="text-[10px] font-semibold text-zinc-500 block mt-3 mb-1.5 uppercase tracking-wider">Primary Cloud Provider:</label>
-                    <select
-                      id="hybrid-primary-select"
-                      value={hybridPrimary}
-                      onChange={(e) => setHybridPrimary(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-xs text-zinc-200 outline-none focus:border-blue-500 transition-colors"
-                    >
-                      <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq · Llama 4 Scout</option>
-                      <option value="qwen/qwen3-32b">Groq · Qwen3-32B</option>
-                      <option value="gpt-oss-120b">Cerebras · gpt-oss-120b</option>
-                      <option value="zai-glm-4.7">Cerebras · zai-glm-4.7</option>
-                    </select>
-                    <p className="text-[9px] text-zinc-600 mt-2 leading-relaxed">
-                      Auto-failover chain: GROQ_API_KEY → GROQ_API_FALLBACK → CEREBRAS_API_KEY → minimax-m3:cloud:cloud
-                    </p>
-                  </div>
-                )}
+            <div className="relative z-10 w-full max-w-lg">
+
+              {/* badge */}
+              <div className="flex justify-center mb-8">
+                <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-widest ${dark ? "border-indigo-500/30 bg-indigo-500/10 text-indigo-400" : "border-indigo-200 bg-indigo-50 text-indigo-600"}`}>
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-indigo-400 opacity-75" />
+                    <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                  </span>
+                  AI Hardware Studio
+                </span>
               </div>
+
+              {/* heading */}
+              <div className="text-center mb-10">
+                <h2 className={`text-4xl font-bold tracking-tight leading-[1.15] mb-4 ${textHead}`}
+                  style={{ fontFamily: "'Manrope', sans-serif" }}>
+                  Configure your
+                  <br />
+                  <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+                    build pipeline
+                  </span>
+                </h2>
+                <p className={`text-base leading-relaxed ${textSub}`}>
+                  Building{" "}
+                  <span className={`font-semibold ${dark ? "text-slate-200" : "text-slate-700"}`}>
+                    "{initialIdea}"
+                  </span>
+                  <br />
+                  Choose your AI engine, then launch.
+                </p>
+              </div>
+
+              {/* mode cards */}
+              <div className="space-y-3 mb-6">
+
+                {/* Card 1: Pure Ollama */}
+                <button
+                  id="mode-pure-ollama"
+                  onClick={() => setModel("ollama/minimax-m3:cloud")}
+                  className={`group w-full flex items-center gap-5 rounded-2xl border p-5 text-left transition-all duration-200 ${
+                    model === "ollama/minimax-m3:cloud"
+                      ? dark
+                        ? "border-indigo-500/50 bg-indigo-500/10 shadow-lg shadow-indigo-500/10"
+                        : "border-indigo-300 bg-indigo-50 shadow-md shadow-indigo-100"
+                      : dark
+                        ? "border-white/[0.07] bg-white/[0.025] hover:border-indigo-500/30 hover:bg-white/[0.04]"
+                        : "border-slate-200 bg-white hover:border-indigo-200 hover:shadow-sm"
+                  }`}
+                >
+                  <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                    model === "ollama/minimax-m3:cloud"
+                      ? dark ? "border-indigo-500/40 bg-indigo-500/20 text-indigo-300" : "border-indigo-200 bg-indigo-100 text-indigo-600"
+                      : dark ? "border-white/10 bg-white/5 text-slate-400" : "border-slate-200 bg-slate-100 text-slate-500"
+                  }`}>
+                    <HardDrive className="h-5 w-5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={`text-base font-bold tracking-tight ${
+                      model === "ollama/minimax-m3:cloud"
+                        ? dark ? "text-indigo-200" : "text-indigo-700"
+                        : textHead
+                    }`}>Pure Ollama</p>
+                    <p className={`text-sm mt-0.5 ${textSub}`}>minimax-m3:cloud · 100% local · Zero API limits</p>
+                  </div>
+                  <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                    model === "ollama/minimax-m3:cloud"
+                      ? dark ? "border-indigo-400 bg-indigo-400" : "border-indigo-600 bg-indigo-600"
+                      : dark ? "border-white/20" : "border-slate-300"
+                  }`}>
+                    {model === "ollama/minimax-m3:cloud" && (
+                      <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 12 12">
+                        <path d="M3.5 7L5.5 9L8.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                      </svg>
+                    )}
+                  </div>
+                </button>
+
+                {/* Card 2: Hybrid */}
+                <div className={`w-full rounded-2xl border transition-all duration-200 overflow-hidden ${
+                  model === "hybrid"
+                    ? dark
+                      ? "border-violet-500/50 bg-violet-500/10 shadow-lg shadow-violet-500/10"
+                      : "border-violet-300 bg-violet-50 shadow-md shadow-violet-100"
+                    : dark
+                      ? "border-white/[0.07] bg-white/[0.025] hover:border-violet-500/30 hover:bg-white/[0.04]"
+                      : "border-slate-200 bg-white hover:border-violet-200 hover:shadow-sm"
+                }`}>
+                  <button
+                    id="mode-hybrid"
+                    onClick={() => setModel("hybrid")}
+                    className="w-full flex items-center gap-5 p-5 text-left"
+                  >
+                    <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                      model === "hybrid"
+                        ? dark ? "border-violet-500/40 bg-violet-500/20 text-violet-300" : "border-violet-200 bg-violet-100 text-violet-600"
+                        : dark ? "border-white/10 bg-white/5 text-slate-400" : "border-slate-200 bg-slate-100 text-slate-500"
+                    }`}>
+                      <Layers className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-base font-bold tracking-tight ${
+                        model === "hybrid"
+                          ? dark ? "text-violet-200" : "text-violet-700"
+                          : textHead
+                      }`}>Hybrid Cloud</p>
+                      <p className={`text-sm mt-0.5 ${textSub}`}>GROQ → GROQ_FALLBACK → Cerebras → Ollama</p>
+                    </div>
+                    <div className={`flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                      model === "hybrid"
+                        ? dark ? "border-violet-400 bg-violet-400" : "border-violet-600 bg-violet-600"
+                        : dark ? "border-white/20" : "border-slate-300"
+                    }`}>
+                      {model === "hybrid" && (
+                        <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 12 12">
+                          <path d="M3.5 7L5.5 9L8.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                        </svg>
+                      )}
+                    </div>
+                  </button>
+
+                  {model === "hybrid" && (
+                    <div className={`px-5 pb-5 border-t ${dark ? "border-violet-500/20" : "border-violet-100"}`}>
+                      <label className={`text-xs font-semibold uppercase tracking-widest block mt-4 mb-2 ${textSub}`}>
+                        Primary Cloud Provider
+                      </label>
+                      <select
+                        id="hybrid-primary-select"
+                        value={hybridPrimary}
+                        onChange={(e) => setHybridPrimary(e.target.value)}
+                        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none transition-colors ${
+                          dark
+                            ? "border-white/10 bg-white/5 text-slate-200 focus:border-violet-500/60"
+                            : "border-slate-200 bg-white text-slate-700 focus:border-violet-400"
+                        }`}
+                      >
+                        <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq · Llama 4 Scout</option>
+                        <option value="qwen/qwen3-32b">Groq · Qwen3-32B</option>
+                        <option value="gpt-oss-120b">Cerebras · gpt-oss-120b</option>
+                        <option value="zai-glm-4.7">Cerebras · zai-glm-4.7</option>
+                      </select>
+                      <p className={`text-xs mt-2 leading-relaxed ${dark ? "text-slate-600" : "text-slate-400"}`}>
+                        Auto-failover: GROQ_API_KEY → GROQ_API_FALLBACK → CEREBRAS_API_KEY → Ollama
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* CTA */}
               <button
                 onClick={handleStartSession}
-                className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 py-3 text-sm font-semibold text-zinc-950 hover:bg-emerald-400 transition-colors active:scale-[0.98]"
+                className="group w-full flex items-center justify-center gap-3 rounded-2xl bg-indigo-600 px-6 py-4 text-base font-bold text-white shadow-xl shadow-indigo-500/30 hover:bg-indigo-700 transition-all active:scale-[0.99]"
               >
-                <Play className="h-4 w-4" /> Start AI Build
+                <svg className="h-5 w-5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                </svg>
+                Start AI Build
               </button>
+
+              {/* footnote */}
+              <p className={`mt-5 text-center text-xs ${dark ? "text-slate-700" : "text-slate-400"}`}>
+                Discovery → Component Sourcing → Wiring → Curriculum — fully automated
+              </p>
             </div>
           </div>
         ) : phase === 1 ? (
@@ -1632,52 +1747,58 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           /* PHASE 2: AUTOMATED FORMULATION LOOP */
           // ??$$$ newer code
           <div className="flex h-full overflow-hidden">
-            {/* Left/Center Main Workspace (Main panel for progress) */}
-            <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden border-r border-zinc-800">
-              {/* Stepper progress & controls */}
-              <div className="border-b border-zinc-800 bg-zinc-900/20 px-6 py-4 flex flex-col md:flex-row justify-between gap-4 select-none">
-                <div className="space-y-1">
-                  <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">AI Sourcing Pipeline</div>
+            {/* Left/Center Main Workspace */}
+            <div className={`flex-1 flex flex-col overflow-hidden border-r ${dark ? "bg-[#0d0d12] border-white/[0.06]" : "bg-slate-50 border-slate-200"}`}>
+              {/* Pipeline header */}
+              <div className={`border-b px-6 py-4 flex flex-col md:flex-row justify-between gap-4 select-none ${dark ? "border-white/[0.06] bg-[#0d0d12]/80" : "border-slate-200 bg-white/80"}`}>
+                <div className="space-y-2">
+                  <p className={`text-[10px] font-bold uppercase tracking-[0.18em] ${dark ? "text-slate-600" : "text-slate-400"}`}>AI Sourcing Pipeline</p>
                   {renderStepper()}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="flex rounded-lg bg-zinc-950 p-0.5 border border-zinc-800">
+                <div className="flex items-center gap-2.5">
+                  {/* tab switcher */}
+                  <div className={`flex rounded-xl p-0.5 border ${dark ? "bg-white/[0.03] border-white/[0.06]" : "bg-slate-100 border-slate-200"}`}>
                     <button
                       onClick={() => setWorkspaceTab("visual")}
-                      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                         workspaceTab === "visual"
-                          ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/10"
-                          : "text-zinc-500 hover:text-zinc-300"
+                          ? dark
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                            : "bg-white text-indigo-700 shadow-sm border border-slate-200"
+                          : dark ? "text-slate-500 hover:text-slate-300" : "text-slate-500 hover:text-slate-700"
                       }`}
                     >
-                      <LayoutDashboard className="h-3 w-3" />
+                      <LayoutDashboard className="h-3.5 w-3.5" />
                       Visual Overview
                     </button>
                     <button
                       onClick={() => setWorkspaceTab("console")}
-                      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
                         workspaceTab === "console"
-                          ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/10"
-                          : "text-zinc-500 hover:text-zinc-300"
+                          ? dark
+                            ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                            : "bg-white text-indigo-700 shadow-sm border border-slate-200"
+                          : dark ? "text-slate-500 hover:text-slate-300" : "text-slate-500 hover:text-slate-700"
                       }`}
                     >
-                      <Terminal className="h-3 w-3" />
+                      <Terminal className="h-3.5 w-3.5" />
                       Deep Agent Console
                     </button>
                   </div>
+
                   <button
                     onClick={handleRestart}
                     disabled={restarting}
-                    className="flex items-center gap-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-3 py-1.5 text-[11px] font-semibold text-zinc-200 transition-all disabled:opacity-50"
+                    className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all disabled:opacity-50 ${dark ? "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06]" : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"}`}
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${restarting ? "animate-spin text-emerald-400" : "text-zinc-400"}`} />
+                    <RefreshCw className={`h-3.5 w-3.5 ${restarting ? "animate-spin text-indigo-400" : dark ? "text-slate-500" : "text-slate-400"}`} />
                     Restart Build
                   </button>
 
                   {isCompleted && (
                     <button
                       onClick={handleGoToSimulator}
-                      className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-450 px-3 py-1.5 text-[11px] font-bold text-zinc-950 transition-all shadow-md shadow-emerald-500/20"
+                      className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-700 transition-all"
                     >
                       <PlayCircle className="h-3.5 w-3.5" />
                       Launch Playground
@@ -2059,86 +2180,80 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
               )}
             </div>
 
-            {/* Right Sidebar: Context summaries, locked constraints, and decisions */}
-            <aside className="w-80 border-l border-zinc-800 bg-zinc-900/10 p-6 overflow-y-auto space-y-6">
-              {/* Project Goals */}
-              <div className="space-y-5 text-xs">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">Project Constraints</h3>
-                  <div className="space-y-2.5">
-                    <div>
-                      <div className="text-zinc-400 font-semibold mb-0.5">Core Purpose</div>
-                      <div className="text-zinc-300 bg-zinc-900/40 p-2 rounded border border-zinc-800/80">
-                        {context.corePurpose || "Extracting..."}
-                      </div>
-                    </div>
-                    {context.mcu && (
-                      <div>
-                        <div className="text-zinc-400 font-semibold mb-0.5">Compute Brain</div>
-                        <div className="text-zinc-300 font-mono text-[10px]">{context.mcu}</div>
-                      </div>
-                    )}
-                    {context.powerSource && (
-                      <div>
-                        <div className="text-zinc-400 font-semibold mb-0.5">Power Source</div>
-                        <div className="text-zinc-350">{context.powerSource}</div>
-                      </div>
-                    )}
-                    {context.connectivity && (
-                      <div>
-                        <div className="text-zinc-400 font-semibold mb-0.5">Connectivity</div>
-                        <div className="text-zinc-350">{context.connectivity}</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
+            {/* Right Sidebar */}
+            <aside className={`w-72 border-l overflow-y-auto p-5 space-y-6 ${dark ? "border-white/[0.06] bg-[#0d0d12]" : "border-slate-200 bg-white"}`}>
 
-                {/* Confirmed BOM */}
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">Confirmed BOM</h3>
-                  {bom.length > 0 ? (
-                    <div className="space-y-1">
-                      {bom.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center bg-zinc-900/30 px-2.5 py-1.5 rounded border border-zinc-850">
-                          <span className="text-zinc-300 font-medium font-mono text-[10px] truncate max-w-[140px]">{item.displayName}</span>
-                          <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Confirmed</span>
-                        </div>
-                      ))}
+              {/* Project Constraints */}
+              <div>
+                <p className={`text-[10px] font-bold uppercase tracking-[0.18em] mb-3 ${dark ? "text-slate-600" : "text-slate-400"}`}>Project Constraints</p>
+                <div className="space-y-3">
+                  {[
+                    { label: "Core Purpose", value: context.corePurpose },
+                    { label: "Compute Brain", value: context.mcu },
+                    { label: "Power Source", value: context.powerSource },
+                    { label: "Connectivity", value: context.connectivity },
+                  ].filter(f => f.value).map(({ label, value }) => (
+                    <div key={label}>
+                      <p className={`text-[10px] font-semibold mb-1 uppercase tracking-wider ${dark ? "text-slate-600" : "text-slate-400"}`}>{label}</p>
+                      <p className={`text-sm font-medium leading-snug ${dark ? "text-slate-300" : "text-slate-700"}`}>{value}</p>
                     </div>
-                  ) : (
-                    <div className="text-zinc-650 italic text-[11px] font-sans">No parts finalized yet.</div>
+                  ))}
+                  {!context.corePurpose && !context.mcu && (
+                    <p className={`text-xs italic ${dark ? "text-slate-700" : "text-slate-400"}`}>Extracting from idea…</p>
                   )}
                 </div>
+              </div>
 
-                {/* Candidate alternatives */}
-                {candidates.length > 0 && (
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">Evaluating Candidates</h3>
-                    <div className="space-y-1">
-                      {candidates.map((item, idx) => (
-                        <div key={idx} className="flex justify-between items-center bg-zinc-900/10 px-2.5 py-1.5 rounded border border-dashed border-zinc-800">
-                          <span className="text-zinc-450 font-mono text-[10px] truncate max-w-[140px]">{item}</span>
-                          <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Evaluating</span>
-                        </div>
-                      ))}
-                    </div>
+              {/* Confirmed BOM */}
+              <div className={`border-t pt-5 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+                <div className="flex items-center justify-between mb-3">
+                  <p className={`text-[10px] font-bold uppercase tracking-[0.18em] ${dark ? "text-slate-600" : "text-slate-400"}`}>Confirmed BOM</p>
+                  {bom.length > 0 && (
+                    <span className={`text-[10px] font-bold tabular-nums ${dark ? "text-slate-500" : "text-slate-400"}`}>{bom.length} parts</span>
+                  )}
+                </div>
+                {bom.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {bom.map((item, idx) => (
+                      <div key={idx} className={`flex items-center justify-between rounded-xl border px-3 py-2 ${dark ? "border-white/[0.06] bg-white/[0.025]" : "border-slate-100 bg-slate-50"}`}>
+                        <span className={`text-xs font-medium truncate max-w-[140px] ${dark ? "text-slate-300" : "text-slate-700"}`}>{item.displayName}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${dark ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "bg-indigo-50 text-indigo-600 border border-indigo-100"}`}>✓</span>
+                      </div>
+                    ))}
                   </div>
-                )}
-
-                {/* AI Rationale / Reasoning */}
-                {decisions.length > 0 && (
-                  <div className="pt-2 border-t border-zinc-800/80">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-2 font-mono">AI Rationale</h3>
-                    <div className="space-y-2">
-                      {decisions.map((dec, idx) => (
-                        <div key={idx} className="p-2.5 rounded bg-zinc-900/40 border border-zinc-850 text-zinc-400 leading-relaxed text-[10px] font-sans">
-                          {dec}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                ) : (
+                  <p className={`text-xs italic ${dark ? "text-slate-700" : "text-slate-400"}`}>No parts finalized yet.</p>
                 )}
               </div>
+
+              {/* Candidate parts */}
+              {candidates.length > 0 && (
+                <div className={`border-t pt-5 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-[0.18em] mb-3 ${dark ? "text-slate-600" : "text-slate-400"}`}>Evaluating Candidates</p>
+                  <div className="space-y-1.5">
+                    {candidates.map((item, idx) => (
+                      <div key={idx} className={`flex items-center justify-between rounded-xl border border-dashed px-3 py-2 ${dark ? "border-white/[0.06]" : "border-slate-200"}`}>
+                        <span className={`text-xs truncate max-w-[140px] font-mono ${dark ? "text-slate-500" : "text-slate-500"}`}>{item}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${dark ? "bg-amber-500/10 text-amber-400 border border-amber-500/20" : "bg-amber-50 text-amber-600 border border-amber-100"}`}>…</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* AI Rationale */}
+              {decisions.length > 0 && (
+                <div className={`border-t pt-5 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+                  <p className={`text-[10px] font-bold uppercase tracking-[0.18em] mb-3 ${dark ? "text-slate-600" : "text-slate-400"}`}>AI Rationale</p>
+                  <div className="space-y-2">
+                    {decisions.map((dec, idx) => (
+                      <div key={idx} className={`rounded-xl border p-3 text-xs leading-relaxed ${dark ? "border-white/[0.05] bg-white/[0.02] text-slate-400" : "border-slate-100 bg-slate-50 text-slate-600"}`}>
+                        {dec}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </aside>
           </div>
 

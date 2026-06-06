@@ -1,13 +1,9 @@
-// ??$$$ group 1 - Landing Page & Authentication
-import { useEffect, useRef, useState, KeyboardEvent } from "react";
+﻿import { useEffect, useRef, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
-import { useThemeStore } from "../store/useThemeStore";
 import { useAuthStore } from "../store/useAuthStore";
-import forgeLogo from "../assets/forge logo.png";
-// ??$$$ NEW FLOW
+import { useThemeStore } from "../store/useThemeStore";
 import { DiscoveryModal } from "../components/DiscoveryModal";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -25,76 +21,295 @@ type SettingsForm = {
   confirmPassword: string;
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Mouse glow tracker ───────────────────────────────────────────────────────
+
+function MouseGlow({ dark }: { dark: boolean }) {
+  const glowRef = useRef<HTMLDivElement>(null);
+  const posRef = useRef({ x: -999, y: -999 });
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const move = (e: MouseEvent) => {
+      posRef.current = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("mousemove", move);
+
+    const tick = () => {
+      if (glowRef.current) {
+        glowRef.current.style.left = `${posRef.current.x}px`;
+        glowRef.current.style.top = `${posRef.current.y}px`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+    rafRef.current = requestAnimationFrame(tick);
+
+    return () => {
+      window.removeEventListener("mousemove", move);
+      cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={glowRef}
+      className="pointer-events-none fixed z-0 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-300"
+      style={{
+        width: 560,
+        height: 560,
+        background: dark
+          ? "radial-gradient(circle, rgba(99,102,241,0.13) 0%, rgba(139,92,246,0.07) 40%, transparent 70%)"
+          : "radial-gradient(circle, rgba(99,102,241,0.09) 0%, rgba(139,92,246,0.05) 40%, transparent 70%)",
+        filter: "blur(8px)",
+      }}
+    />
+  );
+}
+
+// ─── Sidebar nav item ─────────────────────────────────────────────────────────
+
+function NavItem({
+  icon,
+  label,
+  active = false,
+  dark,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  active?: boolean;
+  dark: boolean;
+  onClick?: () => void;
+}) {
+  const base = "group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-medium transition-all duration-150";
+  const activeClass = dark
+    ? "bg-indigo-500/15 text-indigo-300"
+    : "bg-indigo-50 text-indigo-700";
+  const idleClass = dark
+    ? "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+    : "text-slate-500 hover:bg-slate-100 hover:text-slate-800";
+  const iconActive = dark ? "bg-indigo-500/20 text-indigo-400" : "bg-indigo-100 text-indigo-600";
+  const iconIdle = dark
+    ? "bg-white/5 text-slate-500 group-hover:bg-white/10 group-hover:text-slate-300"
+    : "bg-slate-100 text-slate-400 group-hover:bg-slate-200 group-hover:text-slate-600";
+
+  return (
+    <button onClick={onClick} className={`${base} ${active ? activeClass : idleClass}`}>
+      <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-colors ${active ? iconActive : iconIdle}`}>
+        {icon}
+      </span>
+      {label}
+    </button>
+  );
+}
+
+// ─── Project card ─────────────────────────────────────────────────────────────
+
+function ProjectCard({
+  project, dark, onOpen, onDiscovery, onFormulation, onEdit, onDelete,
+}: {
+  project: Project;
+  dark: boolean;
+  onOpen: () => void;
+  onDiscovery: () => void;
+  onFormulation: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const date = new Date(project.createdAt).toLocaleDateString(undefined, {
+    month: "short", day: "numeric", year: "numeric",
+  });
+
+  const card = dark
+    ? "border-white/8 bg-white/[0.03] hover:border-indigo-500/30 hover:bg-white/[0.06]"
+    : "border-slate-200/80 bg-white hover:border-indigo-200 hover:shadow-md";
+
+  return (
+    <div className={`group relative flex items-center gap-5 rounded-2xl border px-6 py-5 shadow-sm transition-all duration-200 ${card}`}>
+      {/* accent strip */}
+      <div className="absolute inset-y-0 left-0 w-[3px] rounded-l-2xl bg-gradient-to-b from-indigo-500 to-violet-500 opacity-0 transition-opacity duration-200 group-hover:opacity-100" />
+
+      {/* icon */}
+      <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl border ${dark ? "border-indigo-500/20 bg-indigo-500/10" : "border-indigo-100 bg-gradient-to-br from-indigo-50 to-violet-50"}`}>
+        <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18" />
+        </svg>
+      </div>
+
+      {/* info */}
+      <div className="min-w-0 flex-1">
+        <p className={`truncate text-sm font-semibold ${dark ? "text-slate-100" : "text-slate-800"}`}>
+          {project.description}
+        </p>
+        <p className={`mt-1 text-xs ${dark ? "text-slate-500" : "text-slate-400"}`}>{date}</p>
+      </div>
+
+      {/* actions */}
+      <div className="flex items-center gap-2 opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+        <PillButton label="Open" onClick={onOpen} variant="primary" />
+        <PillButton label="Discovery" onClick={onDiscovery} dark={dark} />
+        <PillButton label="Formulation" onClick={onFormulation} dark={dark} />
+        <div className={`mx-1 h-4 w-px ${dark ? "bg-white/10" : "bg-slate-200"}`} />
+        <GhostIconBtn title="Rename" onClick={onEdit} dark={dark} icon={
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 013.536 3.536L6.5 21.036H3v-3.5L16.732 3.732z" />
+          </svg>
+        } />
+        <GhostIconBtn title="Delete" onClick={onDelete} dark={dark} danger icon={
+          <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        } />
+      </div>
+    </div>
+  );
+}
+
+function PillButton({ label, onClick, variant = "default", dark }: { label: string; onClick: () => void; variant?: "primary" | "default"; dark?: boolean }) {
+  if (variant === "primary") {
+    return (
+      <button onClick={onClick} className="rounded-lg bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700">
+        {label}
+      </button>
+    );
+  }
+  const cls = dark
+    ? "border border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200"
+    : "border border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-800";
+  return (
+    <button onClick={onClick} className={`rounded-lg px-3.5 py-1.5 text-xs font-medium transition-colors ${cls}`}>
+      {label}
+    </button>
+  );
+}
+
+function GhostIconBtn({ icon, title, onClick, dark, danger = false }: { icon: React.ReactNode; title: string; onClick: () => void; dark: boolean; danger?: boolean }) {
+  const cls = danger
+    ? (dark ? "text-slate-500 hover:bg-red-500/10 hover:text-red-400" : "text-slate-400 hover:bg-red-50 hover:text-red-500")
+    : (dark ? "text-slate-500 hover:bg-white/8 hover:text-slate-300" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600");
+  return (
+    <button onClick={onClick} title={title} className={`flex h-7 w-7 items-center justify-center rounded-lg transition-colors ${cls}`}>
+      {icon}
+    </button>
+  );
+}
+
+function ProjectSkeleton({ dark }: { dark: boolean }) {
+  const cls = dark ? "bg-white/5" : "bg-slate-100";
+  return (
+    <div className={`flex items-center gap-5 rounded-2xl border px-6 py-5 ${dark ? "border-white/8 bg-white/[0.03]" : "border-slate-200/80 bg-white"}`}>
+      <div className={`h-11 w-11 flex-shrink-0 rounded-xl animate-pulse ${cls}`} />
+      <div className="flex-1 space-y-2.5">
+        <div className={`h-3.5 w-2/3 rounded-full animate-pulse ${cls}`} />
+        <div className={`h-2.5 w-1/4 rounded-full animate-pulse ${cls}`} />
+      </div>
+    </div>
+  );
+}
+
+// ─── Stat card ────────────────────────────────────────────────────────────────
+
+function StatCard({ label, value, sublabel, icon, color, isText, dark }: {
+  label: string; value: number | string; sublabel?: string;
+  icon: React.ReactNode; color: "indigo" | "violet" | "emerald"; isText?: boolean; dark: boolean;
+}) {
+  const lightBg: Record<string, string> = {
+    indigo: "from-indigo-50 to-white border-indigo-100",
+    violet: "from-violet-50 to-white border-violet-100",
+    emerald: "from-emerald-50 to-white border-emerald-100",
+  };
+  const darkBg: Record<string, string> = {
+    indigo: "border-indigo-500/20 bg-indigo-500/5",
+    violet: "border-violet-500/20 bg-violet-500/5",
+    emerald: "border-emerald-500/20 bg-emerald-500/5",
+  };
+
+  return (
+    <div className={`rounded-2xl border p-5 shadow-sm ${dark ? darkBg[color] : `bg-gradient-to-br ${lightBg[color]}`}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className={`text-[10px] font-semibold uppercase tracking-widest ${dark ? "text-slate-500" : "text-slate-500"}`}>{label}</p>
+          <p className={`mt-2 font-bold ${dark ? "text-slate-100" : "text-slate-800"} ${isText ? "text-sm leading-tight" : "text-3xl"}`}>
+            {value}
+          </p>
+          {sublabel && <p className={`mt-1 text-[11px] ${dark ? "text-slate-600" : "text-slate-400"}`}>{sublabel}</p>}
+        </div>
+        <div className={`rounded-xl p-2.5 shadow-sm ${dark ? "bg-white/5 border border-white/8" : "bg-white/80 border border-white"}`}>
+          {icon}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Menu helpers ─────────────────────────────────────────────────────────────
+
+function MenuBtn({ label, onClick, dark, danger }: { label: string; onClick: () => void; dark: boolean; danger?: boolean }) {
+  const cls = danger
+    ? (dark ? "text-red-400 hover:bg-red-500/10" : "text-red-500 hover:bg-red-50")
+    : (dark ? "text-slate-300 hover:bg-white/8 hover:text-slate-100" : "text-slate-600 hover:bg-slate-100 hover:text-slate-800");
+  return (
+    <button onClick={onClick} className={`w-full rounded-lg px-3 py-2.5 text-left text-xs font-medium transition-colors ${cls}`}>
+      {label}
+    </button>
+  );
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────────────
 
 export default function HomePage() {
-  const navigate    = useNavigate();
-  const { theme, toggleTheme } = useThemeStore();
+  const navigate = useNavigate();
   const { authUser, logout, updateUser } = useAuthStore();
-  const isDark = theme === "dark";
+  const { theme, toggleTheme } = useThemeStore();
+  const dark = theme === "dark";
 
-  // projects
-  const [projects,   setProjects]   = useState<Project[]>([]);
-  const [loading,    setLoading]    = useState(true);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
-  // prompt input
   const [inputValue, setInputValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // profile dropdown
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showSettings,     setShowSettings]     = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
 
-  // ??$$$ NEW FLOW
   const [showDiscoveryModal, setShowDiscoveryModal] = useState(false);
   const [discoveryIdea, setDiscoveryIdea] = useState("");
   const [discoveryProjectId, setDiscoveryProjectId] = useState<string | undefined>(undefined);
   const [discoveryPhase, setDiscoveryPhase] = useState<1 | 2 | undefined>(undefined);
 
-  // settings form
   const [settingsForm, setSettingsForm] = useState<SettingsForm>({
-    fullName:        authUser?.fullName || "",
-    email:           authUser?.email    || "",
-    newPassword:     "",
+    fullName: authUser?.fullName || "",
+    email: authUser?.email || "",
+    newPassword: "",
     confirmPassword: "",
   });
   const [isSavingSettings, setIsSavingSettings] = useState(false);
 
-  // ── sync settings form when authUser changes ──
   useEffect(() => {
-    setSettingsForm({
-      fullName:        authUser?.fullName || "",
-      email:           authUser?.email    || "",
-      newPassword:     "",
-      confirmPassword: "",
-    });
+    setSettingsForm({ fullName: authUser?.fullName || "", email: authUser?.email || "", newPassword: "", confirmPassword: "" });
   }, [authUser]);
 
-  // ── close profile modal on outside click ──
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
-        setShowProfileModal(false);
+        setShowProfileMenu(false);
         setShowSettings(false);
       }
     };
-    if (showProfileModal) document.addEventListener("mousedown", handler);
+    if (showProfileMenu) document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [showProfileModal]);
+  }, [showProfileMenu]);
 
-  // ── auto-grow textarea ──
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = "auto";
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
   }, [inputValue]);
 
-  // ── fetch projects ──
   useEffect(() => {
-    const fetchProjects = async () => {
+    (async () => {
       try {
         const res = await axiosInstance.get<Project[]>("/projects");
         setProjects(Array.isArray(res.data) ? res.data : []);
@@ -103,37 +318,24 @@ export default function HomePage() {
       } finally {
         setLoading(false);
       }
-    };
-    fetchProjects();
+    })();
   }, []);
 
-  // ── create project ──
-  // ??$$$ Modified to support agentic project creation
-  const handleCreateProject = async (description: string, isAgentic = false) => {
+  const handleCreateProject = useCallback(async (description: string, isAgentic = false) => {
     if (isCreating) return;
     const trimmed = description.trim();
     if (!trimmed) { toast.error("Project name is required"); return; }
     try {
       setIsCreating(true);
-      const res = await axiosInstance.post<{ projectId: string }>("/project", {
-        description: trimmed,
-        isAgentic
-      });
+      const res = await axiosInstance.post<{ projectId: string }>("/project", { description: trimmed, isAgentic });
       navigate(`/project/${res.data.projectId}/ideation`);
     } catch (error: any) {
       toast.error(error?.response?.data?.error || error?.response?.data?.message || "Failed to create project");
     } finally {
       setIsCreating(false);
     }
-  };
+  }, [isCreating, navigate]);
 
-  const handleSubmitInput = () => {
-    if (inputValue.trim()) {
-      handleCreateProject(inputValue, false);
-    }
-  };
-
-  // ??$$$ Added agentic submit handler
   const handleSubmitAgenticInput = () => {
     if (inputValue.trim()) {
       setDiscoveryIdea(inputValue.trim());
@@ -141,27 +343,18 @@ export default function HomePage() {
     }
   };
 
-  const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      handleSubmitInput();
-    }
-  };
-
-  // ── edit project ──
   const handleEditProject = async (project: Project) => {
-    const next = window.prompt("Update project name", project.description);
+    const next = window.prompt("Rename project", project.description);
     if (!next || next.trim() === project.description) return;
     try {
       await axiosInstance.put(`/project/${project._id}`, { description: next.trim() });
       setProjects((prev) => prev.map((p) => p._id === project._id ? { ...p, description: next.trim() } : p));
-      toast.success("Project updated");
+      toast.success("Project renamed");
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || "Failed to update project");
+      toast.error(error?.response?.data?.error || "Failed to rename project");
     }
   };
 
-  // ── delete project ──
   const handleDeleteProject = async (project: Project) => {
     if (!window.confirm(`Delete "${project.description}"?`)) return;
     try {
@@ -173,25 +366,18 @@ export default function HomePage() {
     }
   };
 
-  // ── logout ──
-  const handleLogout = async () => {
-    await logout();
-    navigate("/auth");
-  };
+  const handleLogout = async () => { await logout(); navigate("/auth"); };
 
-  // ── save settings ──
   const handleSaveSettings = async () => {
     if (settingsForm.newPassword && settingsForm.newPassword !== settingsForm.confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
+      toast.error("Passwords do not match"); return;
     }
     try {
       setIsSavingSettings(true);
       const payload: any = { fullName: settingsForm.fullName, email: settingsForm.email };
       if (settingsForm.newPassword) payload.newPassword = settingsForm.newPassword;
       await updateUser(payload);
-      setShowSettings(false);
-      setShowProfileModal(false);
+      setShowSettings(false); setShowProfileMenu(false);
       toast.success("Account updated");
     } catch (error: any) {
       toast.error(error?.response?.data?.error || "Failed to update account");
@@ -200,418 +386,368 @@ export default function HomePage() {
     }
   };
 
-  // ─── Shared class helpers ─────────────────────────────────────────────────
+  const firstName = authUser?.fullName?.split(" ")[0] || "there";
+  const initial = authUser?.fullName?.charAt(0).toUpperCase() || "U";
 
-  const inputCls = `w-full rounded-lg px-3 py-2 text-sm outline-none border transition ${
-    isDark
-      ? "bg-[#1a1a1a] border-white/10 text-[#e5e5e5] placeholder:text-white/25 focus:border-white/25"
-      : "bg-white border-black/10 text-[#111] placeholder:text-black/30 focus:border-black/25"
+  // ── theme tokens ──
+  const bg = dark ? "bg-[#0d0d12]" : "bg-slate-50";
+  const sidebar = dark ? "bg-[#0d0d12] border-white/[0.06]" : "bg-white border-slate-200";
+  const topbar = dark ? "bg-[#0d0d12]/80 border-white/[0.06]" : "bg-white/80 border-slate-200";
+  const cardBase = dark ? "bg-white/[0.03] border-white/[0.06]" : "bg-white border-slate-200";
+  const inputCls = `w-full rounded-xl px-4 py-2.5 text-sm outline-none border transition ${
+    dark
+      ? "bg-white/5 border-white/10 text-slate-100 placeholder:text-slate-600 focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/10"
+      : "bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
   }`;
-
-  const labelCls = `text-xs font-medium block mb-1 ${isDark ? "text-[#777]" : "text-[#777]"}`;
-
-  // ─── Render ───────────────────────────────────────────────────────────────
+  const labelCls = `text-[10px] font-semibold block mb-1.5 uppercase tracking-wider ${dark ? "text-slate-500" : "text-slate-500"}`;
+  const headingColor = dark ? "text-slate-100" : "text-slate-800";
+  const subColor = dark ? "text-slate-500" : "text-slate-400";
 
   return (
-    <div className={`min-h-screen ${isDark ? "bg-[#0f0f0f] text-[#f0f0f0]" : "bg-[#f4f1e8] text-[#191919]"}`}>
+    <div className={`flex h-screen overflow-hidden font-sans ${bg}`}>
+      {/* global mouse glow */}
+      <MouseGlow dark={dark} />
 
-      {/* ── Topbar ─────────────────────────────────────────────────────────── */}
-      <header className={`sticky top-0 z-50 border-b ${
-        isDark
-          ? "bg-[#0f0f0f]/95 border-white/[0.07] backdrop-blur-xl"
-          : "bg-[#f4f1e8]/95 border-black/[0.08] backdrop-blur-xl"
-      }`}>
-        <div className="mx-auto flex h-14 w-full max-w-6xl items-center justify-between px-4 sm:px-6">
-
-          {/* Logo */}
-          <img src={forgeLogo} alt="Forge" className="h-9 w-auto object-contain" />
-
-          {/* Right controls */}
-          <div className="flex items-center gap-2">
-
-            {/* Test Simulator */}
-            <button
-              onClick={() => navigate("/test-simulator")}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
-                isDark
-                  ? "border-white/10 text-[#999] hover:border-white/20 hover:text-[#ccc]"
-                  : "border-black/10 text-[#666] hover:border-black/20 hover:text-[#333]"
-              }`}
-            >
-              Test Simulator
-            </button>
-
-            {/* Profile avatar + dropdown */}
-            <div className="relative" ref={profileRef}>
-              <button
-                onClick={() => { setShowProfileModal((v) => !v); setShowSettings(false); }}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-[#d9a441] font-bold text-black text-xs transition hover:opacity-85"
-                title={authUser?.fullName || "Profile"}
-                aria-label="Open profile menu"
-              >
-                {authUser?.fullName?.charAt(0).toUpperCase() || "U"}
-              </button>
-
-              {/* Dropdown */}
-              <AnimatePresence>
-                {showProfileModal && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0,  scale: 1    }}
-                    exit   ={{ opacity: 0, y: -4, scale: 0.98 }}
-                    transition={{ duration: 0.13 }}
-                    className={`absolute right-0 top-10 w-60 rounded-xl border shadow-2xl z-50 overflow-hidden ${
-                      isDark
-                        ? "bg-[#181818] border-white/10"
-                        : "bg-white border-black/10"
-                    }`}
-                  >
-                    {!showSettings ? (
-                      <>
-                        {/* Profile header */}
-                        <div className={`flex items-center gap-3 px-4 py-3.5 border-b ${isDark ? "border-white/[0.07]" : "border-black/[0.07]"}`}>
-                          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-[#d9a441] font-bold text-black text-xs">
-                            {authUser?.fullName?.charAt(0).toUpperCase() || "U"}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold leading-tight">{authUser?.fullName}</p>
-                            <p className={`truncate text-xs mt-0.5 ${isDark ? "text-[#666]" : "text-[#888]"}`}>{authUser?.email}</p>
-                          </div>
-                        </div>
-
-                        {/* Menu */}
-                        <div className="p-1.5 space-y-0.5">
-                          <DropdownItem label="Manage account" onClick={() => setShowSettings(true)} isDark={isDark} />
-                          <DropdownItem label={isDark ? "Switch to light mode" : "Switch to dark mode"} onClick={() => { toggleTheme(); setShowProfileModal(false); }} isDark={isDark} />
-                          <div className={`my-1 border-t ${isDark ? "border-white/[0.07]" : "border-black/[0.07]"}`} />
-                          <DropdownItem label="Log out" onClick={handleLogout} isDark={isDark} danger />
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* Settings header */}
-                        <div className={`flex items-center gap-3 px-4 py-3 border-b ${isDark ? "border-white/[0.07]" : "border-black/[0.07]"}`}>
-                          <button
-                            onClick={() => setShowSettings(false)}
-                            className={`text-xs transition ${isDark ? "text-[#666] hover:text-[#bbb]" : "text-[#aaa] hover:text-[#444]"}`}
-                          >
-                            ←
-                          </button>
-                          <span className="text-sm font-semibold">Account settings</span>
-                        </div>
-
-                        {/* Form */}
-                        <div className="p-4 space-y-3">
-                          <div>
-                            <label className={labelCls}>Full name</label>
-                            <input type="text" value={settingsForm.fullName}
-                              onChange={(e) => setSettingsForm({ ...settingsForm, fullName: e.target.value })}
-                              className={inputCls} />
-                          </div>
-                          <div>
-                            <label className={labelCls}>Email</label>
-                            <input type="email" value={settingsForm.email}
-                              onChange={(e) => setSettingsForm({ ...settingsForm, email: e.target.value })}
-                              className={inputCls} />
-                          </div>
-                          <div>
-                            <label className={labelCls}>New password</label>
-                            <input type="password" value={settingsForm.newPassword}
-                              placeholder="Leave blank to keep current"
-                              onChange={(e) => setSettingsForm({ ...settingsForm, newPassword: e.target.value })}
-                              className={inputCls} />
-                          </div>
-                          {settingsForm.newPassword && (
-                            <div>
-                              <label className={labelCls}>Confirm password</label>
-                              <input type="password" value={settingsForm.confirmPassword}
-                                onChange={(e) => setSettingsForm({ ...settingsForm, confirmPassword: e.target.value })}
-                                className={inputCls} />
-                            </div>
-                          )}
-                          <button
-                            onClick={handleSaveSettings}
-                            disabled={isSavingSettings}
-                            className="w-full rounded-lg bg-[#d9a441] py-2 text-sm font-semibold text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                          >
-                            {isSavingSettings ? "Saving…" : "Save changes"}
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+      {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
+      <aside className={`relative z-10 flex w-64 flex-shrink-0 flex-col border-r px-3 py-6 ${sidebar}`}>
+        {/* logo */}
+        <div className="mb-8 flex items-center gap-3 px-2">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-lg shadow-indigo-500/25">
+            <svg className="h-4.5 w-4.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          </div>
+          <div>
+            <p className={`text-sm font-bold tracking-tight ${dark ? "text-white" : "text-slate-800"}`}>Wireup</p>
+            <p className={`text-[10px] leading-none ${subColor}`}>AI Hardware Studio</p>
           </div>
         </div>
-      </header>
 
-      {/* ── Main ───────────────────────────────────────────────────────────── */}
-      <main className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6">
+        {/* nav */}
+        <nav className="flex flex-col gap-0.5">
+          {[
+            { label: "Home", active: true, icon: <HomeIcon /> },
+            { label: "Projects", icon: <FolderIcon /> },
+            { label: "Simulations", icon: <MonitorIcon />, action: () => navigate("/test-simulator") },
+            { label: "Workspace", icon: <LayersIcon /> },
+          ].map(({ label, active, icon, action }) => (
+            <NavItem key={label} label={label} active={active} dark={dark} icon={icon} onClick={action} />
+          ))}
+        </nav>
 
-        {/* Hero + prompt */}
-        <motion.section
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0  }}
-          transition={{ duration: 0.25 }}
-          className={`rounded-2xl border px-7 py-7 ${
-            isDark
-              ? "border-white/[0.08] bg-[#161616]"
-              : "border-black/[0.08] bg-white"
-          }`}
-        >
-          {/* Header row */}
-          <div className="mb-5">
-            <p className={`text-[10px] font-semibold uppercase tracking-[0.22em] mb-1.5 ${isDark ? "text-[#555]" : "text-[#aaa]"}`}>
-              Workspace
-            </p>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {authUser?.fullName
-                ? `Welcome back, ${authUser.fullName.split(" ")[0]}.`
-                : "Welcome."}
-            </h1>
-            <p className={`mt-1 text-sm ${isDark ? "text-[#666]" : "text-[#999]"}`}>
-              Describe a hardware project and press Enter to begin.
-            </p>
-          </div>
+        <div className="flex-1" />
 
-          {/* Prompt input */}
-          <div className={`flex items-end gap-2 rounded-xl border px-4 py-3 transition-colors ${
-            isDark
-              ? "border-white/10 bg-[#0f0f0f] focus-within:border-[#d9a441]/60"
-              : "border-black/10 bg-[#f9f7f1] focus-within:border-[#d9a441]/70"
-          }`}>
-            <textarea
-              ref={textareaRef}
-              rows={1}
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="e.g. Smart garden monitor with ESP32 and soil moisture sensor"
-              disabled={isCreating}
-              className={`flex-1 resize-none bg-transparent text-sm outline-none leading-relaxed ${
-                isDark
-                  ? "text-[#f0f0f0] placeholder:text-[#444]"
-                  : "text-[#191919] placeholder:text-[#bbb]"
-              } disabled:opacity-50`}
-              style={{ minHeight: "24px", maxHeight: "160px" }}
-            />
-            <button
-              onClick={handleSubmitInput}
-              disabled={isCreating || !inputValue.trim()}
-              className={`flex-shrink-0 flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold transition ${
-                inputValue.trim() && !isCreating
-                  ? "bg-[#d9a441] text-black hover:opacity-90"
-                  : isDark
-                  ? "bg-white/5 text-[#444] cursor-not-allowed"
-                  : "bg-black/5 text-[#bbb] cursor-not-allowed"
-              }`}
-              aria-label="Create project"
-            >
-              {isCreating ? (
-                <span className="block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              ) : (
-                "↑"
-              )}
-            </button>
-            {/* ??$$$ Added 2nd button for experimental agentic creation */}
-            <button
-              onClick={handleSubmitAgenticInput}
-              disabled={isCreating || !inputValue.trim()}
-              className={`flex-shrink-0 flex h-8 px-3.5 items-center justify-center rounded-lg text-xs font-bold transition ${
-                inputValue.trim() && !isCreating
-                  ? "bg-emerald-500 text-zinc-950 hover:bg-emerald-450 shadow-[0_0_12px_rgba(16,185,129,0.2)] hover:shadow-[0_0_16px_rgba(16,185,129,0.35)]"
-                  : isDark
-                  ? "bg-white/5 text-[#444] cursor-not-allowed"
-                  : "bg-black/5 text-[#bbb] cursor-not-allowed"
-              }`}
-              aria-label="Create project agentic"
-            >
-              {isCreating ? (
-                <span className="block h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
-              ) : (
-                "✦ AI Build"
-              )}
-            </button>
-          </div>
+        {/* bottom nav */}
+        <div className={`flex flex-col gap-0.5 border-t pt-4 ${dark ? "border-white/[0.06]" : "border-slate-100"}`}>
+          <NavItem
+            label="Settings"
+            dark={dark}
+            icon={<SettingsIcon />}
+            onClick={() => { setShowProfileMenu(true); setShowSettings(true); }}
+          />
+          <NavItem label="Help & Support" dark={dark} icon={<HelpIcon />} />
+        </div>
 
-          <p className={`mt-2.5 text-xs ${isDark ? "text-[#444]" : "text-[#bbb]"}`}>
-            Press <kbd className={`rounded px-1 py-0.5 text-[10px] font-mono ${isDark ? "bg-white/5 text-[#666]" : "bg-black/5 text-[#999]"}`}>Enter</kbd> to start &nbsp;·&nbsp; Shift+Enter for a new line
-          </p>
-        </motion.section>
-
-        {/* ── Projects section ──────────────────────────────────────────────── */}
-        <section className="mt-10">
-
-          {/* Section header */}
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-semibold">Recent projects</h2>
-              <p className={`mt-0.5 text-xs ${isDark ? "text-[#555]" : "text-[#aaa]"}`}>
-                {loading ? "Loading…" : `${projects.length} ${projects.length === 1 ? "project" : "projects"}`}
-              </p>
+        {/* profile */}
+        <div className="relative mt-2" ref={profileRef}>
+          <button
+            onClick={() => { setShowProfileMenu((v) => !v); setShowSettings(false); }}
+            className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition-colors ${dark ? "hover:bg-white/5" : "hover:bg-slate-100"}`}
+          >
+            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-violet-500 text-xs font-bold text-white shadow-sm">
+              {initial}
             </div>
+            <div className="min-w-0 flex-1">
+              <p className={`truncate text-xs font-semibold ${dark ? "text-slate-200" : "text-slate-700"}`}>{authUser?.fullName || "User"}</p>
+              <p className={`truncate text-[10px] ${subColor}`}>{authUser?.email}</p>
+            </div>
+            <svg className={`h-3.5 w-3.5 flex-shrink-0 ${subColor}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l4-4 4 4m0 6l-4 4-4-4" />
+            </svg>
+          </button>
 
-            {/* Fallback create button */}
-            <button
-              onClick={() => {
-                const d = window.prompt("Name your project");
-                if (d?.trim()) handleCreateProject(d.trim());
-              }}
-              disabled={isCreating}
-              className={`rounded-lg border px-3.5 py-2 text-xs font-semibold transition ${
-                isDark
-                  ? "border-white/10 bg-white/5 hover:bg-white/10 text-[#ccc]"
-                  : "border-black/10 bg-white hover:bg-black/5 text-[#444]"
-              } disabled:opacity-50 disabled:cursor-not-allowed`}
-            >
-              + New project
-            </button>
-          </div>
-
-          {/* Loading skeleton */}
-          {loading && (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className={`h-36 rounded-2xl border animate-pulse ${
-                    isDark ? "border-white/[0.06] bg-[#161616]" : "border-black/[0.06] bg-white"
-                  }`}
-                />
-              ))}
+          {showProfileMenu && (
+            <div className={`absolute bottom-full left-0 right-0 mb-1 rounded-xl border shadow-2xl overflow-hidden z-50 ${dark ? "bg-[#16161e] border-white/10" : "bg-white border-slate-200"}`}>
+              {!showSettings ? (
+                <div className="p-1.5 space-y-0.5">
+                  <MenuBtn label="Account settings" dark={dark} onClick={() => setShowSettings(true)} />
+                  <MenuBtn label="Toggle theme" dark={dark} onClick={() => { toggleTheme(); setShowProfileMenu(false); }} />
+                  <div className={`my-1 border-t ${dark ? "border-white/5" : "border-slate-100"}`} />
+                  <MenuBtn label="Logout" dark={dark} danger onClick={handleLogout} />
+                </div>
+              ) : (
+                <>
+                  <div className={`flex items-center gap-2 border-b px-4 py-3 ${dark ? "border-white/5" : "border-slate-100"}`}>
+                    <button
+                      onClick={() => setShowSettings(false)}
+                      className={`flex h-6 w-6 items-center justify-center rounded-lg transition-colors ${dark ? "text-slate-400 hover:bg-white/8 hover:text-slate-200" : "text-slate-400 hover:bg-slate-100 hover:text-slate-600"}`}
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                    <span className={`text-xs font-semibold ${dark ? "text-slate-200" : "text-slate-700"}`}>Account Settings</span>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {[
+                      { lbl: "Full name", type: "text", val: settingsForm.fullName, key: "fullName" },
+                      { lbl: "Email", type: "email", val: settingsForm.email, key: "email" },
+                      { lbl: "New password", type: "password", val: settingsForm.newPassword, key: "newPassword", ph: "Leave blank to keep" },
+                    ].map(({ lbl, type, val, key, ph }) => (
+                      <div key={key}>
+                        <label className={labelCls}>{lbl}</label>
+                        <input
+                          type={type}
+                          value={val}
+                          placeholder={ph}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, [key]: e.target.value })}
+                          className={inputCls}
+                        />
+                      </div>
+                    ))}
+                    {settingsForm.newPassword && (
+                      <div>
+                        <label className={labelCls}>Confirm password</label>
+                        <input type="password" value={settingsForm.confirmPassword}
+                          onChange={(e) => setSettingsForm({ ...settingsForm, confirmPassword: e.target.value })}
+                          className={inputCls} />
+                      </div>
+                    )}
+                    <button
+                      onClick={handleSaveSettings}
+                      disabled={isSavingSettings}
+                      className="w-full rounded-xl bg-indigo-600 py-2.5 text-sm font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isSavingSettings ? "Saving…" : "Save changes"}
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
+        </div>
+      </aside>
 
-          {/* Empty state */}
-          {!loading && projects.length === 0 && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className={`rounded-2xl border border-dashed p-12 text-center ${
-                isDark ? "border-white/[0.08]" : "border-black/[0.08]"
+      {/* ── Main content ────────────────────────────────────────────────────── */}
+      <main className="relative z-10 flex flex-1 flex-col overflow-hidden">
+
+        {/* topbar */}
+        <header className={`flex h-16 flex-shrink-0 items-center justify-between border-b px-8 backdrop-blur-xl ${topbar}`}>
+          <div className="flex items-center gap-3">
+            <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-widest ${
+              dark ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-400" : "border-emerald-200 bg-emerald-50 text-emerald-600"
+            }`}>
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              AI Online
+            </span>
+            <span className={`text-xs ${subColor}`}>Good {getTimeOfDay()}, {firstName}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* theme toggle */}
+            <button
+              onClick={toggleTheme}
+              className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${dark ? "text-slate-400 hover:bg-white/8 hover:text-slate-200" : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"}`}
+              title="Toggle theme"
+            >
+              {dark ? <SunIcon /> : <MoonIcon />}
+            </button>
+            <button
+              onClick={() => { const d = window.prompt("Name your project"); if (d?.trim()) handleCreateProject(d.trim()); }}
+              disabled={isCreating}
+              className={`inline-flex items-center gap-1.5 rounded-xl border px-4 py-2 text-xs font-semibold shadow-sm transition disabled:cursor-not-allowed disabled:opacity-50 ${
+                dark
+                  ? "border-white/10 bg-white/5 text-slate-300 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-700"
               }`}
             >
-              <p className="text-sm font-semibold">No projects yet</p>
-              <p className={`mt-1.5 text-xs ${isDark ? "text-[#555]" : "text-[#aaa]"}`}>
-                Use the input above to describe your first project.
+              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+              </svg>
+              New project
+            </button>
+          </div>
+        </header>
+
+        {/* scrollable body */}
+        <div className="flex-1 overflow-y-auto px-8 py-10">
+          <div className="mx-auto max-w-4xl space-y-12">
+
+            {/* ── Hero heading ─────────────────────────────────────────────── */}
+            <section className="pt-4 pb-2 text-center">
+              <p className={`mb-3 text-xs font-semibold uppercase tracking-[0.2em] ${subColor}`}>
+                AI Hardware Studio
               </p>
-            </motion.div>
-          )}
+              <h1 className="text-4xl sm:text-5xl font-bold tracking-tight leading-[1.1]">
+                <span className={`${dark ? "text-slate-100" : "text-slate-800"}`}>What do you want</span>
+                <br />
+                <span className="bg-gradient-to-r from-indigo-400 via-violet-400 to-pink-400 bg-clip-text text-transparent">
+                  to build?
+                </span>
+              </h1>
+              <p className={`mt-5 text-base max-w-lg mx-auto leading-relaxed ${subColor}`}>
+                Describe any hardware project and Wireup will guide you through discovery, component selection, wiring, and simulation.
+              </p>
+            </section>
 
-          {/* Projects grid */}
-          {!loading && projects.length > 0 && (
-            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {projects.map((project, i) => (
-                <motion.div
-                  key={project._id}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: i * 0.035 }}
-                  className={`group relative flex flex-col rounded-2xl border transition-all ${
-                    isDark
-                      ? "border-white/[0.08] bg-[#161616] hover:border-white/[0.14] hover:bg-[#1c1c1c]"
-                      : "border-black/[0.08] bg-white hover:border-black/[0.14] hover:shadow-sm"
-                  }`}
-                >
-                  {/* Accent line on hover */}
-                  <div className={`absolute left-0 top-4 bottom-4 w-[2px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity bg-[#d9a441]`} />
+            {/* ── Prompt box ───────────────────────────────────────────────── */}
+            <section>
+              <div className={`relative rounded-2xl border shadow-sm transition-all ${
+                dark
+                  ? "border-white/[0.08] bg-white/[0.03] focus-within:border-indigo-500/40 focus-within:shadow-indigo-500/10 focus-within:shadow-lg"
+                  : "border-slate-200 bg-white focus-within:border-indigo-300 focus-within:shadow-md"
+              }`}>
+                {/* top gradient line */}
+                <div className="absolute inset-x-0 top-0 h-px rounded-t-2xl bg-gradient-to-r from-indigo-500 via-violet-500 to-pink-500 opacity-70" />
 
-                  {/* Card body — clickable to open */}
-                  <button
-                    onClick={() => navigate(`/project/${project._id}/ideation`)}
-                    className="flex-1 text-left px-5 pt-5 pb-4"
-                  >
-                    <h3 className={`text-sm font-semibold leading-snug ${isDark ? "text-[#f0f0f0]" : "text-[#191919]"}`}>
-                      {project.description}
-                    </h3>
-                    <p className={`mt-2 text-xs ${isDark ? "text-[#484848]" : "text-[#bbb]"}`}>
-                      {new Date(project.createdAt).toLocaleDateString(undefined, {
-                        year: "numeric", month: "short", day: "numeric",
-                      })}
-                    </p>
-                  </button>
-
-                  {/* Card footer */}
-                  <div className={`flex flex-col gap-1.5 px-4 pb-4 pt-3 border-t ${
-                    isDark ? "border-white/[0.06]" : "border-black/[0.06]"
-                  }`}>
-                    <div className="flex items-center gap-1.5">
-                      {/* Open — primary */}
-                      <button
-                        onClick={() => navigate(`/project/${project._id}/ideation`)}
-                        className="flex-1 rounded-lg bg-[#d9a441] py-1.5 text-xs font-bold text-black transition hover:opacity-90"
-                      >
-                        Open
-                      </button>
-
-                      {/* Rename */}
-                      <button
-                        onClick={() => handleEditProject(project)}
-                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                          isDark
-                            ? "border-white/[0.08] text-[#888] hover:text-[#ccc] hover:border-white/20"
-                            : "border-black/[0.08] text-[#999] hover:text-[#444] hover:border-black/20"
-                        }`}
-                      >
-                        Rename
-                      </button>
-
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDeleteProject(project)}
-                        className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition ${
-                          isDark
-                            ? "border-red-900/40 text-red-500/70 hover:border-red-500/40 hover:text-red-400"
-                            : "border-red-100 text-red-400 hover:border-red-300 hover:text-red-500"
-                        }`}
-                      >
-                        Delete
-                      </button>
-                    </div>
-
-                    {/* ??$$$ NEW FLOW */}
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        onClick={() => {
-                          setDiscoveryProjectId(project._id);
-                          setDiscoveryPhase(1);
-                          setShowDiscoveryModal(true);
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-semibold transition ${
-                          isDark
-                            ? "border-emerald-500/30 bg-emerald-500/5 text-emerald-400 hover:bg-emerald-500/10 hover:border-emerald-500/50"
-                            : "border-emerald-500/30 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 hover:border-emerald-500/50"
-                        }`}
-                      >
-                        ✦ AI Discovery
-                      </button>
-
-                      <button
-                        onClick={() => {
-                          setDiscoveryProjectId(project._id);
-                          setDiscoveryPhase(2);
-                          setShowDiscoveryModal(true);
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-1 rounded-lg border py-1.5 text-[10px] font-semibold transition ${
-                          isDark
-                            ? "border-blue-500/30 bg-blue-500/5 text-blue-400 hover:bg-blue-500/10 hover:border-blue-500/50"
-                            : "border-blue-500/30 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:border-blue-500/50"
-                        }`}
-                      >
-                        ✦ AI Formulation
-                      </button>
+                <div className="flex items-end gap-3 px-5 pt-5 pb-4">
+                  <div className="flex-shrink-0 mb-0.5">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 shadow-md shadow-indigo-500/30">
+                      <svg className="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
                     </div>
                   </div>
-                </motion.div>
-              ))}
-            </div>
-          )}
-        </section>
+                  <textarea
+                    ref={textareaRef}
+                    rows={1}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSubmitAgenticInput(); } }}
+                    placeholder="e.g. Smart garden monitor with ESP32 and soil moisture sensor…"
+                    disabled={isCreating}
+                    className={`flex-1 resize-none bg-transparent py-1.5 text-sm outline-none leading-relaxed disabled:opacity-50 ${dark ? "text-slate-100 placeholder:text-slate-600" : "text-slate-800 placeholder:text-slate-400"}`}
+                    style={{ minHeight: "32px", maxHeight: "200px" }}
+                  />
+                  <button
+                    onClick={handleSubmitAgenticInput}
+                    disabled={isCreating || !inputValue.trim()}
+                    className={`flex-shrink-0 flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-semibold transition-all ${
+                      inputValue.trim() && !isCreating
+                        ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/30 hover:bg-indigo-700"
+                        : dark ? "bg-white/5 text-slate-600 cursor-not-allowed" : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    }`}
+                  >
+                    {isCreating ? (
+                      <span className="h-3.5 w-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                    ) : (
+                      <>
+                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        AI Build
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className={`flex items-center gap-2 border-t px-5 py-3 ${dark ? "border-white/5" : "border-slate-100"}`}>
+                  <svg className={`h-3 w-3 flex-shrink-0 ${dark ? "text-slate-600" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className={`text-[11px] ${dark ? "text-slate-600" : "text-slate-400"}`}>
+                    Tip: Be specific about components, behavior and requirements for better results.
+                  </p>
+                  <span className={`ml-auto text-[10px] ${dark ? "text-slate-700" : "text-slate-300"}`}>Shift+Enter for new line</span>
+                </div>
+              </div>
+
+              {/* quick prompts */}
+              <div className="mt-4 flex flex-wrap gap-2">
+                {QUICK_PROMPTS.map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setInputValue(p)}
+                    className={`rounded-full border px-3.5 py-1.5 text-[11px] font-medium transition-all ${
+                      dark
+                        ? "border-white/8 text-slate-500 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300"
+                        : "border-slate-200 bg-white text-slate-500 hover:border-indigo-200 hover:bg-indigo-50 hover:text-indigo-600"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            {/* ── Stats ────────────────────────────────────────────────────── */}
+            {!loading && projects.length > 0 && (
+              <section className="grid grid-cols-3 gap-5">
+                <StatCard dark={dark} label="Total Projects" value={projects.length} color="indigo" icon={
+                  <svg className="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                } />
+                <StatCard dark={dark} label="This Week" value={getRecentCount(projects)} sublabel="projects created" color="violet" icon={
+                  <svg className="h-5 w-5 text-violet-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                } />
+                <StatCard dark={dark} label="Latest Build" isText value={(projects[0]?.description.split(" ").slice(0, 4).join(" ") || "—") + "…"} color="emerald" icon={
+                  <svg className="h-5 w-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                } />
+              </section>
+            )}
+
+            {/* ── Projects ─────────────────────────────────────────────────── */}
+            <section className="pb-12">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <h2 className={`text-base font-bold ${headingColor}`}>Recent Projects</h2>
+                  {!loading && (
+                    <p className={`mt-1 text-xs ${subColor}`}>
+                      {projects.length} {projects.length === 1 ? "project" : "projects"}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {loading && (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((n) => <ProjectSkeleton key={n} dark={dark} />)}
+                </div>
+              )}
+
+              {!loading && projects.length === 0 && (
+                <div className={`flex flex-col items-center justify-center rounded-2xl border border-dashed py-20 text-center ${dark ? "border-white/10" : "border-slate-300 bg-white"}`}>
+                  <div className={`mb-5 flex h-16 w-16 items-center justify-center rounded-2xl ${dark ? "bg-indigo-500/10 border border-indigo-500/20" : "bg-gradient-to-br from-indigo-50 to-violet-50 border border-indigo-100"}`}>
+                    <svg className="h-7 w-7 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                    </svg>
+                  </div>
+                  <p className={`text-sm font-semibold ${headingColor}`}>No projects yet</p>
+                  <p className={`mt-2 text-xs max-w-xs ${subColor}`}>
+                    Describe a hardware project above and let the AI guide you through the entire build.
+                  </p>
+                </div>
+              )}
+
+              {!loading && projects.length > 0 && (
+                <div className="space-y-3">
+                  {projects.map((project) => (
+                    <ProjectCard
+                      key={project._id}
+                      project={project}
+                      dark={dark}
+                      onOpen={() => navigate(`/project/${project._id}/ideation`)}
+                      onDiscovery={() => { setDiscoveryProjectId(project._id); setDiscoveryPhase(1); setShowDiscoveryModal(true); }}
+                      onFormulation={() => { setDiscoveryProjectId(project._id); setDiscoveryPhase(2); setShowDiscoveryModal(true); }}
+                      onEdit={() => handleEditProject(project)}
+                      onDelete={() => handleDeleteProject(project)}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+
+          </div>
+        </div>
       </main>
 
-      {/* ??$$$ NEW FLOW */}
       {showDiscoveryModal && (
         <DiscoveryModal
           initialIdea={discoveryIdea}
@@ -629,27 +765,67 @@ export default function HomePage() {
   );
 }
 
-// ─── Dropdown item ────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function DropdownItem({
-  label, onClick, isDark, danger = false,
-}: {
-  label: string; onClick: () => void; isDark: boolean; danger?: boolean;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`w-full rounded-lg px-3 py-2 text-left text-xs font-medium transition ${
-        danger
-          ? isDark
-            ? "text-red-500 hover:bg-red-500/10"
-            : "text-red-500 hover:bg-red-50"
-          : isDark
-          ? "text-[#ccc] hover:bg-white/[0.07]"
-          : "text-[#333] hover:bg-black/[0.05]"
-      }`}
-    >
-      {label}
-    </button>
-  );
+function getTimeOfDay() {
+  const h = new Date().getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
 }
+
+function getRecentCount(projects: Project[]) {
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  return projects.filter((p) => new Date(p.createdAt).getTime() > weekAgo).length;
+}
+
+const QUICK_PROMPTS = [
+  "ESP32 temp & humidity monitor",
+  "Arduino LED matrix clock",
+  "Raspberry Pi security cam",
+  "Soil moisture auto-watering",
+];
+
+// ─── Icon components ──────────────────────────────────────────────────────────
+
+const HomeIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+  </svg>
+);
+const FolderIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+  </svg>
+);
+const MonitorIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17H3a2 2 0 01-2-2V5a2 2 0 012-2h14a2 2 0 012 2v10a2 2 0 01-2 2h-2" />
+  </svg>
+);
+const LayersIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+  </svg>
+);
+const SettingsIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+  </svg>
+);
+const HelpIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+const SunIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+  </svg>
+);
+const MoonIcon = () => (
+  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+  </svg>
+);

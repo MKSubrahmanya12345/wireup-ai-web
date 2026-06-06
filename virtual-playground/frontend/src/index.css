@@ -61,6 +61,11 @@
 }
 
 @layer base {
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
   body {
     background-color: var(--bg);
     color: var(--text);
@@ -70,7 +75,6 @@
     overflow-x: hidden;
   }
   
-  /* Resetting default root container styling for Vite app */
   #root {
     width: 100% !important;
     max-width: 100% !important;
@@ -78,8 +82,11 @@
     padding: 0 !important;
     text-align: left !important;
     border: none !important;
-    min-height: 100vh !important;
-    display: block !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
   }
 
   /* Custom scrollbar for cyber engineering panel theme */
