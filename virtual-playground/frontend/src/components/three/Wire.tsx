@@ -98,6 +98,7 @@ export const Wire: React.FC<WireProps> = ({ from, to, color }) => {
     return [0, 0.1, 0];
     */
 
+    /* old code
     // ??$$$ newer code
     const pinLower = pinId.toLowerCase();
 
@@ -117,12 +118,6 @@ export const Wire: React.FC<WireProps> = ({ from, to, color }) => {
       });
 
       if (knownPin) {
-        /* old code
-        const mcuPart = bom.find(item => {
-          const typeHint = `${item?.displayName} ${item?.purpose}`.toLowerCase();
-          return item?.key === 'mcu' || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint);
-        });
-        */
         // ??$$$ newer code
         const mcuPart = bom.find((item: any) => {
           const typeHint = `${item?.displayName} ${item?.purpose}`.toLowerCase();
@@ -151,19 +146,6 @@ export const Wire: React.FC<WireProps> = ({ from, to, color }) => {
           })
         : null;
 
-      /* old code
-      const activePin = pin || (Array.isArray(part.pins) && part.pins.length > 0 ? part.pins[0] : null);
-      if (activePin) {
-        const dx = Number.isFinite(activePin.x_mm) ? Number(activePin.x_mm) * 0.1 : Number(activePin.x ?? 0);
-        const dy = Number.isFinite(activePin.y_mm) ? Number(activePin.y_mm) * 0.1 : Number(activePin.y ?? 0);
-        const dz = Number.isFinite(activePin.z_mm) ? Number(activePin.z_mm) * 0.1 : Number(activePin.z ?? 0);
-        return [
-          Number(base[0] || 0) + dx,
-          Number(base[1] || 0.1) + dy,
-          Number(base[2] || 0) + dz
-        ];
-      }
-      */
       // ??$$$ newer code
       const activePin: any = pin || (Array.isArray(part.pins) && part.pins.length > 0 ? part.pins[0] : null);
       if (activePin) {
@@ -181,6 +163,107 @@ export const Wire: React.FC<WireProps> = ({ from, to, color }) => {
           Number(base[0] || 0),
           Number(base[1] || 0.1),
           Number(base[2] || 0)
+        ];
+      }
+    }
+
+    return [0, 0.1, 0];
+    */
+
+    // ??$$$ newer code
+    const pinLower = pinId.toLowerCase();
+
+    // 1. Check if it's the microcontroller (MCU)
+    if (partKey.toLowerCase() === 'mcu' || partKey.toLowerCase() === 'arduino') {
+      let normalizedSearch = pinLower;
+      if (normalizedSearch.startsWith("gpio")) {
+        normalizedSearch = normalizedSearch.substring(4);
+      }
+      const knownPin = ARDUINO_UNO_PINS.find(p => {
+        const pid = p.id.toLowerCase();
+        return pid === normalizedSearch || 
+               pid === `d${normalizedSearch}` || 
+               pid === `a${normalizedSearch}` ||
+               (normalizedSearch === "gnd.2" && pid === "gnd") ||
+               (normalizedSearch === "3v3" && pid === "3.3v");
+      });
+
+      if (knownPin) {
+        const mcuPart = bom.find((item: any) => {
+          const typeHint = `${item?.displayName} ${item?.purpose}`.toLowerCase();
+          return item?.key === 'mcu' || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint);
+        });
+        const mcuPos = mcuPart?.position || [0, 0, 0];
+        return [
+          Number(mcuPos[0] || 0) + knownPin.x,
+          Number(mcuPos[1] || 0.1) + knownPin.y,
+          Number(mcuPos[2] || 0) + knownPin.z
+        ];
+      }
+    }
+
+    // 2. Check general BOM components
+    if (part && Array.isArray(part.position)) {
+      const base = part.position;
+      const pin = Array.isArray(part.pins)
+        ? part.pins.find((p: any) => {
+            const pid = String(p?.id || '').toLowerCase();
+            const pName = String(p?.name || '').toLowerCase();
+            const target = pinId.toLowerCase();
+            if (pid === target || pName === target) return true;
+            if (pid.replace(/^gpio/, '') === target.replace(/^gpio/, '')) return true;
+            if (pName.replace(/^gpio/, '') === target.replace(/^gpio/, '')) return true;
+
+            // LED Synonyms
+            if ((target === 'anode' || target === 'positive' || target === 'pos' || target === '+') && (pid === 'a' || pName === 'a')) return true;
+            if ((target === 'cathode' || target === 'negative' || target === 'neg' || target === '-') && (pid === 'c' || pName === 'c')) return true;
+            if ((target === 'a' || target === 'c') && (pid === 'anode' || pid === 'cathode')) return true;
+
+            // Power/Ground Synonyms
+            if ((target === 'gnd' || target === 'ground') && (pid === 'gnd' || pName === 'gnd')) return true;
+            if ((target === 'vcc' || target === 'power' || target === '5v' || target === '3v3') && (pid === 'vcc' || pName === 'vcc')) return true;
+
+            /* old code
+            // Button/Switch Synonyms
+            if ((target === 'sig' || target === 'signal' || target === 'out') && (pid === 'sig' || pName === 'sig' || pid === '1' || pid === '2' || pid === '1.l' || pid === '2.l')) return true;
+            */
+            // ??$$$ newer code
+            if ((target === 'sig' || target === 'signal' || target === 'out' || target === 'pwm') && 
+                (pid === 'sig' || pName === 'sig' || pid === '1' || pid === '2' || pid === '1.l' || pid === '2.l' || pid === 'io1' || pName === 'io1' || pid === 'io2' || pName === 'io2')) return true;
+
+            return false;
+          })
+        : null;
+
+      const activePin: any = pin || (Array.isArray(part.pins) && part.pins.length > 0 ? part.pins[0] : null);
+      if (activePin) {
+        // Swap y_mm and z_mm: dy uses z_mm (height) and dz uses y_mm (depth) to match Three.js coordinate space
+        const dx = Number.isFinite(activePin.x_mm) ? Number(activePin.x_mm) * 0.1 : Number(activePin.x ?? 0);
+        const dy = Number.isFinite(activePin.z_mm) ? Number(activePin.z_mm) * 0.1 : Number(activePin.y ?? 0);
+        const dz = Number.isFinite(activePin.y_mm) ? Number(activePin.y_mm) * 0.1 : Number(activePin.z ?? 0);
+        return [
+          Number(base[0] || 0) + dx,
+          Number(base[1] || 0.1) + dy,
+          Number(base[2] || 0) + dz
+        ];
+      } else {
+        // Fallback to component center coordinate
+        return [
+          Number(base[0] || 0),
+          Number(base[1] || 0.1),
+          Number(base[2] || 0)
+        ];
+      }
+    }
+
+    // Fallback if component not found in BOM
+    if (partKey) {
+      const matchedPart = bom.find((item: any) => String(item?.key || '').toLowerCase() === partKey.toLowerCase());
+      if (matchedPart && Array.isArray(matchedPart.position)) {
+        return [
+          Number(matchedPart.position[0] || 0),
+          Number(matchedPart.position[1] || 0.1),
+          Number(matchedPart.position[2] || 0)
         ];
       }
     }

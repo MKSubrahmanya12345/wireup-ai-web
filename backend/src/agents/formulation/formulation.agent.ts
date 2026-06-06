@@ -105,7 +105,7 @@ function sanitizeMessageHistory(messages: any[]): any[] {
   return processed;
 }
 
-export async function runAgent2(sessionId: string, modelName: string, isResume = false) {
+export async function runAgent2(sessionId: string, modelName: string, isResume = false, isRescue = false) {
   let session = await NewFlowSession.findById(sessionId);
   if (!session) {
     throw new Error(`Session not found: ${sessionId}`);
@@ -169,10 +169,24 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
   let adapter: LLMAdapter;
   const isHybridMode = modelName.startsWith("hybrid:");
-  const isPureOllama = modelName.toLowerCase().startsWith("ollama");
+  const isPureOllama = !isRescue && modelName.toLowerCase().startsWith("ollama");
   const hybridPrimaryModel = isHybridMode ? modelName.substring("hybrid:".length) : "";
 
-  if (isPureOllama) {
+  if (isRescue) {
+    const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_FALLBACK;
+    if (groqKey) {
+      adapter = new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqKey);
+      console.log(`[Agent2] Mode: API Rescue. Primary: Groq (meta-llama/llama-4-scout-17b-16e-instruct).`);
+    } else if (process.env.CEREBRAS_API_KEY) {
+      adapter = new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b");
+      console.log(`[Agent2] Mode: API Rescue. Primary: Cerebras (gpt-oss-120b).`);
+    } else if (process.env.GEMINI_API_KEY) {
+      adapter = new GeminiAdapter(process.env.GEMINI_API_KEY);
+      console.log(`[Agent2] Mode: API Rescue. Primary: Gemini.`);
+    } else {
+      throw new Error("No API keys found for API Rescue.");
+    }
+  } else if (isPureOllama) {
     const localModel = modelName.includes("/") ? modelName.split("/")[1] : (modelName.substring(7) || "minimax-m3:cloud");
     adapter = new OllamaAdapter(localModel);
     console.log(`[Agent2] Mode: Pure Ollama (${localModel}). No cloud fallbacks.`);
@@ -231,7 +245,31 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
       let fallbackAdapters: LLMAdapter[];
 
-      if (isPureOllama) {
+      if (isRescue) {
+        const groqKey = process.env.GROQ_API_KEY;
+        const groqFallback = process.env.GROQ_API_FALLBACK;
+        const groqKey3 = process.env.GROQ_API_KEY_3;
+        const cerebrasKey = process.env.CEREBRAS_API_KEY;
+        const geminiKey = process.env.GEMINI_API_KEY;
+
+        fallbackAdapters = [];
+        if (groqKey) {
+          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqKey));
+        }
+        if (groqFallback && groqFallback !== groqKey) {
+          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqFallback));
+        }
+        if (groqKey3 && groqKey3 !== groqFallback && groqKey3 !== groqKey) {
+          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqKey3));
+        }
+        if (cerebrasKey) {
+          fallbackAdapters.push(new CerebrasAdapter(cerebrasKey, "gpt-oss-120b"));
+        }
+        if (geminiKey) {
+          fallbackAdapters.push(new GeminiAdapter(geminiKey));
+        }
+        console.log(`[Agent2 Rescue] Active API Rescue chain: ${fallbackAdapters.map(a => a.constructor.name).join(" -> ")}`);
+      } else if (isPureOllama) {
         fallbackAdapters = [adapter];
         console.log("[Agent2 Failover] Pure Ollama mode — no cloud fallbacks.");
       } else if (isHybridMode) {
@@ -573,10 +611,16 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
       },
       bom: await Promise.all(session.bom.map(async b => {
         let glbUrl = "";
+        let componentType = b.type || "module";
         try {
           const partDoc = await Part.findOne({ mpn: b.mpn }).lean() as any;
-          if (partDoc?.isCurated && partDoc?.glbUrl) {
-            glbUrl = partDoc.glbUrl;
+          if (partDoc) {
+            if (partDoc.isCurated && partDoc.glbUrl) {
+              glbUrl = partDoc.glbUrl;
+            }
+            if (partDoc.componentType) {
+              componentType = partDoc.componentType;
+            }
           }
         } catch (e) { /* non-blocking */ }
 
@@ -592,7 +636,8 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
           partId: b.partId || "",
           pinConnections: b.pinConnections || [],
           glbUrl,
-          pins: []
+          pins: [],
+          type: componentType
         };
       })),
       milestones: session.milestones.map((m, idx) => ({
@@ -621,10 +666,19 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         debugMessages: [],
         requiredLibraries: m.requiredLibraries || []
       })),
+      /* old code
       milestonesGenerated: true,
       activeMilestoneId: session!.milestones[0]?.id || "",
       diagram: session!.diagram || session!.wiring,
       wiring: session!.wiring || []
+      */
+      // ??$$$
+      milestonesGenerated: true,
+      activeMilestoneId: session!.milestones[0]?.id || "",
+      diagram: session!.diagram || session!.wiring,
+      wiring: session!.wiring || [],
+      sketch: session.finalSketch || "",
+      derivedDependencies: session.derivedDependencies || []
     });
 
     await newProject.save();
@@ -668,8 +722,18 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     }
   }
 
+  /* old code
   if (io) {
     io.to(sessionId).emit("agent2:complete", { success: true, projectId });
+  }
+  */
+  // ??$$$
+  if (io) {
+    io.to(sessionId).emit("agent2:complete", {
+      success: true,
+      projectId,
+      finalSketch: session!.finalSketch
+    });
   }
   console.log(`[Agent2 Debugger] Loop execution finished for session: ${sessionId}`);
 

@@ -351,6 +351,8 @@ interface IBomItem {
   phase?: string;
   // ??$$$ NEW FLOW — SnapEDA 3D fields
   glbUrl?: string;
+  // ??$$$ newer code
+  type?: string;
   pins?: Array<{
     id: string;
     name: string;
@@ -408,6 +410,8 @@ const bomItemSchema = new Schema<IBomItem>(
     phase: { type: String, default: "" },
     // ??$$$ NEW FLOW — SnapEDA 3D fields
     glbUrl: { type: String, default: "" },
+    // ??$$$ newer code
+    type: { type: String, default: "module" },
     pins: {
       type: [{
         id: { type: String },
@@ -799,11 +803,37 @@ const milestoneSchema = new Schema<IMilestone>(
   { _id: false }
 );
 
+// ??$$$ newer code
+export interface IArtifactMeta {
+  version: number;
+  lastModifiedBy: "user" | "ai";
+  locked: boolean;
+  staleReason: string;
+  bomVersionUsed?: number;
+  wiringVersionUsed?: number;
+}
+
+const artifactMetaSchema = new Schema<IArtifactMeta>(
+  {
+    version: { type: Number, default: 1 },
+    lastModifiedBy: { type: String, enum: ["user", "ai"], default: "ai" },
+    locked: { type: Boolean, default: false },
+    staleReason: { type: String, default: "" },
+    bomVersionUsed: { type: Number, default: 1 },
+    wiringVersionUsed: { type: Number, default: 1 }
+  },
+  { _id: false }
+);
+
 interface IProject {
   owner: Types.ObjectId;
   description: string;
 
   ideation: IIdeation;
+
+  bomMeta?: IArtifactMeta;
+  wiringMeta?: IArtifactMeta;
+  sketchMeta?: IArtifactMeta;
 
   architectureState: IArchitectureState;
 
@@ -868,6 +898,11 @@ interface IProject {
   milestones: IMilestone[];
   milestonesGenerated: boolean;
   activeMilestoneId: string | null;
+  // ??$$$ newer code
+  pipelineStages?: any;
+  pipelineFailures?: any[];
+  // ??$$$ newer code
+  derivedDependencies?: any;
 }
 
 export type ProjectDocument = HydratedDocument<IProject>;
@@ -883,6 +918,20 @@ const projectSchema = new Schema<IProject>(
     description: {
       type: String,
       required: true
+    },
+
+    // ??$$$ newer code
+    bomMeta: {
+      type: artifactMetaSchema,
+      default: () => ({})
+    },
+    wiringMeta: {
+      type: artifactMetaSchema,
+      default: () => ({})
+    },
+    sketchMeta: {
+      type: artifactMetaSchema,
+      default: () => ({})
     },
 
     wokwiUrl: {
@@ -1131,6 +1180,20 @@ const projectSchema = new Schema<IProject>(
     milestonesGenerated: {
       type: Boolean,
       default: false
+    },
+    // ??$$$ newer code
+    pipelineStages: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
+    },
+    pipelineFailures: {
+      type: [Schema.Types.Mixed],
+      default: []
+    },
+    // ??$$$ newer code
+    derivedDependencies: {
+      type: Schema.Types.Mixed,
+      default: () => ({})
     },
     activeMilestoneId: {
       type: String,

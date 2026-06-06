@@ -169,7 +169,7 @@ export default function ComponentsPage() {
   const { theme } = useThemeStore();
   const isDark = theme === 'dark';
 
-  const { project, updateBOM, refreshStageStatus, syncWiring, generateMilestones } = useProjectStore();
+  const { project, updateBOM, refreshStageStatus, syncWiring, generateMilestones, toggleArtifactLock } = useProjectStore();
 
   const [bom, setBom] = useState([]);
   const [pinAssignments, setPinAssignments] = useState({});
@@ -324,6 +324,38 @@ export default function ComponentsPage() {
         </div>
       )}
 
+      {/* ??$$$ newer code - V1 Stale State Warnings */}
+      {project?.bomMeta?.staleReason && (
+        <div style={{
+          padding: '0.5rem 1.25rem',
+          background: '#ef4444',
+          color: '#fff',
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          zIndex: 40,
+        }}>
+          <span>⚠ BOM Stale: {project.bomMeta.staleReason}</span>
+        </div>
+      )}
+      {project?.wiringMeta?.staleReason && (
+        <div style={{
+          padding: '0.5rem 1.25rem',
+          background: '#f59e0b',
+          color: '#fff',
+          fontSize: '0.8rem',
+          fontWeight: 600,
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          zIndex: 40,
+        }}>
+          <span>⚠ Wiring/Diagram Stale: {project.wiringMeta.staleReason}</span>
+        </div>
+      )}
+
       {/* ??$$$ newer code: View Mode Toggle */}
       <div style={{
         display: 'flex',
@@ -367,6 +399,37 @@ export default function ComponentsPage() {
           >
             📋 Bill of Materials (List)
           </button>
+        </div>
+
+        {/* ??$$ newer code - Artifact Ownership Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: isDark ? '#d1d5db' : '#374151' }}>
+            <span style={{ fontWeight: 600 }}>BOM:</span>
+            <span>v{project?.bomMeta?.version ?? 1}</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={project?.bomMeta?.locked ?? false}
+                onChange={(e) => toggleArtifactLock('bom', e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              🔒 Lock AI
+            </label>
+          </div>
+          <div style={{ width: '1px', height: '16px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: isDark ? '#d1d5db' : '#374151' }}>
+            <span style={{ fontWeight: 600 }}>Wiring:</span>
+            <span>v{project?.wiringMeta?.version ?? 1}</span>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={project?.wiringMeta?.locked ?? false}
+                onChange={(e) => toggleArtifactLock('wiring', e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              🔒 Lock AI
+            </label>
+          </div>
         </div>
       </div>
 

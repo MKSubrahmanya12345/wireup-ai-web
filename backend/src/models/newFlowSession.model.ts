@@ -61,6 +61,8 @@ export interface INewFlowBomItem {
   }[];
   // ??$$$ NEW FLOW — SnapEDA 3D fields
   glbUrl: string;
+  // ??$$$ newer code
+  type?: string;
   pins: {
     id: string;
     name: string;
@@ -106,6 +108,10 @@ export interface INewFlowSession extends Document {
   owner: Types.ObjectId;
   selectedModel: string;
   idea: string;
+  // ??$$$ newer code
+  bomMeta?: IArtifactMeta;
+  wiringMeta?: IArtifactMeta;
+  sketchMeta?: IArtifactMeta;
   qaHistory: IQaHistory[];
   context: IProjectContext;
   phase1Complete: boolean;
@@ -120,6 +126,10 @@ export interface INewFlowSession extends Document {
   createdAt: Date;
   // ??$$$ newer code
   finalSketch?: string;
+  pipelineStages?: any;
+  pipelineFailures?: any[];
+  // ??$$$ newer code
+  derivedDependencies?: any;
 }
 
 const qaHistorySchema = new Schema<IQaHistory>({
@@ -180,6 +190,8 @@ const bomItemSchema = new Schema<INewFlowBomItem>({
   }],
   // ??$$$ NEW FLOW — SnapEDA 3D fields
   glbUrl: { type: String, default: "" },
+  // ??$$$ newer code
+  type: { type: String, default: "module" },
   pins: {
     type: [{
       id: { type: String },
@@ -224,8 +236,34 @@ const milestoneSchema = new Schema<INewFlowMilestone>({
   requiredLibraries: [{ type: requiredLibrarySchema, default: [] }]
 }, { _id: false });
 
+// ??$$$ newer code
+export interface IArtifactMeta {
+  version: number;
+  lastModifiedBy: "user" | "ai";
+  locked: boolean;
+  staleReason: string;
+  bomVersionUsed?: number;
+  wiringVersionUsed?: number;
+}
+
+const artifactMetaSchema = new Schema<IArtifactMeta>(
+  {
+    version: { type: Number, default: 1 },
+    lastModifiedBy: { type: String, enum: ["user", "ai"], default: "ai" },
+    locked: { type: Boolean, default: false },
+    staleReason: { type: String, default: "" },
+    bomVersionUsed: { type: Number, default: 1 },
+    wiringVersionUsed: { type: Number, default: 1 }
+  },
+  { _id: false }
+);
+
 const newFlowSessionSchema = new Schema<INewFlowSession>({
   owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
+  // ??$$$ newer code
+  bomMeta: { type: artifactMetaSchema, default: () => ({}) },
+  wiringMeta: { type: artifactMetaSchema, default: () => ({}) },
+  sketchMeta: { type: artifactMetaSchema, default: () => ({}) },
   selectedModel: { type: String, default: "meta-llama/llama-4-scout-17b-16e-instruct" },
   idea: { type: String, required: true },
   qaHistory: { type: [qaHistorySchema], default: [] },
@@ -241,7 +279,11 @@ const newFlowSessionSchema = new Schema<INewFlowSession>({
   projectId: { type: Schema.Types.ObjectId, ref: "Project", default: null },
   createdAt: { type: Date, default: Date.now },
   // ??$$$ newer code
-  finalSketch: { type: String, default: "" }
+  finalSketch: { type: String, default: "" },
+  pipelineStages: { type: Schema.Types.Mixed, default: () => ({}) },
+  // ??$$$ newer code
+  derivedDependencies: { type: Schema.Types.Mixed, default: () => ({}) },
+  pipelineFailures: { type: [Schema.Types.Mixed], default: [] }
 });
 
 const NewFlowSession = mongoose.model<INewFlowSession>("NewFlowSession", newFlowSessionSchema);

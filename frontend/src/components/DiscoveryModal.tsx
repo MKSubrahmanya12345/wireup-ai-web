@@ -7,7 +7,7 @@ import { axiosInstance } from "../lib/axios";
 // ??$$$ old code
 // import { X, Send, Play, Terminal, Cpu, Database, Layers, CheckCircle, AlertTriangle, RefreshCw, EyeOff, Eye } from "lucide-react";
 // ??$$$ newer code
-import { X, Send, Play, Terminal, Cpu, Database, Layers, CheckCircle, AlertTriangle, RefreshCw, EyeOff, Eye, HardDrive, PlayCircle } from "lucide-react";
+import { X, Send, Play, Terminal, Cpu, Database, Layers, CheckCircle, AlertTriangle, RefreshCw, EyeOff, Eye, HardDrive, PlayCircle, LayoutDashboard, Braces, Code, Copy, ChevronRight, ChevronDown, BookOpen } from "lucide-react";
 import toast from "react-hot-toast";
 
 // ??$$$ NEW FLOW — Beautiful countdown timer component for rate limit pauses
@@ -197,6 +197,11 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const [completedProjectId, setCompletedProjectId] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [isFailed, setIsFailed] = useState(false); // ??$$$ newer code
+  const [rescuing, setRescuing] = useState(false); // ??$$$ newer code - API rescue state
+  // ??$$$ newer code
+  const [workspaceTab, setWorkspaceTab] = useState<"visual" | "console">("visual");
+  const [selectedLog, setSelectedLog] = useState<any>(null);
+  const [finalSketch, setFinalSketch] = useState<string>("");
 
   const socketRef = useRef<Socket | null>(null);
   const logEndRef = useRef<HTMLDivElement | null>(null);
@@ -333,6 +338,128 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+
+  const renderInspectorContent = () => {
+    if (!selectedLog) {
+      return (
+        <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+          <Braces className="h-10 w-10 text-zinc-600 animate-pulse" />
+          <h5 className="text-zinc-400 font-bold">Log Inspector</h5>
+          <p className="text-[11px] text-zinc-500 max-w-xs leading-relaxed">
+            Select any entry from the execution log feed on the left to inspect its input arguments, database updates, and response outputs.
+          </p>
+        </div>
+      );
+    }
+
+    if (selectedLog.type === "code") {
+      return (
+        <div>
+          <div className="flex justify-between items-center text-zinc-500 text-[10px] border-b border-zinc-800 pb-2 mb-3">
+            <span>INTEGRATED ARDUINO SKETCH (.INO)</span>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(selectedLog.text);
+                toast.success("Sketch copied to clipboard!");
+              }}
+              className="flex items-center gap-1 hover:text-zinc-300 transition-colors font-bold"
+            >
+              <Copy className="h-3 w-3" /> Copy Sketch
+            </button>
+          </div>
+          <pre className="bg-zinc-950/80 p-4 rounded-lg border border-zinc-900/60 text-zinc-200 overflow-x-auto text-[11px] leading-relaxed cursor-text select-text">
+            <code>{selectedLog.text}</code>
+          </pre>
+        </div>
+      );
+    }
+
+    if (selectedLog.type === "thinking") {
+      return (
+        <div>
+          <div className="flex justify-between items-center text-zinc-500 text-[10px] border-b border-zinc-800 pb-2 mb-3">
+            <span>AI CHAIN OF THOUGHT</span>
+            <button 
+              onClick={() => {
+                navigator.clipboard.writeText(selectedLog.text);
+                toast.success("Chain of thought copied!");
+              }}
+              className="flex items-center gap-1 hover:text-zinc-300 transition-colors font-bold"
+            >
+              <Copy className="h-3 w-3" /> Copy
+            </button>
+          </div>
+          <div className="text-zinc-300 leading-relaxed whitespace-pre-wrap font-sans text-xs">
+            {selectedLog.text}
+          </div>
+        </div>
+      );
+    }
+
+    if (selectedLog.type === "tool_call") {
+      return (
+        <div className="space-y-4">
+          <div>
+            <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider mb-2 font-mono flex justify-between items-center">
+              <span>Input Parameters</span>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(selectedLog.input, null, 2));
+                  toast.success("Input arguments copied!");
+                }}
+                className="flex items-center gap-1 text-zinc-500 hover:text-zinc-300 transition-colors normal-case font-normal"
+              >
+                <Copy className="h-2.5 w-2.5" /> Copy JSON
+              </button>
+            </div>
+            <pre className="bg-zinc-950 p-3 rounded-lg border border-zinc-900 text-blue-300 overflow-x-auto text-[11px]">
+              {selectedLog.input ? JSON.stringify(selectedLog.input, null, 2) : "No inputs provided"}
+            </pre>
+          </div>
+          <div>
+            <div className="text-[10px] text-zinc-550 font-bold uppercase tracking-wider mb-2 font-mono flex justify-between items-center">
+              <span>Output Response</span>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(selectedLog.output, null, 2));
+                  toast.success("Output response copied!");
+                }}
+                className="flex items-center gap-1 text-zinc-500 hover:text-zinc-300 transition-colors normal-case font-normal"
+              >
+                <Copy className="h-2.5 w-2.5" /> Copy JSON
+              </button>
+            </div>
+            <pre className="bg-zinc-950 p-3 rounded-lg border border-zinc-900 text-emerald-300 overflow-x-auto text-[11px]">
+              {selectedLog.output ? JSON.stringify(selectedLog.output, null, 2) : "Execution in progress..."}
+            </pre>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className="flex justify-between items-center text-zinc-550 text-[10px] border-b border-zinc-800 pb-2 mb-3">
+          <span>EVENT DETAILS</span>
+          <button 
+            onClick={() => {
+              navigator.clipboard.writeText(selectedLog.text || JSON.stringify(selectedLog.input || selectedLog.output || {}, null, 2));
+              toast.success("Event details copied!");
+            }}
+            className="flex items-center gap-1 hover:text-zinc-300 transition-colors font-bold"
+          >
+            <Copy className="h-3 w-3" /> Copy
+          </button>
+        </div>
+        <p className="text-zinc-300 leading-relaxed font-sans text-xs">{selectedLog.text}</p>
+        {(selectedLog.input || selectedLog.output) && (
+          <pre className="bg-zinc-950 p-3 mt-3 rounded-lg border border-zinc-900 text-zinc-400 overflow-x-auto text-[11px]">
+            {JSON.stringify(selectedLog.input || selectedLog.output, null, 2)}
+          </pre>
+        )}
+      </div>
+    );
   };
 
   const renderStepper = () => {
@@ -594,6 +721,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 setWiring(res.data.wiring || []);
                 setMilestones(res.data.milestones || []);
                 setLogs(res.data.agentLog || []);
+                if (res.data.finalSketch) setFinalSketch(res.data.finalSketch);
                 setStarted(true); // ??$$$ newer code - mark as started
                 /* old code
                 if (res.data.phase2Complete) {
@@ -715,6 +843,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       });
       */
 
+      /* old code
       // ??$$$ newer code — Handle socket complete without auto-redirecting
       socket.on("agent2:complete", (data: any) => {
         toast.success("Project formulation complete!");
@@ -722,6 +851,23 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
         setIsFailed(false); // ??$$$ newer code
         if (data.projectId) {
           setCompletedProjectId(data.projectId);
+        }
+      });
+      */
+      // ??$$$
+      socket.on("agent2:final_sketch_update", (data: any) => {
+        if (data.finalSketch) setFinalSketch(data.finalSketch);
+      });
+
+      socket.on("agent2:complete", (data: any) => {
+        toast.success("Project formulation complete!");
+        setIsCompleted(true);
+        setIsFailed(false);
+        if (data.projectId) {
+          setCompletedProjectId(data.projectId);
+        }
+        if (data.finalSketch) {
+          setFinalSketch(data.finalSketch);
         }
       });
 
@@ -816,7 +962,16 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           if (res.data.wiring) setWiring(res.data.wiring);
           if (res.data.milestones) setMilestones(res.data.milestones);
           if (res.data.agentLog) setLogs(res.data.agentLog);
+          if (res.data.finalSketch) setFinalSketch(res.data.finalSketch);
           clearInterval(interval);
+        } else {
+          // Sync live finalSketch if generated during runtime
+          if (res.data.finalSketch) setFinalSketch(res.data.finalSketch);
+          // Sync live logs/bom/wiring/milestones occasionally
+          if (res.data.bom) setBom(res.data.bom);
+          if (res.data.wiring) setWiring(res.data.wiring);
+          if (res.data.milestones) setMilestones(res.data.milestones);
+          if (res.data.agentLog) setLogs(res.data.agentLog);
         }
       } catch (err) {
         console.error("Fallback polling failed:", err);
@@ -917,6 +1072,76 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     }
   };
 
+  // ??$$$ newer code — Copy all logs, inputs, outputs, thoughts and code
+  const handleCopyAllData = () => {
+    try {
+      let text = `# WIREUP.AI - AI FORMULATION DATA EXPORT\n\n`;
+
+      text += `## Project Idea / Core Purpose:\\n`;
+      text += `${initialIdea || context.corePurpose || "Not specified"}\\n\\n`;
+
+      text += `## Compute Brain (MCU):\\n`;
+      text += `${context.mcu || "Determining..."}\\n\\n`;
+
+      text += `## Confirmed BOM:\\n`;
+      if (bom && bom.length > 0) {
+        bom.forEach((item, idx) => {
+          text += `- ${idx + 1}. ${item.displayName || item.name} (${item.purpose || "No purpose specified"})\\n`;
+        });
+      } else {
+        text += `No parts finalized yet.\\n`;
+      }
+      text += `\\n`;
+
+      text += `## Wiring Connections:\\n`;
+      if (wiring && wiring.length > 0) {
+        wiring.forEach((w, idx) => {
+          text += `- ${idx + 1}. ${w.from} ===> ${w.to}\\n`;
+        });
+      } else {
+        text += `No wiring connections designed yet.\\n`;
+      }
+      text += `\\n`;
+
+      text += `## Deep Agent Log Feed:\\n\\n`;
+      if (logs && logs.length > 0) {
+        logs.forEach((log, idx) => {
+          const timestampStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "";
+          text += `--- LOG #${idx + 1} [${timestampStr}] ---\\n`;
+          text += `Type: ${String(log.type || "").toUpperCase()}\\n`;
+          if (log.type === "thinking") {
+            text += `Thinking:\\n${log.text || ""}\\n`;
+          } else if (log.type === "tool_call") {
+            text += `Tool Name: ${log.name || ""}\\n`;
+            text += `Status: ${log.status || "running"}\\n`;
+            if (log.input) {
+              text += `Input Params:\\n${JSON.stringify(log.input, null, 2)}\\n`;
+            }
+            if (log.output) {
+              text += `Output Response:\\n${JSON.stringify(log.output, null, 2)}\\n`;
+            }
+          } else {
+            text += `Text: ${log.text || ""}\\n`;
+          }
+          text += `\\n`;
+        });
+      } else {
+        text += `No execution logs yet.\\n`;
+      }
+      text += `\\n`;
+
+      if (finalSketch) {
+        text += `## Generated Arduino Code:\\n\\n\`\`\`cpp\\n${finalSketch}\\n\`\`\`\\n`;
+      }
+
+      navigator.clipboard.writeText(text);
+      toast.success("All formulation data copied to clipboard!");
+    } catch (err) {
+      console.error("Failed to copy formulation data:", err);
+      toast.error("Failed to copy data.");
+    }
+  };
+
   // ??$$$ newer code — Go to simulator workspace
   const handleGoToSimulator = () => {
     if (!sessionId) {
@@ -974,6 +1199,23 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       setIsFailed(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ??$$$ newer code — Trigger API Rescue to bypass Ollama constraints and failover to cloud APIs
+  const handleRescue = async () => {
+    if (!sessionId) return;
+    setRescuing(true);
+    setIsFailed(false);
+    try {
+      await axiosInstance.post("/new-flow/rescue", { sessionId });
+      toast.success("Triggered API Rescue with Groq/Cerebras/Gemini failover!");
+    } catch (err: any) {
+      console.error("handleRescue failed:", err);
+      toast.error(err.response?.data?.error || "Failed to trigger API Rescue.");
+      setIsFailed(true);
+    } finally {
+      setRescuing(false);
     }
   };
 
@@ -1390,7 +1632,31 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                   <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider">AI Sourcing Pipeline</div>
                   {renderStepper()}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex rounded-lg bg-zinc-950 p-0.5 border border-zinc-800">
+                    <button
+                      onClick={() => setWorkspaceTab("visual")}
+                      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        workspaceTab === "visual"
+                          ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/10"
+                          : "text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      <LayoutDashboard className="h-3 w-3" />
+                      Visual Overview
+                    </button>
+                    <button
+                      onClick={() => setWorkspaceTab("console")}
+                      className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        workspaceTab === "console"
+                          ? "bg-emerald-500 text-zinc-950 shadow-md shadow-emerald-500/10"
+                          : "text-zinc-500 hover:text-zinc-300"
+                      }`}
+                    >
+                      <Terminal className="h-3 w-3" />
+                      Deep Agent Console
+                    </button>
+                  </div>
                   <button
                     onClick={handleRestart}
                     disabled={restarting}
@@ -1399,143 +1665,390 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                     <RefreshCw className={`h-3.5 w-3.5 ${restarting ? "animate-spin text-emerald-400" : "text-zinc-400"}`} />
                     Restart Build
                   </button>
+
+                  {isCompleted && (
+                    <button
+                      onClick={handleGoToSimulator}
+                      className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-450 px-3 py-1.5 text-[11px] font-bold text-zinc-950 transition-all shadow-md shadow-emerald-500/20"
+                    >
+                      <PlayCircle className="h-3.5 w-3.5" />
+                      Launch Playground
+                    </button>
+                  )}
                 </div>
               </div>
 
               {/* Main Workspace View Panels */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Completion card */}
-                {isCompleted && (
-                  <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-zinc-300 space-y-4 shadow-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
-                        <CheckCircle className="h-5 w-5" />
+              {workspaceTab === "visual" ? (
+                <>
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* Completion card */}
+                    {isCompleted && (
+                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-950/20 p-5 text-zinc-300 space-y-4 shadow-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center flex-shrink-0">
+                            <CheckCircle className="h-5 w-5" />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-zinc-100">Formulation Completed Successfully!</h4>
+                            <p className="text-[11px] text-zinc-450">BOM, wiring netlists, and code curriculum are generated.</p>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-1">
+                          <button
+                            onClick={handleExportLocal}
+                            disabled={exporting}
+                            className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition-all"
+                          >
+                            <HardDrive className="h-3.5 w-3.5 text-emerald-400" />
+                            {exporting ? "Exporting..." : "Export Data to local E:"}
+                          </button>
+                          <button
+                            onClick={handleCopyAllData}
+                            className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition-all"
+                          >
+                            <Copy className="h-3.5 w-3.5 text-emerald-450" />
+                            Copy All Data
+                          </button>
+                          <button
+                            onClick={handleGoToSimulator}
+                            className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-450 px-4 py-1.5 text-xs font-bold text-zinc-950 transition-all"
+                          >
+                            <PlayCircle className="h-3.5 w-3.5" />
+                            Open Virtual Playground
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-zinc-100">Formulation Completed Successfully!</h4>
-                        <p className="text-[11px] text-zinc-450">BOM, wiring netlists, and code curriculum are generated.</p>
+                    )}
+
+                    {/* Constraint conflict card */}
+                    {conflictDetails && (
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-955/15 p-5 text-zinc-300 space-y-3 shadow-lg">
+                        <div className="flex items-center gap-2.5 text-amber-400 font-bold text-xs">
+                          <AlertTriangle className="h-4 w-4 animate-pulse" />
+                          <span>{conflictDetails.title}</span>
+                        </div>
+                        <p className="text-xs text-zinc-400 leading-relaxed">
+                          {conflictDetails.description}
+                        </p>
+                        <div className="space-y-2 pt-2">
+                          <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Choose Resolution Path:</div>
+                          {conflictDetails.options.map((opt, idx) => (
+                            <button
+                              key={idx}
+                              onClick={() => resolveConflict(opt)}
+                              disabled={loading}
+                              className="w-full text-left rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900 hover:border-amber-550/50 p-3 text-xs text-zinc-300 transition-all active:scale-[0.99]"
+                            >
+                              {opt}
+                            </button>
+                          ))}
+                        </div>
                       </div>
+                    )}
+
+                    {/* Failure card */}
+                    {isFailed && !isCompleted && !conflictDetails && (
+                      <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-5 text-zinc-300 space-y-3 shadow-lg">
+                        <div className="flex items-center gap-2.5 text-red-400 font-bold text-xs">
+                          <AlertTriangle className="h-4 w-4" />
+                          <span>Formulation Interrupted</span>
+                        </div>
+                        <p className="text-xs text-zinc-450 leading-relaxed font-sans">
+                          The formulation loop stopped. You can resume from where it was left off.
+                        </p>
+                        <div className="flex flex-wrap gap-2.5">
+                          <button
+                            onClick={handleResume}
+                            disabled={loading || rescuing}
+                            className="flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-450 px-4 py-2 text-xs font-bold text-zinc-950 transition-all disabled:opacity-50"
+                          >
+                            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
+                            {loading ? "Resuming..." : "Resume Formulation"}
+                          </button>
+
+                          <button
+                            onClick={handleRescue}
+                            disabled={loading || rescuing}
+                            className="flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-550 hover:to-amber-450 px-4 py-2 text-xs font-bold text-zinc-950 shadow-md shadow-amber-600/20 transition-all disabled:opacity-50"
+                          >
+                            <Cpu className={`h-3.5 w-3.5 ${rescuing ? "animate-pulse" : ""}`} />
+                            {rescuing ? "Rescuing..." : "API Rescue (Groq/Cerebras/Gemini)"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section 1: Live Hardware Assembly */}
+                    <div className="space-y-3">
+                      <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider font-mono">Assembly Preview</div>
+                      {renderHardwareAssembly()}
                     </div>
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        onClick={handleExportLocal}
-                        disabled={exporting}
-                        className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 px-3 py-1.5 text-xs font-semibold text-zinc-200 transition-all"
-                      >
-                        <HardDrive className="h-3.5 w-3.5 text-emerald-400" />
-                        {exporting ? "Exporting..." : "Export Data to local E:"}
-                      </button>
-                      <button
-                        onClick={handleGoToSimulator}
-                        className="flex items-center gap-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 px-4 py-1.5 text-xs font-bold text-zinc-950 transition-all"
-                      >
-                        <PlayCircle className="h-3.5 w-3.5" />
-                        Open Virtual Playground
-                      </button>
+
+                    {/* Section 2: Milestone Timeline */}
+                    <div className="space-y-3">
+                      <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider font-mono">Project Roadmap</div>
+                      {milestones.length > 0 ? (
+                        <div className="space-y-2">
+                          {milestones.map((m, idx) => (
+                            <MilestoneCard key={idx} m={m} idx={idx} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-650 italic">
+                          Roadmap milestones will appear as they are designed.
+                        </div>
+                      )}
                     </div>
                   </div>
-                )}
 
-                {/* Constraint conflict card */}
-                {conflictDetails && (
-                  <div className="rounded-xl border border-amber-500/30 bg-amber-955/15 p-5 text-zinc-300 space-y-3 shadow-lg">
-                    <div className="flex items-center gap-2.5 text-amber-400 font-bold text-xs">
-                      <AlertTriangle className="h-4 w-4 animate-pulse" />
-                      <span>{conflictDetails.title}</span>
+                  {/* Bottom drawer/tray (Live AI activity log) */}
+                  <div className="h-44 border-t border-zinc-800 bg-zinc-955 flex flex-col">
+                    <div className="flex h-9 border-b border-zinc-850 bg-zinc-900/10 px-4 items-center justify-between select-none">
+                      <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider">Live AI Activity Log</span>
+                      {logs.some(l => l.type === "thinking" || l.type === "tool_call") && (
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      )}
                     </div>
-                    <p className="text-xs text-zinc-400 leading-relaxed">
-                      {conflictDetails.description}
-                    </p>
-                    <div className="space-y-2 pt-2">
-                      <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider font-mono">Choose Resolution Path:</div>
-                      {conflictDetails.options.map((opt, idx) => (
+                    <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-[10px] leading-relaxed text-zinc-400">
+                      {logs.length === 0 && <div className="text-zinc-600 italic">No logs initialized.</div>}
+                      {logs.slice(-15).map((log, i) => {
+                        const timestampStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "";
+                        if (log.type === "thinking") {
+                          return (
+                            <div key={i} className="text-zinc-400 truncate">
+                              <span className="text-zinc-600">[{timestampStr}]</span> <span className="text-blue-400 font-bold">THINK:</span> {log.text}
+                            </div>
+                          );
+                        }
+                        if (log.type === "tool_call") {
+                          return (
+                            <div key={i} className="text-zinc-300">
+                              <span className="text-zinc-500">[{timestampStr}]</span> <span className="text-emerald-400 font-bold">TOOL:</span> {log.name} ({log.status})
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* DEEP AGENT CONSOLE */
+                <div className="flex-1 flex overflow-hidden h-[calc(100vh-280px)]">
+                  {/* Left Column: Log Feed */}
+                  <div className="w-[42%] flex flex-col border-r border-zinc-800 bg-zinc-950/40 overflow-hidden">
+                    <div className="p-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/10">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider">Execution Feed ({logs.length} logs)</span>
+                        {logs.some(l => l.type === "thinking" || l.type === "tool_call") && (
+                          <span className="flex items-center gap-1">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="text-[9px] font-mono text-zinc-505">Live</span>
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={handleCopyAllData}
+                        className="flex items-center gap-1 rounded border border-zinc-800 bg-zinc-900/40 hover:bg-zinc-805 hover:text-zinc-100 px-2 py-0.5 text-[9px] font-bold text-zinc-350 transition-colors"
+                      >
+                        <Copy className="h-2.5 w-2.5 text-emerald-400" />
+                        Copy All Data
+                      </button>
+                    </div>
+                    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3 font-mono">
+                      {logs.length === 0 && (
+                        <div className="text-zinc-600 text-xs italic text-center py-10">No execution logs yet.</div>
+                      )}
+                      {logs.map((log, idx) => {
+                        const timestampStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "";
+                        const isSelected = selectedLog === log;
+
+                        if (log.type === "thinking") {
+                          return (
+                            <div 
+                              key={idx} 
+                              onClick={() => setSelectedLog(log)}
+                              className={`p-3 rounded-lg border text-[11px] cursor-pointer transition-all hover:bg-zinc-900/40 ${
+                                isSelected ? "border-blue-500/50 bg-blue-500/5" : "border-zinc-800 bg-zinc-900/20"
+                              }`}
+                            >
+                              <div className="flex justify-between items-center text-[9px] text-zinc-500 mb-1.5">
+                                <span className="font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1">
+                                  <Cpu className="h-3 w-3" /> Thinking Process
+                                </span>
+                                <span>{timestampStr}</span>
+                              </div>
+                              <p className="text-zinc-350 line-clamp-3 leading-relaxed whitespace-pre-wrap font-sans">
+                                {log.text}
+                              </p>
+                              <div className="text-[9px] text-blue-400/70 mt-1 hover:underline font-bold text-right">Inspect full thought →</div>
+                            </div>
+                          );
+                        }
+
+                        if (log.type === "tool_call") {
+                          const statusColors = 
+                            log.status === "failed" ? "border-red-500/35 bg-red-950/10 text-red-300" :
+                            log.status === "done" ? "border-emerald-500/35 bg-emerald-950/10 text-emerald-300" :
+                            "border-amber-500/35 bg-amber-950/10 text-amber-300 animate-pulse";
+                          
+                          const badge = 
+                            log.status === "failed" ? "bg-red-500/10 text-red-400 border border-red-500/25" :
+                            log.status === "done" ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/25" :
+                            "bg-amber-500/10 text-amber-400 border border-amber-500/25";
+
+                          return (
+                            <div 
+                              key={idx} 
+                              onClick={() => setSelectedLog(log)}
+                              className={`p-3 rounded-lg border text-[11px] cursor-pointer transition-all hover:opacity-95 ${statusColors} ${
+                                isSelected ? "ring-1 ring-emerald-500" : ""
+                              }`}
+                            >
+                              <div className="flex justify-between items-center text-[9px] mb-1.5">
+                                <span className="font-bold uppercase tracking-wider flex items-center gap-1 text-zinc-400">
+                                  <Braces className="h-3 w-3" /> Tool Invocation
+                                </span>
+                                <span>{timestampStr}</span>
+                              </div>
+                              <div className="font-bold font-mono text-zinc-100 text-[12px] mb-1">{log.name}</div>
+                              <div className="flex justify-between items-center mt-2 pt-1 border-t border-zinc-800/40">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wider ${badge}`}>
+                                  {log.status || "running"}
+                                </span>
+                                <span className="text-[9px] text-zinc-500 hover:text-zinc-355 underline">Inspect details →</span>
+                              </div>
+                            </div>
+                          );
+                        }
+
+                        if (log.type === "decision") {
+                          return (
+                            <div 
+                              key={idx}
+                              onClick={() => setSelectedLog(log)}
+                              className={`p-3 rounded-lg border text-[11px] cursor-pointer transition-all bg-purple-500/5 hover:bg-purple-500/10 ${
+                                isSelected ? "border-purple-500 bg-purple-500/10" : "border-purple-500/20"
+                              }`}
+                            >
+                              <div className="flex justify-between items-center text-[9px] text-purple-400 mb-1">
+                                <span className="font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <CheckCircle className="h-3 w-3" /> Decision Logged
+                                </span>
+                                <span>{timestampStr}</span>
+                              </div>
+                              <p className="text-zinc-300 leading-relaxed font-sans">{log.text}</p>
+                            </div>
+                          );
+                        }
+
+                        if (log.type === "rate_limit") {
+                          return (
+                            <div 
+                              key={idx}
+                              onClick={() => setSelectedLog(log)}
+                              className={`p-3 rounded-lg border text-[11px] cursor-pointer transition-all bg-amber-500/5 hover:bg-amber-500/10 ${
+                                isSelected ? "border-amber-500 bg-amber-500/10" : "border-amber-500/20"
+                              }`}
+                            >
+                              <div className="flex justify-between items-center text-[9px] text-amber-400 mb-1">
+                                <span className="font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" /> Rate Limit Pause
+                                </span>
+                                <span>{timestampStr}</span>
+                              </div>
+                              <p className="text-zinc-300 leading-relaxed font-sans">{log.text}</p>
+                            </div>
+                          );
+                        }
+
+                        if (log.type === "error") {
+                          return (
+                            <div 
+                              key={idx}
+                              onClick={() => setSelectedLog(log)}
+                              className={`p-3 rounded-lg border text-[11px] cursor-pointer transition-all bg-red-500/5 hover:bg-red-500/10 ${
+                                isSelected ? "border-red-500 bg-red-500/10" : "border-red-500/20"
+                              }`}
+                            >
+                              <div className="flex justify-between items-center text-[9px] text-red-400 mb-1">
+                                <span className="font-bold uppercase tracking-wider flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" /> Pipeline Error
+                                </span>
+                                <span>{timestampStr}</span>
+                              </div>
+                              <p className="text-zinc-300 leading-relaxed font-mono whitespace-pre-wrap">{log.text}</p>
+                            </div>
+                          );
+                        }
+
+                        return null;
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Deep Inspector / Details View */}
+                  <div className="flex-1 flex flex-col bg-zinc-950 overflow-hidden">
+                    <div className="flex h-9 border-b border-zinc-800 px-4 items-center justify-between bg-zinc-900/10">
+                      <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+                        <Terminal className="h-3.5 w-3.5 text-emerald-400" />
+                        Parameters & Execution Inspector
+                      </span>
+                      {finalSketch && (
+                        <div className="flex items-center gap-1 text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider font-mono">
+                          <Code className="h-2.5 w-2.5" /> Sketch Generated
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex-1 flex flex-col overflow-hidden p-6 space-y-4">
+                      {/* Tabs inside Inspector: Selected Log vs final code */}
+                      <div className="flex gap-2 border-b border-zinc-850 pb-2">
                         <button
-                          key={idx}
-                          onClick={() => resolveConflict(opt)}
-                          disabled={loading}
-                          className="w-full text-left rounded-lg border border-zinc-800 bg-zinc-900/50 hover:bg-zinc-900 hover:border-amber-550/50 p-3 text-xs text-zinc-300 transition-all active:scale-[0.99]"
+                          onClick={() => {
+                            // Reset selected log if we were on code
+                            if (selectedLog?.type === "code" && logs.length > 0) {
+                              setSelectedLog(logs[logs.length - 1]);
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                            selectedLog && selectedLog.type !== "code"
+                              ? "bg-zinc-850 text-zinc-100 border border-zinc-700" 
+                              : "bg-zinc-900/40 text-zinc-500 hover:text-zinc-300"
+                          }`}
+                          disabled={!selectedLog}
                         >
-                          {opt}
+                          <Braces className="h-3.5 w-3.5 text-blue-400" />
+                          {selectedLog && selectedLog.type !== "code" ? `${selectedLog.name || selectedLog.type.toUpperCase()}` : "Selected Tool"}
                         </button>
-                      ))}
+                        <button
+                          onClick={() => {
+                            if (finalSketch) {
+                              setSelectedLog({ type: "code", text: finalSketch });
+                            } else {
+                              toast.error("Arduino code has not been generated yet.");
+                            }
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                            selectedLog?.type === "code"
+                              ? "bg-emerald-500 text-zinc-950 font-bold" 
+                              : (finalSketch ? "bg-zinc-900 hover:bg-zinc-855 text-emerald-400 border border-zinc-800" : "bg-zinc-900/20 text-zinc-650 cursor-not-allowed")
+                          }`}
+                        >
+                          <Code className="h-3.5 w-3.5" />
+                          Generated Arduino Code
+                        </button>
+                      </div>
+
+                      {/* Inspector Content Body */}
+                      <div className="flex-1 overflow-y-auto bg-black/40 rounded-xl border border-zinc-850 p-4 font-mono text-xs select-text">
+                        {renderInspectorContent()}
+                      </div>
                     </div>
                   </div>
-                )}
-
-                {/* Failure card */}
-                {isFailed && !isCompleted && !conflictDetails && (
-                  <div className="rounded-xl border border-red-500/20 bg-red-950/10 p-5 text-zinc-300 space-y-3 shadow-lg">
-                    <div className="flex items-center gap-2.5 text-red-400 font-bold text-xs">
-                      <AlertTriangle className="h-4 w-4" />
-                      <span>Formulation Interrupted</span>
-                    </div>
-                    <p className="text-xs text-zinc-450 leading-relaxed font-sans">
-                      The formulation loop stopped. You can resume from where it was left off.
-                    </p>
-                    <button
-                      onClick={handleResume}
-                      disabled={loading}
-                      className="flex items-center gap-1.5 rounded-lg bg-red-500 hover:bg-red-450 px-4 py-2 text-xs font-bold text-zinc-950 transition-all"
-                    >
-                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} />
-                      {loading ? "Resuming..." : "Resume Formulation"}
-                    </button>
-                  </div>
-                )}
-
-                {/* Section 1: Live Hardware Assembly */}
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider font-mono">Assembly Preview</div>
-                  {renderHardwareAssembly()}
                 </div>
-
-                {/* Section 2: Milestone Timeline */}
-                <div className="space-y-3">
-                  <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider font-mono">Project Roadmap</div>
-                  {milestones.length > 0 ? (
-                    <div className="space-y-2">
-                      {milestones.map((m, idx) => (
-                        <MilestoneCard key={idx} m={m} idx={idx} />
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="rounded-xl border border-dashed border-zinc-800 p-6 text-center text-xs text-zinc-650 italic">
-                      Roadmap milestones will appear as they are designed.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Bottom drawer/tray (Live AI activity log) */}
-              <div className="h-44 border-t border-zinc-800 bg-zinc-950 flex flex-col">
-                <div className="flex h-9 border-b border-zinc-800 bg-zinc-900/10 px-4 items-center justify-between select-none">
-                  <span className="text-[10px] font-mono text-zinc-550 uppercase tracking-wider">Live AI Activity Log</span>
-                  {logs.some(l => l.type === "thinking" || l.type === "tool_call") && (
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto p-4 space-y-2 font-mono text-[10px] leading-relaxed text-zinc-455">
-                  {logs.length === 0 && <div className="text-zinc-600 italic">No logs initialized.</div>}
-                  {logs.slice(-15).map((log, i) => {
-                    const timestampStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : "";
-                    if (log.type === "thinking") {
-                      return (
-                        <div key={i} className="text-zinc-400 truncate">
-                          <span className="text-zinc-600">[{timestampStr}]</span> <span className="text-blue-450 font-bold">THINK:</span> {log.text}
-                        </div>
-                      );
-                    }
-                    if (log.type === "tool_call") {
-                      return (
-                        <div key={i} className="text-zinc-350">
-                          <span className="text-zinc-650">[{timestampStr}]</span> <span className="text-emerald-450 font-bold">TOOL:</span> {log.name} ({log.status})
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-              </div>
+              )}
             </div>
 
             {/* Right Sidebar: Context summaries, locked constraints, and decisions */}

@@ -139,6 +139,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       set({ voltage: 5.0, cpuUsage: 12 });
       get().addLog('[BOOT] Arduino initialized', 'boot');
       
+      /* old code
       const bom = get().project?.bom || [];
       const hasSoil = bom.some((p) => String(p.displayName || p.key || '').toLowerCase().includes('soil') || String(p.displayName || p.key || '').toLowerCase().includes('moisture'));
       const hasTemp = bom.some((p) => String(p.displayName || p.key || '').toLowerCase().includes('temp') || String(p.displayName || p.key || '').toLowerCase().includes('dht') || String(p.displayName || p.key || '').toLowerCase().includes('humidity'));
@@ -206,6 +207,51 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         if (hasPot) {
           const val = Math.floor(Math.random() * 1024);
           get().addLog('[OUTPUT] Potentiometer Read: ' + val, 'output');
+        }
+      */
+
+      // ??$$$ newer code
+      const bom = get().project?.bom || [];
+      const types = bom.map(p => String(p.type || '').toLowerCase());
+      const hasSensor   = types.includes('sensor');
+      const hasLed      = types.includes('led');
+      const hasButton   = types.includes('button');
+
+      setTimeout(() => {
+        if (!get().simulationRunning) return;
+        
+        if (hasSensor) {
+          get().addLog('[SYSTEM] Analog/Digital Sensor online (ADC Channel 0)', 'system');
+        } else if (hasButton) {
+          get().addLog('[INFO] Waiting for button input', 'info');
+        } else {
+          get().addLog('[INFO] Waiting for inputs...', 'info');
+        }
+      }, 800);
+
+      // Start periodic simulator logs
+      simInterval = setInterval(() => {
+        if (!get().simulationRunning) return;
+
+        const sketch = get().project?.sketch || '';
+        const tempVal = 22.0 + Math.random() * 4.0;
+        const humVal = 50 + Math.random() * 15;
+        const distVal = 10 + Math.random() * 150;
+        const isBlink = sketch.includes('digitalWrite') && (sketch.includes('delay') || sketch.includes('millis'));
+
+        // If the project code is a blink sketch and there's no sensor/button, toggle LED state!
+        if (isBlink && hasLed && !hasSensor && !hasButton) {
+          set((state) => {
+            const nextLed = !state.ledState;
+            get().addLog(nextLed ? '[OUTPUT] LED turned ON (Pin D13: HIGH)' : '[OUTPUT] LED turned OFF (Pin D13: LOW)', 'output');
+            return { ledState: nextLed };
+          });
+          return;
+        }
+
+        if (hasSensor) {
+          const val = Math.floor(100 + Math.random() * 800);
+          get().addLog(`[OUTPUT] Sensor Value: ${val}`, 'output');
         }
 
         // ??$$$ newer code - extract LCD text and update store state

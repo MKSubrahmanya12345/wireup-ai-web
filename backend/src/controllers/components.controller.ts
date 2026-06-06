@@ -248,6 +248,22 @@ export const updateComponent = async (req, res) => {
     project.bom[bomIndex] = { ...project.bom[bomIndex].toObject(), ...replacement };
     project.markModified('bom');
 
+    // ??$$$ newer code - V1 State Propagation
+    if (!project.bomMeta) project.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.wiringMeta) project.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.sketchMeta) project.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    project.bomMeta.version += 1;
+    project.bomMeta.lastModifiedBy = req.body.modifier || "user";
+    if (req.body.locked !== undefined) {
+      project.bomMeta.locked = req.body.locked;
+    }
+    project.wiringMeta.staleReason = "BOM component was modified";
+    project.sketchMeta.staleReason = "BOM component was modified";
+    project.markModified('bomMeta');
+    project.markModified('wiringMeta');
+    project.markModified('sketchMeta');
+
     project.componentsState = {
       components: project.bom.map(b => b.displayName || b.key),
       bom: project.bom
@@ -418,6 +434,21 @@ export const syncWiring = async (req, res) => {
       });
       project.markModified("bom");
     }
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!project.bomMeta) project.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.wiringMeta) project.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.sketchMeta) project.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    project.wiringMeta.version += 1;
+    project.wiringMeta.bomVersionUsed = project.bomMeta.version;
+    project.wiringMeta.lastModifiedBy = req.body.modifier || "user";
+    if (req.body.locked !== undefined) {
+      project.wiringMeta.locked = req.body.locked;
+    }
+    project.sketchMeta.staleReason = "Wiring connections changed";
+    project.markModified('wiringMeta');
+    project.markModified('sketchMeta');
 
     // Invalidate downstream stages (build, simulation, assembly, shopping)
     await invalidateDownstream(projectId, "components");

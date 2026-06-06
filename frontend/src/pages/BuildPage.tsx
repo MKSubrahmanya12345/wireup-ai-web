@@ -13,6 +13,9 @@ import { useThemeStore } from '../store/useThemeStore';
 import { useProjectStore } from '../store/useProjectStore';
 import WokwiSimulator from '../components/WokwiSimulator';
 import useIsMobile from '../hooks/useIsMobile';
+// ??``$ newer code
+import PipelineAuditTab from '../components/PipelineAuditTab';
+import { io } from 'socket.io-client';
 
 const Simulator3D = lazy(() => import('../components/Simulator3D'));
 
@@ -37,14 +40,18 @@ export default function BuildPage() {
     regenerateMilestoneCode,
     reportComponentIssue,
     validateSerial,
-    refreshStageStatus
+    refreshStageStatus,
+    toggleArtifactLock
   } = useProjectStore();
 
   const [loading, setLoading] = useState(true);
   const [activeMilestoneId, setActiveMilestoneId] = useState(null);
   const [simView, setSimView] = useState('2d'); // 2d | 3d
-  const [centerTab, setCenterTab] = useState('instructions'); // instructions | code | simulator
+  const [centerTab, setCenterTab] = useState('instructions'); // instructions | code | simulator | pipeline
   const [registry, setRegistry] = useState({});
+  // ??``$ newer code
+  const [pipelineStages, setPipelineStages] = useState({});
+  const [pipelineFailures, setPipelineFailures] = useState([]);
   const [compilingLocal, setCompilingLocal] = useState(false);
   const [generatingMilestones, setGeneratingMilestones] = useState(false);
 
@@ -103,6 +110,10 @@ export default function BuildPage() {
       setLoading(true);
       try {
         await loadMilestones(id);
+        // ??``$ newer code - seed pipeline stages from loaded project
+        const loaded = useProjectStore.getState().project;
+        if (loaded?.pipelineStages) setPipelineStages(loaded.pipelineStages);
+        if (loaded?.pipelineFailures) setPipelineFailures(loaded.pipelineFailures);
       } catch (err) {
         console.error("Failed to load milestones:", err);
       } finally {
@@ -111,6 +122,20 @@ export default function BuildPage() {
     };
     init();
     axiosInstance.get("/wokwi/registry").then(res => setRegistry(res.data)).catch(console.error);
+
+    // ??``$ newer code - subscribe to pipeline socket events
+    const socketUrl = (import.meta.env.VITE_API_URL || '').replace(/\/api$/, '') || 'http://localhost:5000';
+    const sock = io(socketUrl, { withCredentials: true });
+    if (id) sock.emit('join', id);
+    sock.on('pipeline:stage_update', (data) => {
+      if (data.stage && data.stageData) {
+        setPipelineStages((prev) => ({ ...prev, [data.stage]: data.stageData }));
+      }
+    });
+    sock.on('pipeline:failure_update', (data) => {
+      if (data.failures) setPipelineFailures(data.failures);
+    });
+    return () => { sock.disconnect(); };
   }, [id]);
 
   // Set initial active milestone
@@ -561,8 +586,27 @@ export default function BuildPage() {
                 📐 Simulator
               </button>
             )}
+            {/* ??``$ newer code */}
+            <button className={`tab-btn ${centerTab === 'pipeline' ? 'active' : ''}`} onClick={() => setCenterTab('pipeline')} style={{ borderBottomColor: centerTab === 'pipeline' ? '#8b5cf6' : 'transparent', color: centerTab === 'pipeline' ? '#8b5cf6' : undefined }}>
+              🔍 Pipeline
+            </button>
           </div>
-          <div style={{ display: 'flex', gap: '6px' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            {/* ??$$ newer code - Sketch Meta */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.75rem', color: isDark ? '#d1d5db' : '#374151' }}>
+              <span style={{ fontWeight: 600 }}>Sketch:</span>
+              <span>v{project?.sketchMeta?.version ?? 1}</span>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '3px', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={project?.sketchMeta?.locked ?? false}
+                  onChange={(e) => toggleArtifactLock('sketch', e.target.checked)}
+                  style={{ cursor: 'pointer' }}
+                />
+                🔒 Lock AI
+              </label>
+            </div>
+            <div style={{ width: '1px', height: '16px', background: isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)' }} />
             {centerTab === 'simulator' && (
               <button
                 onClick={() => setSimView(simView === '2d' ? '3d' : '2d')}
@@ -598,8 +642,34 @@ export default function BuildPage() {
           </div>
         </div>
 
-        {/* Tab Body */}
+        {/* ??$$$ newer code - V1 Stale State Warnings */}
+        {project?.sketchMeta?.staleReason && (
+          <div style={{
+            padding: '0.5rem 1.25rem',
+            background: '#f59e0b',
+            color: '#fff',
+            fontSize: '0.8rem',
+            fontWeight: 600,
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            zIndex: 40,
+          }}>
+            <span>⚠ Sketch/Milestones Stale: {project.sketchMeta.staleReason}</span>
+          </div>
+        )}
+
+        {/* Tab Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem', position: 'relative', minHeight: 0 }}>
+          {/* ??``$ newer code - Pipeline Audit Tab */}
+          {centerTab === 'pipeline' && (
+            <div style={{ height: '100%', margin: '-1.25rem' }}>
+              <PipelineAuditTab
+                project={{ ...project, pipelineStages: pipelineStages, pipelineFailures: pipelineFailures }}
+                isDark={isDark}
+              />
+            </div>
+          )}
           {centerTab === 'instructions' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               {/* ??$$$ Manual Library Installation Warning Card */}

@@ -31,6 +31,8 @@ import { exec as cbExec } from 'child_process';
 import { promisify } from 'util';
 const exec = promisify(cbExec);
 import SystemConfig from '../models/systemConfig.model';
+// ??$$$ newer code
+import { compileQueue } from '../services/compileQueue.service';
 
 // ??$$$ newer code - resolve arduino-cli path based on environments
 function resolveArduinoCliPath() {
@@ -343,6 +345,18 @@ export const generateBuild = async (req, res) => {
     }
 
     console.log(`[build.controller] Saving project with generated sketch...`);
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!project.bomMeta) project.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.wiringMeta) project.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.sketchMeta) project.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    project.sketchMeta.version += 1;
+    project.sketchMeta.wiringVersionUsed = project.wiringMeta.version;
+    project.sketchMeta.lastModifiedBy = "ai";
+    project.sketchMeta.staleReason = "";
+    project.markModified('sketchMeta');
+
     await project.save();
     
     // ??$$$ Advance stage whenever sketch is generated — don't gate on diagram existence
@@ -406,6 +420,20 @@ export const syncBuild = async (req, res) => {
     if (project.sketch && project.diagram && Object.keys(project.diagram).length > 0) {
       await advanceStage(projectId, 'build');
     }
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!project.bomMeta) project.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.wiringMeta) project.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.sketchMeta) project.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    project.sketchMeta.version += 1;
+    project.sketchMeta.wiringVersionUsed = project.wiringMeta.version;
+    project.sketchMeta.lastModifiedBy = req.body.modifier || "user";
+    if (req.body.locked !== undefined) {
+      project.sketchMeta.locked = req.body.locked;
+    }
+    project.sketchMeta.staleReason = "";
+    project.markModified('sketchMeta');
 
     await project.save();
     res.json({ 
@@ -498,11 +526,18 @@ export const compileBuild = async (req, res) => {
     }
 
     console.log(`[build.controller] Compiling sketch at: ${sketchPath} with FQBN: ${fqbn}`);
-    const compileResult = await compileWokwiSketch({
-      projectPath,
-      sketchFile: "sketch.ino",
-      fqbn
-    });
+    // ??$$$ newer code
+    const compileResult = await compileQueue.enqueue(
+      async () => {
+        return compileWokwiSketch({
+          projectPath,
+          sketchFile: "sketch.ino",
+          fqbn
+        });
+      },
+      projectId,
+      "Compilation"
+    );
 
     const isSuccess = !!compileResult.ok;
     const errors = isSuccess ? [] : [compileResult.stderrTail || compileResult.stdoutTail || "Compile failed"];
@@ -550,6 +585,17 @@ export const generateSketch = async (req, res) => {
       await advanceStage(projectId, 'build');
     }
 
+    // ??$$$ newer code - V1 State Propagation
+    if (!project.bomMeta) project.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.wiringMeta) project.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.sketchMeta) project.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    project.sketchMeta.version += 1;
+    project.sketchMeta.wiringVersionUsed = project.wiringMeta.version;
+    project.sketchMeta.lastModifiedBy = "ai";
+    project.sketchMeta.staleReason = "";
+    project.markModified('sketchMeta');
+
     await project.save();
     res.json({ success: true, sketch, warnings, stageStatus: project.stageStatus?.build });
 
@@ -577,6 +623,17 @@ export const generateDiagram = async (req, res) => {
     
     // ??$$$ Advance stage whenever diagram is generated — don't gate on sketch
     await advanceStage(projectId, 'build');
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!project.bomMeta) project.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.wiringMeta) project.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!project.sketchMeta) project.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    project.wiringMeta.version += 1;
+    project.wiringMeta.bomVersionUsed = project.bomMeta.version;
+    project.wiringMeta.lastModifiedBy = "ai";
+    project.wiringMeta.staleReason = "";
+    project.markModified('wiringMeta');
 
     await project.save();
 
@@ -799,17 +856,6 @@ export const compileMilestone = async (req, res) => {
     milestone.status = "in_progress";
     await project.save();
 
-    // Ensure all required libraries are installed prior to compiling
-    if (milestone.requiredLibraries && milestone.requiredLibraries.length > 0) {
-      console.log(`[compileMilestone] Ensuring libraries are installed: ${JSON.stringify(milestone.requiredLibraries)}`);
-      await ensureLibrariesInstalled(milestone.requiredLibraries);
-    }
-
-    tempDir = await mkdtemp(path.join(os.tmpdir(), "wireup-compile-milestone-"));
-    const sketchPath = path.join(tempDir, "sketch.ino");
-    await mkdir(tempDir, { recursive: true });
-    await writeFile(sketchPath, milestone.code || "", "utf8");
-
     // Board FQBN Map matching
     const COMPUTE_TO_FQBN: Record<string, string> = {
       "esp32":      "esp32:esp32:esp32",
@@ -838,12 +884,38 @@ export const compileMilestone = async (req, res) => {
       console.warn(`[compileMilestone] No FQBN matched for board: "${board}" or compute: "${compute}". Defaulting to: ${fqbn}`);
     }
 
-    console.log(`[build.controller] Compiling milestone sketch: ${sketchPath} for ${fqbn}`);
-    const compileResult = await compileWokwiSketch({
-      projectPath: tempDir,
-      sketchFile: "sketch.ino",
-      fqbn
-    });
+    // ??$$$ newer code
+    const compileResult = await compileQueue.enqueue(
+      async () => {
+        let taskTempDir = null;
+        try {
+          // Ensure all required libraries are installed prior to compiling
+          if (milestone.requiredLibraries && milestone.requiredLibraries.length > 0) {
+            console.log(`[compileMilestone] Ensuring libraries are installed: ${JSON.stringify(milestone.requiredLibraries)}`);
+            await ensureLibrariesInstalled(milestone.requiredLibraries);
+          }
+
+          taskTempDir = await mkdtemp(path.join(os.tmpdir(), "wireup-compile-milestone-"));
+          const sketchPath = path.join(taskTempDir, "sketch.ino");
+          await mkdir(taskTempDir, { recursive: true });
+          await writeFile(sketchPath, milestone.code || "", "utf8");
+
+          console.log(`[build.controller] Compiling milestone sketch: ${sketchPath} for ${fqbn}`);
+          const res = await compileWokwiSketch({
+            projectPath: taskTempDir,
+            sketchFile: "sketch.ino",
+            fqbn
+          });
+          return res;
+        } finally {
+          if (taskTempDir) {
+            await rm(taskTempDir, { recursive: true, force: true }).catch(() => {});
+          }
+        }
+      },
+      id,
+      "Compilation"
+    );
 
     const isSuccess = !!compileResult.ok;
     const errors = isSuccess ? [] : [compileResult.stderrTail || compileResult.stdoutTail || "Compile failed"];

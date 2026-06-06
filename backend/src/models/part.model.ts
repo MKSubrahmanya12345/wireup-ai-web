@@ -58,6 +58,8 @@ export interface IPart extends Document {
   isCurated?: boolean;
   glbUrl?: string;
   snapedaId?: string;
+  // ??$$$ newer code
+  componentType?: string;
   
   // Canonical metadata fields
   componentFormatVersion?: string;
@@ -145,6 +147,12 @@ const partSchema = new Schema<IPart>(
     price: { type: Number, default: 0 },
     category: { type: String, default: "" },
     wokwiPartType: { type: String, default: "" },
+    // ??$$$ newer code
+    componentType: {
+      type: String,
+      enum: ["microcontroller", "led", "button", "display", "sensor", "motor", "module"],
+      default: "module"
+    },
     isCurated: { type: Boolean, default: true },
     glbUrl: { type: String, default: "" },
     snapedaId: { type: String, default: "" },

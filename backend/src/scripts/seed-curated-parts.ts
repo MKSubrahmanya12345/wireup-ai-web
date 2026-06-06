@@ -2,7 +2,7 @@
 // ??$$$ newer code
 import mongoose from "mongoose";
 import "dotenv/config";
-import process from "process";
+// import process from "process";
 import { connectDB } from "../lib/db";
 import Part from "../models/part.model";
 
@@ -18,6 +18,7 @@ const CURATED_PARTS = [
     available: 5000,
     price: 300,
     category: "MCUs",
+    componentType: "microcontroller",
     wokwiPartType: "wokwi-arduino-uno",
     specs: { "Microcontroller": "ATmega328P", "Operating Voltage": "5V", "Digital I/O Pins": "14", "Analog Input Pins": "6", "Flash Memory": "32 KB" }
   },
@@ -31,6 +32,7 @@ const CURATED_PARTS = [
     available: 1500,
     price: 450,
     category: "MCUs",
+    componentType: "microcontroller",
     wokwiPartType: "wokwi-esp32-devkit-v1",
     specs: { "Core": "Xtensa Dual-Core 32-bit LX6", "WiFi": "802.11 b/g/n", "Bluetooth": "v4.2 BR/EDR and BLE", "SRAM": "520 KB", "Flash": "4 MB" }
   },
@@ -44,6 +46,7 @@ const CURATED_PARTS = [
     available: 2000,
     price: 250,
     category: "MCUs",
+    componentType: "microcontroller",
     wokwiPartType: "wokwi-nodemcu-esp8266",
     specs: { "Core": "Tensilica L106 32-bit", "WiFi": "802.11 b/g/n", "SRAM": "80 KB", "Flash": "4 MB" }
   },
@@ -57,6 +60,7 @@ const CURATED_PARTS = [
     available: 3000,
     price: 300,
     category: "MCUs",
+    componentType: "microcontroller",
     wokwiPartType: "wokwi-arduino-nano",
     specs: { "Microcontroller": "ATmega328P", "Operating Voltage": "5V", "Digital I/O Pins": "14", "Analog Input Pins": "8", "Flash Memory": "32 KB" }
   },
@@ -70,6 +74,7 @@ const CURATED_PARTS = [
     available: 2500,
     price: 350,
     category: "MCUs",
+    componentType: "microcontroller",
     wokwiPartType: "wokwi-pi-pico",
     specs: { "Chip": "RP2040", "Core": "Dual-core ARM Cortex M0+", "SRAM": "264 KB", "Flash": "2 MB QSPI", "GPIO Pins": "26" }
   },
@@ -83,6 +88,7 @@ const CURATED_PARTS = [
     available: 1200,
     price: 320,
     category: "MCUs",
+    componentType: "microcontroller",
     wokwiPartType: "wokwi-stm32-bluepill",
     specs: { "Core": "ARM 32-bit Cortex-M3", "Frequency": "72 MHz", "Flash": "64 KB", "SRAM": "20 KB" }
   },
@@ -98,6 +104,7 @@ const CURATED_PARTS = [
     available: 1800,
     price: 250,
     category: "Sensors",
+    componentType: "sensor",
     wokwiPartType: "wokwi-dht22",
     specs: { "Temp Range": "-40 to 80 °C", "Temp Accuracy": "±0.5 °C", "Humidity Range": "0-100% RH", "Humidity Accuracy": "±2% RH" }
   },
@@ -112,6 +119,7 @@ const CURATED_PARTS = [
     available: 2000,
     price: 120,
     category: "Sensors",
+    componentType: "sensor",
     wokwiPartType: "wokwi-potentiometer",
     specs: { "Operating Voltage": "3.3V - 5V", "Output": "Analog (SIG)" }
   },
@@ -125,6 +133,7 @@ const CURATED_PARTS = [
     available: 1500,
     price: 150,
     category: "Sensors",
+    componentType: "sensor",
     wokwiPartType: "wokwi-mpu6050",
     specs: { "Gyro Range": "±250 500 1000 2000 °/s", "Accel Range": "±2 ±4 ±8 ±16 g", "Interface": "I2C" }
   },
@@ -138,6 +147,7 @@ const CURATED_PARTS = [
     available: 4000,
     price: 75,
     category: "Sensors",
+    componentType: "sensor",
     wokwiPartType: "wokwi-hc-sr04",
     specs: { "Supply Voltage": "5V DC", "Ranging Distance": "2 cm - 400 cm", "Measuring Angle": "15 degrees" }
   },
@@ -151,6 +161,7 @@ const CURATED_PARTS = [
     available: 900,
     price: 110,
     category: "Sensors",
+    componentType: "sensor",
     wokwiPartType: "wokwi-bmp280",
     specs: { "Pressure Range": "300 to 1100 hPa", "Interface": "I2C or SPI", "Supply Voltage": "1.8V - 3.6V" }
   },
@@ -164,6 +175,7 @@ const CURATED_PARTS = [
     available: 2200,
     price: 85,
     category: "Sensors",
+    componentType: "sensor",
     wokwiPartType: "wokwi-pir-motion-sensor",
     specs: { "Delay Time": "0.3s - 18s", "Detection Range": "3 - 7 meters", "Angle": "<110 degrees" }
   },
@@ -177,6 +189,7 @@ const CURATED_PARTS = [
     available: 10000,
     price: 5,
     category: "Sensors",
+    componentType: "sensor",
     wokwiPartType: "wokwi-photoresistor",
     specs: { "Peak Spectral": "540 nm", "Max Voltage": "150 VDC", "Light Resistance (10 Lux)": "5-10 KΩ" }
   },
@@ -192,6 +205,7 @@ const CURATED_PARTS = [
     available: 3500,
     price: 110,
     category: "Motors",
+    componentType: "motor",
     wokwiPartType: "wokwi-servo",
     specs: { "Rotation Angle": "180 degrees", "Operating Speed": "0.1 s/60 degree at 4.8V", "Stall Torque": "1.8 kg-cm" }
   },
@@ -205,6 +219,7 @@ const CURATED_PARTS = [
     available: 1400,
     price: 180,
     category: "Motors",
+    componentType: "motor",
     wokwiPartType: "wokwi-stepper-motor",
     specs: { "Voltage": "5V DC", "Phase": "4", "Step Angle": "5.625° / 64", "Gear Ratio": "1:64" }
   },
@@ -218,6 +233,7 @@ const CURATED_PARTS = [
     available: 5000,
     price: 25,
     category: "Motors",
+    componentType: "motor",
     wokwiPartType: "wokwi-dc-motor",
     specs: { "Voltage Range": "3V - 6V DC", "No-load Speed": "9000 RPM at 3V", "Shaft Diameter": "2 mm" }
   },
@@ -231,6 +247,7 @@ const CURATED_PARTS = [
     available: 800,
     price: 650,
     category: "Motors",
+    componentType: "motor",
     wokwiPartType: "wokwi-brushless-motor",
     specs: { "KV Rating": "2300 KV", "Max Thrust": "1024 g", "LiPo Cells": "3S - 4S", "Weight": "30 g" }
   },
@@ -246,6 +263,7 @@ const CURATED_PARTS = [
     available: 500,
     price: 1800,
     category: "ESCs",
+    componentType: "module",
     wokwiPartType: "wokwi-esc-4in1",
     specs: { "Continuous Current": "45A", "Burst Current": "50A", "Firmware": "BLHeli_S", "Input Voltage": "2S-6S LiPo" }
   },
@@ -259,6 +277,7 @@ const CURATED_PARTS = [
     available: 1200,
     price: 380,
     category: "ESCs",
+    componentType: "module",
     wokwiPartType: "wokwi-esc-30a",
     specs: { "Continuous Current": "30A", "BEC Output": "5V / 2A", "LiPo Cells": "2S - 3S" }
   },
@@ -274,6 +293,7 @@ const CURATED_PARTS = [
     available: 3000,
     price: 280,
     category: "Displays",
+    componentType: "led",
     wokwiPartType: "wokwi-ssd1306",
     specs: { "Screen Size": "0.96 Inch", "Resolution": "128 x 64 pixels", "Driver IC": "SSD1306", "Interface": "I2C" }
   },
@@ -287,6 +307,7 @@ const CURATED_PARTS = [
     available: 2500,
     price: 190,
     category: "Displays",
+    componentType: "display",
     wokwiPartType: "wokwi-lcd1602",
     specs: { "Display Format": "16 Characters x 2 Lines", "Backlight": "Blue/Green", "Interface": "I2C (SDA/SCL)" }
   },
@@ -300,6 +321,7 @@ const CURATED_PARTS = [
     available: 600,
     price: 750,
     category: "Displays",
+    componentType: "display",
     wokwiPartType: "wokwi-ili9341",
     specs: { "Screen Size": "2.8 Inch", "Resolution": "240 x 320 Pixels", "Driver IC": "ILI9341", "Interface": "SPI" }
   },
@@ -315,6 +337,7 @@ const CURATED_PARTS = [
     available: 5000,
     price: 35,
     category: "Power",
+    componentType: "module",
     wokwiPartType: "wokwi-tp4056-charger",
     specs: { "Charge Current": "1A (adjustable)", "Input Voltage": "4.5V - 5.5V", "Full Charge Voltage": "4.2V" }
   },
@@ -328,6 +351,7 @@ const CURATED_PARTS = [
     available: 8000,
     price: 15,
     category: "Power",
+    componentType: "module",
     wokwiPartType: "wokwi-lm7805",
     specs: { "Output Voltage": "5V DC", "Input Voltage Max": "35V DC", "Output Current": "Up to 1.5A" }
   },
@@ -341,6 +365,7 @@ const CURATED_PARTS = [
     available: 2400,
     price: 45,
     category: "Power",
+    componentType: "module",
     wokwiPartType: "wokwi-mt3608",
     specs: { "Max Output Current": "2A", "Input Voltage": "2V - 24V", "Output Voltage": "5V - 28V" }
   },
@@ -354,6 +379,7 @@ const CURATED_PARTS = [
     available: 1500,
     price: 320,
     category: "Power",
+    componentType: "module",
     wokwiPartType: "wokwi-battery-lipo",
     specs: { "Nominal Voltage": "3.7V", "Capacity": "1000 mAh", "Discharge Rate": "25C" }
   },
@@ -369,6 +395,7 @@ const CURATED_PARTS = [
     available: 3000,
     price: 250,
     category: "Comms",
+    componentType: "module",
     wokwiPartType: "wokwi-hc05",
     specs: { "Protocol": "Bluetooth v2.0+EDR", "Frequency": "2.4 GHz ISM band", "Interface": "UART Serial" }
   },
@@ -382,6 +409,7 @@ const CURATED_PARTS = [
     available: 4000,
     price: 80,
     category: "Comms",
+    componentType: "module",
     wokwiPartType: "wokwi-nrf24l01",
     specs: { "Frequency Band": "2.4 GHz ISM", "Data Rate": "Up to 2 Mbps", "Interface": "SPI" }
   },
@@ -395,6 +423,7 @@ const CURATED_PARTS = [
     available: 700,
     price: 350,
     category: "Comms",
+    componentType: "module",
     wokwiPartType: "wokwi-lora-sx1276",
     specs: { "Frequency Range": "868 MHz", "Modulation": "LoRa / FSK / OOK", "Sensitivity": "-148 dBm" }
   },
@@ -408,6 +437,7 @@ const CURATED_PARTS = [
     available: 1100,
     price: 450,
     category: "Comms",
+    componentType: "module",
     wokwiPartType: "wokwi-neo6m-gps",
     specs: { "Receiver Type": "50-channel u-blox 6 engine", "Update Rate": "5 Hz", "Interface": "UART Serial" }
   },
@@ -423,6 +453,7 @@ const CURATED_PARTS = [
     available: 20000,
     price: 2,
     category: "Passives",
+    componentType: "led",
     wokwiPartType: "wokwi-led",
     specs: { "Diameter": "5 mm", "Color": "Red", "Forward Voltage": "1.8V - 2.2V", "Forward Current": "20 mA" }
   },
@@ -436,6 +467,7 @@ const CURATED_PARTS = [
     available: 50000,
     price: 1,
     category: "Passives",
+    componentType: "module",
     wokwiPartType: "wokwi-resistor",
     specs: { "Resistance": "220 Ω", "Power Rating": "0.25 W", "Tolerance": "±5%" }
   },
@@ -449,6 +481,7 @@ const CURATED_PARTS = [
     available: 50000,
     price: 1,
     category: "Passives",
+    componentType: "module",
     wokwiPartType: "wokwi-resistor",
     specs: { "Resistance": "10 kΩ", "Power Rating": "0.25 W", "Tolerance": "±5%" }
   },
@@ -462,6 +495,7 @@ const CURATED_PARTS = [
     available: 15000,
     price: 5,
     category: "Passives",
+    componentType: "module",
     wokwiPartType: "wokwi-capacitor",
     specs: { "Capacitance": "100 µF", "Voltage Rating": "25 V DC", "Tolerance": "±20%" }
   },
@@ -475,6 +509,7 @@ const CURATED_PARTS = [
     available: 30000,
     price: 2,
     category: "Passives",
+    componentType: "module",
     wokwiPartType: "wokwi-capacitor",
     specs: { "Capacitance": "0.1 µF (100 nF)", "Voltage Rating": "50 V DC", "Code": "104" }
   },
@@ -488,6 +523,7 @@ const CURATED_PARTS = [
     available: 40000,
     price: 3,
     category: "Passives",
+    componentType: "button",
     wokwiPartType: "wokwi-pushbutton",
     specs: { "Dimensions": "6 x 6 x 5 mm", "Contact Type": "Momentary", "Max Current": "50 mA" }
   },
@@ -501,6 +537,7 @@ const CURATED_PARTS = [
     available: 3000,
     price: 65,
     category: "Passives",
+    componentType: "module",
     wokwiPartType: "wokwi-relay-module",
     specs: { "Control Signal": "TTL 5V", "AC Max Load": "10A @ 250V AC", "DC Max Load": "10A @ 30V DC" }
   }

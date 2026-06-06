@@ -6,6 +6,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 // ??$$$ newer code
 import fs from "fs";
 import path from "path";
+import Groq from "groq-sdk"; // ??$$$
 import rotationService from "../services/keyRotation.service";
 import NewFlowSession from "../models/newFlowSession.model";
 import { runAgent2 } from "../services/newflow.agent";
@@ -152,13 +153,35 @@ const mapSessionToVirtualProject = (session: any) => {
     const purpose = String(item?.purpose || "");
     const typeHint = `${displayName} ${purpose}`.toLowerCase();
 
+    /* old code
     let componentType = "module";
     if (item?.key === "mcu" || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint)) {
       componentType = "microcontroller";
-    } else if (/led|neopixel|ws2812/.test(typeHint)) {
+    } else if (/\bled\b|neopixel|ws2812/.test(typeHint)) {
       componentType = "led";
     } else if (/button|switch|push/.test(typeHint)) {
       componentType = "button";
+    }
+    */
+    // ??$$$ newer code - strictly data-driven component classification with safety net
+    let componentType = item?.type || "module";
+
+    // Temporary safety net: map wokwiPartType to correct category if item.type is not set yet
+    if (componentType === "module" || !item?.type) {
+      const wokwiType = String(item?.wokwiPartType || "").toLowerCase();
+      if (wokwiType === "wokwi-servo") {
+        componentType = "motor";
+      } else if (wokwiType.includes("led") || wokwiType.includes("neopixel") || /\bled\b|neopixel|ws2812/.test(typeHint)) {
+        componentType = "led";
+      } else if (wokwiType.includes("button") || wokwiType.includes("pushbutton") || /button|switch|push/.test(typeHint)) {
+        componentType = "button";
+      } else if (wokwiType.includes("lcd") || wokwiType.includes("ssd1306") || wokwiType.includes("ili9341")) {
+        componentType = "display";
+      } else if (wokwiType.includes("dht") || wokwiType.includes("hc-sr04") || wokwiType.includes("photoresistor") || wokwiType.includes("potentiometer") || wokwiType.includes("mpu6050")) {
+        componentType = "sensor";
+      } else if (item?.key === "mcu" || wokwiType.includes("arduino") || wokwiType.includes("esp32") || wokwiType.includes("pi-pico") || wokwiType.includes("nodemcu") || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint)) {
+        componentType = "microcontroller";
+      }
     }
 
         /* old code
@@ -240,10 +263,18 @@ const mapSessionToVirtualProject = (session: any) => {
   const sketch = firstCodeMilestone?.code
     || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
   */
+  /* old code
   // ??$$$ newer code
   const byOrder = [...milestones].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
   const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
   const sketch = latestCodeMilestone?.code
+    || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+  */
+  // ??$$$
+  const byOrder = [...milestones].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
+  const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
+  const sketch = session.finalSketch
+    || latestCodeMilestone?.code
     || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
 
   const additionalTools = Array.from(new Set([
@@ -314,61 +345,27 @@ You must respond ONLY with a JSON object, without markdown, without backticks:
   }
 }`;
 
-// Helper to call LLM for Discovery Agent
-async function callDiscovery(modelName: string, promptText: string): Promise<any> {
-  /* old code
-  const isGemini = modelName.toLowerCase().includes("gemini");
-  const isDeepSeek = modelName.toLowerCase().includes("deepseek");
-  const isOllama = modelName.toLowerCase().includes("ollama");
+// ??$$$ newer code - Helper to call LLM for Discovery Agent with robust failover
+// QnA / Discovery Session ONLY uses Groq (GROQ_API_KEY & GROQ_API_FALLBACK)
+async function executeDiscoveryCall(modelName: string, promptText: string): Promise<any> {
+  const keys = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_FALLBACK,
+    process.env.GROQ_API_KEY_3
+  ].filter(Boolean) as string[];
 
-  if (isGemini) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY is missing in env");
+  if (keys.length === 0) {
+    throw new Error("No Groq API keys found in environment variables.");
+  }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: AGENT1_SYSTEM_PROMPT
-    });
+  let lastError: any = null;
+  const actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
 
-    const result = await model.generateContent(promptText);
-    const text = result.response.text().trim();
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
-  } else if (isDeepSeek) {
-  */
-  // ??$$$ newer code
-  const isGemini = modelName.toLowerCase().includes("gemini");
-  const isCerebras = modelName.toLowerCase().includes("gpt-oss") || modelName.toLowerCase().includes("zai-glm") || modelName.toLowerCase().includes("cerebras");
-  const isDeepSeek = modelName.toLowerCase().includes("deepseek");
-  const isOllama = modelName.toLowerCase().includes("ollama");
-
-  if (isGemini) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GEMINI_API_KEY is missing in env");
-
-    const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: AGENT1_SYSTEM_PROMPT
-    });
-
-    const result = await model.generateContent(promptText);
-    const text = result.response.text().trim();
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
-  } else if (isCerebras) {
-    const apiKey = process.env.CEREBRAS_API_KEY;
-    if (!apiKey) throw new Error("CEREBRAS_API_KEY is missing in env");
-
-    const actualModel = modelName.includes("zai-glm") ? "zai-glm-4.7" : "gpt-oss-120b";
-    const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
+  for (const apiKey of keys) {
+    try {
+      console.log(`[Discovery QnA] Calling Groq with key starting: ${apiKey.substring(0, 8)}...`);
+      const client = new Groq({ apiKey });
+      const completion = await client.chat.completions.create({
         model: actualModel,
         messages: [
           { role: "system", content: AGENT1_SYSTEM_PROMPT },
@@ -376,109 +373,23 @@ async function callDiscovery(modelName: string, promptText: string): Promise<any
         ],
         response_format: { type: "json_object" },
         temperature: 0.7
-      })
-    });
+      });
 
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Cerebras API call failed: ${response.statusText} - ${errText}`);
+      const text = completion.choices[0]?.message?.content?.trim() || "";
+      const clean = text.replace(/```json|```/g, "").trim();
+      return JSON.parse(clean);
+    } catch (err) {
+      console.error(`[Discovery QnA Groq Attempt failed with key starting ${apiKey.substring(0, 8)}]:`, err);
+      lastError = err;
     }
-
-    const data: any = await response.json();
-    const text = data.choices[0]?.message?.content?.trim() || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
-  } else if (isDeepSeek) {
-    // ??$$$ newer code
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) throw new Error("DEEPSEEK_API_KEY is missing in env");
-
-    const response = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          { role: "system", content: AGENT1_SYSTEM_PROMPT },
-          { role: "user", content: promptText }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`DeepSeek API call failed: ${response.statusText} - ${errText}`);
-    }
-
-    const data: any = await response.json();
-    const text = data.choices[0]?.message?.content?.trim() || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
-  } else if (isOllama) {
-    // ??$$$ newer code
-    const modelTag = modelName.split("/")[1] || "qwen2.5:3b";
-    const response = await fetch("http://localhost:11434/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: modelTag,
-        messages: [
-          { role: "system", content: AGENT1_SYSTEM_PROMPT },
-          { role: "user", content: promptText }
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-        options: {
-          num_ctx: 8192
-        }
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Ollama API call failed: ${response.statusText} - ${errText}`);
-    }
-
-    const data: any = await response.json();
-    const text = data.choices[0]?.message?.content?.trim() || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
-  } else {
-    /* old code
-    // Map Llama and Qwen models
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-    if (modelName.toLowerCase().includes("qwen")) {
-      actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-    }
-    */
-    // ??$$$ Map Llama and Qwen models correctly to production string
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-    if (modelName.toLowerCase().includes("qwen")) {
-      actualModel = "qwen/qwen3-32b";
-    }
-
-    const client = await rotationService.getClient();
-    const completion = await client.chat.completions.create({
-      model: actualModel,
-      messages: [
-        { role: "system", content: AGENT1_SYSTEM_PROMPT },
-        { role: "user", content: promptText }
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.7
-    });
-
-    const text = completion.choices[0]?.message?.content?.trim() || "";
-    const clean = text.replace(/```json|```/g, "").trim();
-    return JSON.parse(clean);
   }
+
+  throw new Error(`Groq QnA call failed with all provided keys. Last error: ${lastError?.message || lastError}`);
+}
+
+// ??$$$ newer code - Helper to call LLM for Discovery Agent directly
+async function callDiscovery(modelName: string, promptText: string): Promise<any> {
+  return await executeDiscoveryCall(modelName, promptText);
 }
 
 // 1. POST /api/new-flow/start
@@ -510,6 +421,21 @@ export const startSession = async (req: Request, res: Response) => {
     // Save initial context and first question/options to state
     session.context = response.context || {};
     session.phase1Complete = !!response.done;
+    if (session.phase1Complete) {
+      session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+    }
+
+    // ??$$$ newer code
+    session.pipelineStages = {
+      ideation: {
+        status: response.done ? "done" : "running",
+        inputs: { idea, model, constraints: response.context?.constraints || [] },
+        process: ["Requirement extraction", "Subsystem identification", "MCU selection evaluation"],
+        outputs: { context: response.context, nextQuestion: response.question },
+        consumers: ["Formulation Agent", "BOM Generator"]
+      }
+    };
+
     await session.save();
 
     return res.json({
@@ -560,6 +486,23 @@ export const answerQuestion = async (req: Request, res: Response) => {
     // Update session state
     session.context = response.context || session.context;
     session.phase1Complete = !!response.done;
+    if (session.phase1Complete) {
+      session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+    }
+
+    // ??$$$ newer code
+    session.pipelineStages = {
+      ...session.pipelineStages,
+      ideation: {
+        status: response.done ? "done" : "running",
+        inputs: { idea: session.idea, qaHistory: session.qaHistory },
+        process: ["Requirement extraction", "Subsystem identification", "MCU selection evaluation"],
+        outputs: { context: session.context, nextQuestion: response.question },
+        consumers: ["Formulation Agent", "BOM Generator"]
+      }
+    };
+    session.markModified("pipelineStages");
+
     await session.save();
 
     return res.json({
@@ -616,6 +559,7 @@ export const proceedSession = async (req: Request, res: Response) => {
     }
 
     session.phase1Complete = true;
+    session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
     await session.save();
 
     return res.json({
@@ -657,8 +601,11 @@ export const formulateSession = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Session not found." });
     }
 
+    session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+    await session.save();
+
     // Run Agent 2 formulation loop in the background
-    runAgent2(sessionId, session.selectedModel).catch(err => {
+    runAgent2(sessionId, "ollama/minimax-m3:cloud").catch(err => {
       console.error("[Agent2 Background Execution Error]:", err);
     });
 
@@ -687,9 +634,7 @@ export const restartSession = async (req: Request, res: Response) => {
     }
 
     // ??$$$ newer code
-    if (model) {
-      session.selectedModel = model;
-    }
+    session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
 
     // Save context to database if provided
     if (context) {
@@ -715,7 +660,7 @@ export const restartSession = async (req: Request, res: Response) => {
     await session.save();
 
     // Trigger fresh Agent 2 loop
-    runAgent2(sessionId, session.selectedModel).catch(err => {
+    runAgent2(sessionId, "ollama/minimax-m3:cloud").catch(err => {
       console.error("[Agent2 Restart Background Execution Error]:", err);
     });
 
@@ -911,5 +856,39 @@ export const resumeSession = async (req: Request, res: Response) => {
   } catch (err: any) {
     console.error("resumeSession failed:", err);
     return res.status(500).json({ error: err.message || "Failed to resume formulation session." });
+  }
+};
+
+// ??$$$ newer code — API Rescue to bypass Ollama and use Groq/Cerebras/Gemini sequentially
+export const rescueSession = async (req: Request, res: Response) => {
+  try {
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      return res.status(400).json({ error: "SessionId is required." });
+    }
+
+    const session = await NewFlowSession.findById(sessionId);
+    if (!session) {
+      return res.status(404).json({ error: "Session not found." });
+    }
+
+    // Trigger runAgent2 in the background with isResume = true AND isRescue = true
+    const model = session.selectedModel || "meta-llama/llama-4-scout-17b-16e-instruct";
+    runAgent2(sessionId, model, true, true).catch(err => {
+      console.error("[NewFlowController] Background runAgent2 rescue failed:", err);
+    });
+
+    const io = (global as any).io;
+    if (io) {
+      io.to(sessionId).emit("agent2:resumed", { success: true });
+    }
+
+    return res.json({
+      success: true,
+      message: "API Rescue triggered successfully."
+    });
+  } catch (err: any) {
+    console.error("rescueSession failed:", err);
+    return res.status(500).json({ error: err.message || "Failed to rescue formulation session." });
   }
 };

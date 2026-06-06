@@ -24,6 +24,7 @@ const GenericPart: React.FC<{
   const { showLabels, selectedComponent, setSelectedComponent } = useProjectStore();
   const isSelected = selectedComponent === componentKey;
 
+  /* old code
   const shapeColor = type === 'sensor'
     ? '#0f766e'
     : type === 'display'
@@ -31,6 +32,17 @@ const GenericPart: React.FC<{
       : type === 'module'
         ? '#475569'
         : '#1d4ed8';
+  */
+  // ??$$$ newer code
+  const shapeColor = type === 'sensor'
+    ? '#0f766e'
+    : type === 'display'
+      ? '#7c3aed'
+      : type === 'module'
+        ? '#475569'
+        : type === 'motor' || type === 'servo'
+          ? '#b45309'
+          : '#1d4ed8';
 
   return (
     <group

@@ -1,6 +1,8 @@
 // ??$$$
 import NewFlowSession from "../../models/newFlowSession.model";
 import { parseJsonRecursively } from "../shared/jsonRepair";
+// ??$$$ newer code
+import Part from "../../models/part.model";
 
 export async function saveSessionProgress(sessionId: string, type: string, data: any) {
   const session = await NewFlowSession.findById(sessionId);
@@ -13,6 +15,9 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
   const io = (global as any).io;
 
   if (type === "bom") {
+    if (session.bomMeta?.locked) {
+      return { saved: false, error: "BOM is locked against AI overwrites" };
+    }
     let bomList = parsedData;
     if (parsedData && typeof parsedData === "object" && !Array.isArray(parsedData)) {
       if (Array.isArray(parsedData.components)) {
@@ -25,7 +30,8 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
     }
 
     const rawItems = Array.isArray(bomList) ? bomList : [bomList];
-    const normalizedBOM = rawItems.filter(Boolean).map((item: any) => {
+    // ??$$$ newer code - resolve componentType from DB async
+    const normalizedBOM = await Promise.all(rawItems.filter(Boolean).map(async (item: any) => {
       let key = item.key || item.id || "";
       if (key.toLowerCase() === "brain" || key.toLowerCase() === "mcu") {
         key = "mcu";
@@ -47,6 +53,16 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
         }))
         : [];
 
+      let componentType = "module";
+      try {
+        const partDoc = await Part.findOne({ mpn }).lean();
+        if (partDoc && (partDoc as any).componentType) {
+          componentType = (partDoc as any).componentType;
+        }
+      } catch (err) {
+        console.error(`Error fetching componentType for MPN ${mpn}:`, err);
+      }
+
       return {
         key,
         partId,
@@ -59,17 +75,35 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
         interfaces,
         pinConnections,
         glbUrl: item.glbUrl || "",
-        pins: Array.isArray(item.pins) ? item.pins : []
+        pins: Array.isArray(item.pins) ? item.pins : [],
+        type: componentType
       };
-    });
+    }));
 
     session.bom = normalizedBOM;
     session.markModified("bom");
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!session.bomMeta) session.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.wiringMeta) session.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.sketchMeta) session.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    session.bomMeta.version += 1;
+    session.bomMeta.lastModifiedBy = "ai";
+    session.wiringMeta.staleReason = "BOM component was modified by AI";
+    session.sketchMeta.staleReason = "BOM component was modified by AI";
+    session.markModified('bomMeta');
+    session.markModified('wiringMeta');
+    session.markModified('sketchMeta');
+
     await session.save();
     if (io) {
       io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
     }
   } else if (type === "wiring") {
+    if (session.wiringMeta?.locked) {
+      return { saved: false, error: "Wiring is locked against AI overwrites" };
+    }
     let rawWiring = Array.isArray(parsedData.connections) ? parsedData.connections : parsedData;
     if (!Array.isArray(rawWiring)) rawWiring = [];
 
@@ -104,6 +138,19 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
 
     session.markModified("wiring");
     session.markModified("bom");
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!session.bomMeta) session.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.wiringMeta) session.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.sketchMeta) session.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    session.wiringMeta.version += 1;
+    session.wiringMeta.bomVersionUsed = session.bomMeta.version;
+    session.wiringMeta.lastModifiedBy = "ai";
+    session.sketchMeta.staleReason = "Wiring connections changed by AI";
+    session.markModified('wiringMeta');
+    session.markModified('sketchMeta');
+
     await session.save();
 
     if (io) {
@@ -111,6 +158,9 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
       io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
     }
   } else if (type === "milestone") {
+    if (session.sketchMeta?.locked) {
+      return { saved: false, error: "Sketch/Milestones are locked against AI overwrites" };
+    }
     let milestoneList = parsedData;
     if (parsedData && typeof parsedData === "object" && !Array.isArray(parsedData)) {
       if (Array.isArray(parsedData.milestones)) {
@@ -163,12 +213,27 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
       session.milestones.sort((a, b) => a.order - b.order);
     }
     session.markModified("milestones");
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!session.bomMeta) session.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.wiringMeta) session.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.sketchMeta) session.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    session.sketchMeta.version += 1;
+    session.sketchMeta.wiringVersionUsed = session.wiringMeta.version;
+    session.sketchMeta.lastModifiedBy = "ai";
+    session.sketchMeta.staleReason = "";
+    session.markModified('sketchMeta');
+
     await session.save();
 
     if (io) {
       io.to(sessionId).emit("agent2:milestone_update", { milestones: session.milestones });
     }
   } else if (type === "diagram") {
+    if (session.wiringMeta?.locked) {
+      return { saved: false, error: "Diagram (Wiring) is locked against AI overwrites" };
+    }
     let diagramData = parsedData.diagramJson || parsedData;
     if (diagramData && typeof diagramData === "object") {
       if (Array.isArray(diagramData.parts)) {
@@ -196,6 +261,19 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
 
     session.diagram = diagramData;
     session.markModified("diagram");
+
+    // ??$$$ newer code - V1 State Propagation
+    if (!session.bomMeta) session.bomMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.wiringMeta) session.wiringMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+    if (!session.sketchMeta) session.sketchMeta = { version: 1, lastModifiedBy: "ai", locked: false, staleReason: "" };
+
+    session.wiringMeta.version += 1;
+    session.wiringMeta.bomVersionUsed = session.bomMeta.version;
+    session.wiringMeta.lastModifiedBy = "ai";
+    session.sketchMeta.staleReason = "Diagram layout changed by AI";
+    session.markModified('wiringMeta');
+    session.markModified('sketchMeta');
+
     await session.save();
 
     if (io) {

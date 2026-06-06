@@ -104,6 +104,56 @@ export type Project = {
   wokwiEvidence?: any;
   generationProfile?: any;
   stageStatus?: Record<StageKey, StageStatus>;
+  // ??$$$ newer code - V1 State Propagation
+  bomMeta?: {
+    version: number;
+    lastModifiedBy: "user" | "ai";
+    locked: boolean;
+    staleReason?: string;
+  };
+  wiringMeta?: {
+    version: number;
+    bomVersionUsed?: number;
+    lastModifiedBy: "user" | "ai";
+    locked: boolean;
+    staleReason?: string;
+  };
+  sketchMeta?: {
+    version: number;
+    wiringVersionUsed?: number;
+    lastModifiedBy: "user" | "ai";
+    locked: boolean;
+    staleReason?: string;
+  };
+  // ??$$$ newer code
+  pipelineStages?: Record<string, {
+    status: "pending" | "running" | "done" | "failed";
+    inputs?: any;
+    process?: string[];
+    outputs?: any;
+    consumers?: string[];
+    validationStatus?: { valid: boolean; errors: string[]; warnings: string[] };
+    updatedAt?: string;
+  }>;
+  pipelineFailures?: Array<{
+    subsystem: string;
+    input: any;
+    error: string;
+    reason: string;
+    attemptCount: number;
+    fixApplied: string;
+    status: "failed" | "retry_successful" | "retrying";
+    timestamp: string;
+  }>;
+  derivedDependencies?: {
+    libraries?: string[];
+    boardPackages?: string[];
+    platformPackages?: string[];
+    mobileApps?: string[];
+    telemetry?: string[];
+    communication?: string[];
+    simulator?: string[];
+  };
 };
 
 type ProjectState = {
@@ -151,6 +201,8 @@ type ProjectState = {
   regenerateMilestoneCode: (projectId: string, milestoneId: string) => Promise<void>;
   reportComponentIssue: (projectId: string, milestoneId: string, componentKey: string, problem: string) => Promise<any>;
   validateSerial: (projectId: string, milestoneId: string, actualOutput: string) => Promise<any>;
+  // ??$$$ newer code - V1 State Propagation
+  toggleArtifactLock: (artifactType: "bom" | "wiring" | "sketch", locked: boolean) => Promise<void>;
 };
 
 const DEFAULT_STAGES: Record<StageKey, StageStatus> = {
@@ -610,6 +662,23 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     } catch (err) {
       console.error("Validate serial failed", err);
       throw err;
+    }
+  },
+
+  // ??$$$ newer code - V1 State Propagation
+  toggleArtifactLock: async (artifactType, locked) => {
+    const { projectId, project } = get();
+    if (!projectId || !project) return;
+    try {
+      const metaKey = `${artifactType}Meta`;
+      const res = await axiosInstance.put(
+        `/project/${projectId}`,
+        { [metaKey]: { locked } },
+        { withCredentials: true }
+      );
+      set({ project: res.data });
+    } catch (err) {
+      console.error("[useProjectStore] toggleArtifactLock error:", err);
     }
   },
 }));

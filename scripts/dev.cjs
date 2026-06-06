@@ -53,6 +53,23 @@ function shutdown() {
 process.on('SIGINT', shutdown);
 process.on('SIGTERM', shutdown);
 
+// ??$$$ newer code
+function startOllama() {
+  console.log('[Ollama] Starting Ollama server...');
+  const child = spawn('ollama serve', {
+    stdio: 'ignore',
+    shell: true,
+  });
+
+  child.on('error', (err) => {
+    console.error('[Ollama] Failed to start process:', err);
+  });
+
+  children.push(child);
+}
+
+startOllama();
+
 startService('root-frontend', path.join(workspaceRoot, 'frontend'));
 startService('root-backend', path.join(workspaceRoot, 'backend'));
 startService('playground-frontend', path.join(workspaceRoot, 'virtual-playground', 'frontend'));

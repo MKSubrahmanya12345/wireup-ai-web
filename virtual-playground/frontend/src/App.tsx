@@ -19,19 +19,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const inferComponentType = (item: any): string => {
-  const haystack = [item?.type, item?.displayName, item?.name, item?.purpose, item?.wokwiPartType, item?.mpn, item?.partId]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
 
-  if (/arduino|esp32|pico|teensy|microcontroller|mcu|nano|uno/.test(haystack)) return 'microcontroller';
-  if (/led|neopixel|ws2812|light/.test(haystack)) return 'led';
-  if (/button|switch|push|tact/.test(haystack)) return 'button';
-  if (/sensor/.test(haystack)) return 'sensor';
-  if (/display|screen|oled|lcd/.test(haystack)) return 'display';
-  return String(item?.type || 'module').toLowerCase();
-};
 
 const buildPlaygroundProject = (rawProject: any) => {
   const bom = Array.isArray(rawProject?.bom) ? rawProject.bom : [];
@@ -51,11 +39,22 @@ const buildPlaygroundProject = (rawProject: any) => {
     
     // Calculate base fallback position for this group
     const angle = (partIndex / Math.max(totalExpandedCount, 1)) * Math.PI * 2;
-    const hasPosition = Array.isArray(item?.position) && item.position.length === 3;
+    // ??$$$ newer code
+    const isMcu = String(item?.type || '').toLowerCase() === 'microcontroller';
+    const isZeroPos = Array.isArray(item?.position) && 
+                      Number(item.position[0]) === 0 && 
+                      Number(item.position[1]) === 0 && 
+                      Number(item.position[2]) === 0;
+    const hasPosition = Array.isArray(item?.position) && 
+                        item.position.length === 3 && 
+                        !(isZeroPos && !isMcu);
+    // ??$$$ newer code
+    const col = partIndex % 4;
+    const row = Math.floor(partIndex / 4);
     const fallbackPosition: [number, number, number] = [
-      Number((Math.cos(angle) * 2.6).toFixed(2)),
+      col * 1.5 - 3,
       0.08,
-      Number((Math.sin(angle) * 2.6).toFixed(2))
+      row * 1.5 - 1.5
     ];
     
     const baseX = hasPosition ? Number(item.position[0]) : fallbackPosition[0];
@@ -78,7 +77,8 @@ const buildPlaygroundProject = (rawProject: any) => {
       normalizedBom.push({
         key,
         displayName,
-        type: inferComponentType(item),
+        // ??$$$ newer code
+        type: String(item?.type || 'module').toLowerCase(),
         glbUrl: String(item?.glbUrl || ''),
         position: [Number(posX.toFixed(2)), baseY, baseZ],
         rotation: Array.isArray(item?.rotation) && item.rotation.length === 3 ? item.rotation : [0, Number((angle * -1).toFixed(2)), 0],

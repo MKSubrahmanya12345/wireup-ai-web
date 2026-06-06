@@ -11,6 +11,8 @@ import mongoose from "mongoose";
 import Part from "../models/part.model";
 import { searchSnapEDA, getPinMetadata, SnapEdaPin } from "./snapeda.service";
 import { cacheModelLocally } from "./modelConversion.service";
+// ??$$$ newer code
+import { getRegistry } from "./registry.services";
 
 const PIN_CACHE_TTL_DAYS = 30;
 
@@ -386,6 +388,7 @@ export function getComponentPins(wokwiPartType: string): Record<string, string> 
   return { SIG: "SIG", VCC: "VCC", GND: "GND" };
 }
 
+/* old code
 export function resolveWiring(bom: any[], mcu: string): IWiringConnection[] {
   const connections: IWiringConnection[] = [];
   let connCounter = 1;
@@ -433,6 +436,183 @@ export function resolveWiring(bom: any[], mcu: string): IWiringConnection[] {
       // Generic defaults
       assignPin("mcu.GPIO4", `${pKey}.SIG`, "SIGNAL", "#00ccff", "Signal line");
       assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Power VCC");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
+    }
+  });
+
+  return connections;
+}
+*/
+// ??$$$ newer code
+export function resolveWiring(bom: any[], mcu: string): IWiringConnection[] {
+  const connections: IWiringConnection[] = [];
+  let connCounter = 1;
+
+  const assignPin = (fromPin: string, toPin: string, net: string, color: string, desc: string) => {
+    connections.push({
+      id: `conn_${connCounter++}`,
+      from: fromPin,
+      to: toPin,
+      net,
+      color,
+      description: desc
+    });
+  };
+
+  const registry = getRegistry();
+  const normMcu = String(mcu || "esp32-devkit-v1").toUpperCase();
+  let mcuDef = registry[normMcu] || Object.entries(registry).find(([k]) => k.includes(normMcu) || normMcu.includes(k))?.[1];
+  if (!mcuDef) {
+    mcuDef = registry["ESP32-DEVKIT-V1"] || registry["ARDUINO_UNO"];
+  }
+
+  const isEsp32 = (mcu || "").toLowerCase().includes("esp32");
+  const allocatedDigital = new Set<string>();
+
+  // Helper to find a free digital/analog GPIO on MCU
+  const getFreeMcuGpio = (type: "digital" | "analog" | "pwm" | "usart" | "spi" = "digital"): string => {
+    if (!mcuDef) return isEsp32 ? "GPIO4" : "D4";
+
+    // Filter pins by signal type
+    const candidates = mcuDef.pins.filter((p: any) => {
+      if (p.name.includes("GND") || p.name.includes("VCC") || p.name.includes("3V3") || p.name.includes("5V")) return false;
+      if (type === "digital") return true; // generic gpio
+      return p.signals?.some((s: any) => String(s.type).toLowerCase() === type.toLowerCase());
+    });
+
+    const freePin = candidates.find((p: any) => !allocatedDigital.has(p.name));
+    if (freePin) {
+      allocatedDigital.add(freePin.name);
+      return freePin.name;
+    }
+
+    // fallback: find any free pin
+    const fallbackPin = mcuDef.pins.find((p: any) => 
+      !p.name.includes("GND") && !p.name.includes("VCC") && !p.name.includes("3V3") && !p.name.includes("5V") && !allocatedDigital.has(p.name)
+    );
+    if (fallbackPin) {
+      allocatedDigital.add(fallbackPin.name);
+      return fallbackPin.name;
+    }
+
+    return isEsp32 ? "GPIO4" : "D4";
+  };
+
+  // Pre-allocate SCL/SDA for I2C buses (to share them)
+  const mcuSDA = isEsp32 ? "GPIO21" : "A4";
+  const mcuSCL = isEsp32 ? "GPIO22" : "A5";
+
+  bom.forEach((p: any) => {
+    if (p.role === "controller") return;
+
+    const pKey = p.key;
+    const pName = (p.name || p.mpn || "").toLowerCase();
+    const mpnKey = String(p.mpn || p.partId || "").toUpperCase();
+    const regItem = registry[mpnKey];
+
+    // Check if we can route using registry interface metadata
+    if (regItem && Array.isArray(regItem.pins)) {
+      let hasMappedInterfaces = false;
+
+      // 1. Identify I2C pins
+      const sdaPin = regItem.pins.find((pin: any) => pin.signals?.some((s: any) => s.type === "i2c" && s.role === "SDA"));
+      const sclPin = regItem.pins.find((pin: any) => pin.signals?.some((s: any) => s.type === "i2c" && s.role === "SCL"));
+
+      if (sdaPin && sclPin) {
+        assignPin(`mcu.${mcuSDA}`, `${pKey}.${sdaPin.name}`, "I2C_SDA", "#0066ff", "I2C data line");
+        assignPin(`mcu.${mcuSCL}`, `${pKey}.${sclPin.name}`, "I2C_SCL", "#ffcc00", "I2C clock line");
+        hasMappedInterfaces = true;
+      }
+
+      // 2. Identify Power and Ground pins
+      regItem.pins.forEach((pin: any) => {
+        const isGnd = pin.name.toUpperCase().includes("GND") || pin.signals?.some((s: any) => s.type === "power" && s.role === "GND");
+        const isVcc = pin.name.toUpperCase().includes("VCC") || pin.name.toUpperCase().includes("VDD") || pin.name.toUpperCase().includes("V+") || pin.signals?.some((s: any) => s.type === "power" && s.role === "VCC");
+
+        if (isGnd) {
+          assignPin("mcu.GND", `${pKey}.${pin.name}`, "POWER_GND", "#000000", "Ground");
+        } else if (isVcc) {
+          assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.${pin.name}`, "POWER_VCC", "#ff0000", "VCC power supply");
+        }
+      });
+
+      // 3. Identify special/other signal pins (PWM, Analog, USART, SPI)
+      regItem.pins.forEach((pin: any) => {
+        // Skip I2C and Power pins we mapped
+        if (pin === sdaPin || pin === sclPin) return;
+        const isGnd = pin.name.toUpperCase().includes("GND") || pin.signals?.some((s: any) => s.type === "power" && s.role === "GND");
+        const isVcc = pin.name.toUpperCase().includes("VCC") || pin.name.toUpperCase().includes("VDD") || pin.name.toUpperCase().includes("V+") || pin.signals?.some((s: any) => s.type === "power" && s.role === "VCC");
+        if (isGnd || isVcc) return;
+
+        const sig = pin.signals?.[0];
+        if (sig) {
+          const type = String(sig.type).toLowerCase();
+          if (type === "pwm") {
+            const mcuPin = getFreeMcuGpio("pwm");
+            assignPin(`mcu.${mcuPin}`, `${pKey}.${pin.name}`, `${pKey.toUpperCase()}_PWM`, "#ff6600", "PWM control line");
+            hasMappedInterfaces = true;
+          } else if (type === "analog") {
+            const mcuPin = getFreeMcuGpio("analog");
+            assignPin(`mcu.${mcuPin}`, `${pKey}.${pin.name}`, `${pKey.toUpperCase()}_ANALOG`, "#00ccaa", "Analog signal");
+            hasMappedInterfaces = true;
+          } else if (type === "spi") {
+            // SPI mapping
+            const role = String(sig.role).toUpperCase();
+            let mcuPin = "D13";
+            if (role === "MISO") mcuPin = isEsp32 ? "GPIO19" : "D12";
+            else if (role === "MOSI") mcuPin = isEsp32 ? "GPIO23" : "D11";
+            else if (role === "SCK") mcuPin = isEsp32 ? "GPIO18" : "D13";
+            else if (role === "CS" || role === "SS") mcuPin = getFreeMcuGpio("digital");
+            assignPin(`mcu.${mcuPin}`, `${pKey}.${pin.name}`, `SPI_${role}`, "#a855f7", `SPI ${role}`);
+            hasMappedInterfaces = true;
+          } else if (type === "usart" || type === "uart") {
+            // Serial cross connection (TX to RX, RX to TX)
+            const role = String(sig.role).toUpperCase();
+            let mcuPin = "D0";
+            if (role === "TX") mcuPin = isEsp32 ? "GPIO16" : "D0"; // MCU RX
+            else if (role === "RX") mcuPin = isEsp32 ? "GPIO17" : "D1"; // MCU TX
+            assignPin(`mcu.${mcuPin}`, `${pKey}.${pin.name}`, `UART_${role}`, "#f43f5e", `UART ${role}`);
+            hasMappedInterfaces = true;
+          } else if (type === "digital") {
+            const mcuPin = getFreeMcuGpio("digital");
+            assignPin(`mcu.${mcuPin}`, `${pKey}.${pin.name}`, `${pKey.toUpperCase()}_SIG`, "#00cc66", "Digital signal line");
+            hasMappedInterfaces = true;
+          }
+        }
+      });
+
+      if (hasMappedInterfaces) return;
+    }
+
+    // Fallback path: Legacy name-based regex wiring configuration
+    if (pName.includes("mpu6050") || pName.includes("gyro") || pName.includes("i2c") || pName.includes("sensor")) {
+      assignPin(`mcu.${mcuSDA}`, `${pKey}.SDA`, "I2C_SDA", "#0066ff", "I2C data line");
+      assignPin(`mcu.${mcuSCL}`, `${pKey}.SCL`, "I2C_SCL", "#ffcc00", "I2C clock line");
+      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "VCC power supply");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
+    } else if (pName.includes("led")) {
+      const pin = getFreeMcuGpio("digital");
+      assignPin(`mcu.${pin}`, `${pKey}.A`, "LED_ANODE", "#00ccff", "LED Anode Control");
+      assignPin("mcu.GND", `${pKey}.C`, "POWER_GND", "#000000", "LED Cathode Ground");
+    } else if (pName.includes("dht")) {
+      const pin = getFreeMcuGpio("digital");
+      assignPin(`mcu.${pin}`, `${pKey}.SDA`, "DHT_DATA", "#00ccff", "DHT data signal");
+      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "DHT VCC");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "DHT Ground");
+    } else if (pName.includes("button") || pName.includes("switch") || pName.includes("tact")) {
+      const pin = getFreeMcuGpio("digital");
+      assignPin(`mcu.${pin}`, `${pKey}.SIG`, "BUTTON_SIG", "#00cc66", "Button signal input");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Button Ground");
+    } else if (pName.includes("servo") || pName.includes("motor")) {
+      const pin = getFreeMcuGpio("pwm");
+      assignPin(`mcu.${pin}`, `${pKey}.PWM`, "SERVO_PWM", "#ff6600", "Servo control line");
+      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Servo VCC");
+      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Servo Ground");
+    } else {
+      // Generic defaults
+      const pin = getFreeMcuGpio("digital");
+      assignPin(`mcu.${pin}`, `${pKey}.SIG`, "SIGNAL", "#00ccff", "Signal line");
+      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Power VCC");
       assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
     }
   });
