@@ -56,8 +56,11 @@ export class SimulationEngine {
   async start(sketch: string, bom: ComponentItem[], wiring: Wiring[], fqbn = 'arduino:avr:uno') {
     this.stop();
 
-    this.emitLog('[SIM] Compiling sketch for Arduino Uno', 'info');
+    // ??$$$ newer code \u2014 emit compile phases as distinct log steps (not per render)
+    this.emitLog('[SIM] Compiling sketch for Arduino Uno (avr-gcc)', 'info');
     const hex = await compileSketch(sketch, fqbn);
+    this.emitLog('[SIM] Linking firmware binary...', 'info');
+    this.emitLog('[SIM] Flashing firmware to virtual CPU...', 'info');
 
     this.lcd = new LCDPeripheral(wiring, bom);
     this.button = new ButtonPeripheral(wiring, bom);

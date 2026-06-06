@@ -9,6 +9,7 @@ import rotationService from "./keyRotation.service";
 // ??$$$ newer code
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { resolveWiring } from "./pinResolver.service";
+import { packComponents } from "../../lib/binPacking";
 
 // ??$$$ NEW FLOW
 function parseIfString(val: any): any {
@@ -124,7 +125,17 @@ async function executeGetPartDetails(args: any) {
     if (partDoc) {
       // Structure specs nicely
       const specsObj = partDoc.specs || {};
-      const interfaces = partDoc.interfaces || (specsObj.Interface ? [specsObj.Interface] : []);
+      let interfaces = partDoc.interfaces || (specsObj.Interface ? [specsObj.Interface] : []);
+      
+      // If interfaces are empty, add defaults for common MCUs to fix compatibility checks
+      const partNameLower = (partDoc.name || "").toLowerCase();
+      if (interfaces.length === 0) {
+        if (partNameLower.includes("arduino uno") || partNameLower.includes("arduino nano") || partNameLower.includes("arduino mega")) {
+          interfaces = ["I2C", "SPI", "UART", "GPIO", "Analog"];
+        } else if (partNameLower.includes("esp32")) {
+          interfaces = ["WiFi", "Bluetooth", "I2C", "SPI", "UART", "GPIO", "Analog", "DAC"];
+        }
+      }
       
       return {
         found: true,
@@ -138,7 +149,7 @@ async function executeGetPartDetails(args: any) {
             voltage: specsObj.Voltage || specsObj["Supply Voltage"] || specsObj["Operating Voltage"] || "3.3V",
             current: specsObj.Current || specsObj["Supply Current"] || "80mA typical",
             dimensions: specsObj.Dimensions || specsObj.Size || "N/A",
-            interfaces: interfaces,
+            interfaces,
             gpioCount: specsObj.GPIOs || specsObj["Number of I/Os"] || 0,
             flashSize: specsObj.Flash || specsObj["Program Memory Size"] || "N/A",
             ...specsObj
@@ -1243,13 +1254,63 @@ async function executeGenerateDiagramJson(args: any) {
   const connections = parseIfString(args.connections);
 
   try {
-    const formattedParts = parts.map((p: any, idx: number) => ({
-      type: p.wokwiPartType || "wokwi-esp32-devkit-v1",
-      id: p.id || p.key || `part_${idx}`,
-      top: idx * 250,
-      left: 0,
-      attrs: {}
+    // Define default dimensions for common Wokwi parts for layout purposes (in millimeters)
+    const WOKWI_PART_DIMS_MM: Record<string, { width: number; height: number }> = {
+      "wokwi-arduino-uno": { width: 68.6, height: 53.4 },
+      "wokwi-arduino-mega": { width: 101.52, height: 53.3 },
+      "wokwi-arduino-nano": { width: 45, height: 18 },
+      "wokwi-esp32-devkit-v1": { width: 51.3, height: 28.5 },
+      "wokwi-pi-pico": { width: 51, height: 21 },
+      "wokwi-lcd1602": { width: 80, height: 36 }, // Common 16x2 LCD module
+      "wokwi-led": { width: 8, height: 8 }, // 5mm LED
+      "wokwi-resistor": { width: 15, height: 5 }, // Standard 1/4W resistor
+      "wokwi-pushbutton": { width: 12, height: 12 }, // 6x6mm tactile button
+      "wokwi-potentiometer": { width: 17, height: 20 }, // Small potentiometer
+      "wokwi-dht22": { width: 15.1, height: 25 }, // DHT22 sensor
+      "wokwi-mpu6050": { width: 21, height: 16 }, // MPU6050 module
+      "wokwi-ssd1306": { width: 28, height: 28 }, // 0.96" OLED
+      "wokwi-servo": { width: 23, height: 29 }, // SG90 servo
+      "wokwi-hc-sr04": { width: 45, height: 20 }, // HC-SR04 ultrasonic sensor
+      "default": { width: 30, height: 30 } // Fallback for unknown parts
+    };
+
+    const PIXELS_PER_MM = 10; // Approximate conversion factor for Wokwi units (1mm = 10 pixels)
+
+    const partsWithDims = parts.map((p: any) => {
+      const dims = WOKWI_PART_DIMS_MM[p.wokwiPartType] || WOKWI_PART_DIMS_MM.default;
+      // Convert dimensions from mm to Wokwi pixel units
+      return { ...p, width: dims.width * PIXELS_PER_MM, height: dims.height * PIXELS_PER_MM };
+    });
+
+    // Use a simple bin packer for a more realistic layout
+    // Increase bin size to allow more spread-out placement
+    const binWidth = 1000; // Wokwi pixel units
+    const binHeight = 800; // Wokwi pixel units
+    const { placements, unplaced } = packComponents(partsWithDims, binWidth, binHeight);
+
+    const warnings: string[] = [];
+    if (unplaced.length > 0) {
+      warnings.push(`${unplaced.length} components could not be placed in the default layout area.`);
+    }
+
+    const formattedParts = placements.map((p: any) => ({
+      type: p.wokwiPartType,
+      id: p.id || p.key,
+      top: p.y,
+      left: p.x,
+      attrs: p.attrs || {}
     }));
+
+    // Add unplaced parts below the main layout
+    unplaced.forEach((p: any, idx: number) => {
+      formattedParts.push({
+        type: p.wokwiPartType,
+        id: p.id || p.key,
+        top: binHeight + 20 + (idx * 50),
+        left: 10,
+        attrs: p.attrs || {}
+      });
+    });
 
     const colorMap: Record<string, string> = {
       "#ff0000": "red",
@@ -1265,20 +1326,23 @@ async function executeGenerateDiagramJson(args: any) {
       const cleanPin = (pStr: string) => {
         const partsList = pStr.split(".");
         const partRef = partsList[0];
-        const pinRef = partsList[1] || "";
+        let pinRef = partsList[1] || "";
         
         let targetId = partRef;
-        const matchingPart = parts.find((p: any) => p.key === partRef || p.id === partRef);
+        const matchingPart = parts.find((p: any) => p.key === partRef);
         if (matchingPart) {
           targetId = matchingPart.id || matchingPart.key;
         }
 
-        const normalizedPin = pinRef.replace("GPIO", "");
+        // Normalize common pin names for Wokwi
+        if (pinRef.toUpperCase() === 'K') pinRef = 'C'; // LED Cathode
+
+        const normalizedPin = pinRef.replace("GPIO", "").replace(/^D(?=\d)/, ''); // D13 -> 13
         return `${targetId}:${normalizedPin}`;
       };
 
       const color = colorMap[c.color] || "gray";
-      return [cleanPin(c.from), cleanPin(c.to), color, []];
+      return [cleanPin(c.from), cleanPin(c.to), color, []]; // Wokwi auto-routes if route is empty array
     });
 
     const diagramJson = {
@@ -1294,7 +1358,7 @@ async function executeGenerateDiagramJson(args: any) {
       diagramJson,
       partCount: parts.length,
       connectionCount: connections.length,
-      warnings: []
+      warnings
     };
   } catch (err: any) {
     console.error("executeGenerateDiagramJson failed:", err);

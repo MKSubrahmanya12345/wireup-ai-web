@@ -73,35 +73,130 @@ const matchesComponent = (item: ComponentItem, matcher: (name: string, type: str
 const isMicrocontrollerComponent = (item: ComponentItem) =>
   matchesComponent(item, (name, type) => type === 'microcontroller' || name.includes('arduino') || name.includes('uno'));
 
+// ??$$$ newer code — power/ground rail pin names — never valid GPIO signal pins
+const POWER_PINS = new Set([
+  'GND', 'VCC', '5V', '3V3', '3.3V', 'VIN', 'AREF', 'RESET',
+  'K', 'C', // LED cathode legs often wired to GND via these
+]);
+
+// ??$$$ newer code — build undirected adjacency graph of wiring connections
+// so we can resolve multi-hop paths like mcu.D13 -> resistor.1 -> led.A
+const buildWiringGraph = (wiring: Wiring[]) => {
+  // ??$$$ newer code — each edge stores neighborPin = the pin on the DESTINATION side.
+  // e.g. wire "mcu.D13 -> resistor.1":
+  //   forward edge  mcu->resistor: neighborPin = "1"   (resistor's pin)
+  //   backward edge resistor->mcu: neighborPin = "D13" (MCU's pin)
+  // So when BFS reaches the MCU node, neighborPin IS the MCU GPIO pin.
+  const graph = new Map<string, { partKey: string; neighborPin: string }[]>();
+
+  const add = (fromPart: string, toPart: string, toPin: string) => {
+    if (!graph.has(fromPart)) graph.set(fromPart, []);
+    graph.get(fromPart)!.push({ partKey: toPart, neighborPin: toPin });
+  };
+
+  for (const wire of wiring || []) {
+    const from = parseEndpoint(wire.from);
+    const to   = parseEndpoint(wire.to);
+    if (!from.partKey || !to.partKey) continue;
+    add(from.partKey, to.partKey, normalizePin(to.pin));   // forward
+    add(to.partKey, from.partKey, normalizePin(from.pin)); // backward
+  }
+
+  return graph;
+};
+
 const findWiredPin = (
   project: ProjectData,
   matcher: (item: ComponentItem) => boolean
 ) => {
-  const componentKeys = new Set(
-    project.bom.filter(matcher).map((item) => String(item.key || '').toLowerCase())
-  );
-  const mcuKeys = new Set(
-    project.bom.filter(isMicrocontrollerComponent).map((item) => String(item.key || '').toLowerCase())
-  );
-
-  mcuKeys.add('arduino');
-  mcuKeys.add('mcu');
-
+  // ??$$$ newer code — collect all wiring part keys so we can bridge key mismatches
+  // The wiring uses short role keys ("led", "resistor") while BOM items have
+  // safeId-ified keys like "red-led-5mm". We resolve by substring matching.
+  const allWiringPartKeys = new Set<string>();
   for (const wire of project.wiring || []) {
     const from = parseEndpoint(wire.from);
-    const to = parseEndpoint(wire.to);
+    const to   = parseEndpoint(wire.to);
+    if (from.partKey) allWiringPartKeys.add(from.partKey);
+    if (to.partKey)   allWiringPartKeys.add(to.partKey);
+  }
 
-    if (componentKeys.has(from.partKey) && mcuKeys.has(to.partKey) && to.pin) {
-      return normalizePin(to.pin);
+  // Build the set of effective keys for the matched BOM items:
+  // 1. Use item.key directly (exact match)
+  // 2. Also add any wiring part-key that is a substring of item.key, or vice versa
+  const matchedBomItems = project.bom.filter(matcher);
+  const componentKeys = new Set<string>();
+  for (const item of matchedBomItems) {
+    const bomKey = String(item.key || '').toLowerCase();
+    if (bomKey) componentKeys.add(bomKey);
+    // Bridge: if a wiring part-key is a token inside the BOM key (or vice versa), treat as same part
+    for (const wiringKey of allWiringPartKeys) {
+      if (bomKey.includes(wiringKey) || wiringKey.includes(bomKey)) {
+        componentKeys.add(wiringKey);
+      }
     }
+  }
 
-    if (componentKeys.has(to.partKey) && mcuKeys.has(from.partKey) && from.pin) {
-      return normalizePin(from.pin);
+  const mcuItems = project.bom.filter(isMicrocontrollerComponent);
+  const mcuKeys = new Set<string>(['arduino', 'mcu']);
+  for (const item of mcuItems) {
+    const bomKey = String(item.key || '').toLowerCase();
+    if (bomKey) mcuKeys.add(bomKey);
+    for (const wiringKey of allWiringPartKeys) {
+      if (bomKey.includes(wiringKey) || wiringKey.includes(bomKey)) {
+        mcuKeys.add(wiringKey);
+      }
+    }
+  }
+
+
+  // ??$$$ newer code — fast path: direct single-hop wire, must be a GPIO signal pin
+  for (const wire of project.wiring || []) {
+    const from = parseEndpoint(wire.from);
+    const to   = parseEndpoint(wire.to);
+
+    if (componentKeys.has(from.partKey) && mcuKeys.has(to.partKey)) {
+      const pin = normalizePin(to.pin);
+      if (pin && !POWER_PINS.has(pin)) return pin;
+    }
+    if (componentKeys.has(to.partKey) && mcuKeys.has(from.partKey)) {
+      const pin = normalizePin(from.pin);
+      if (pin && !POWER_PINS.has(pin)) return pin;
+    }
+  }
+
+  // ??$$$ newer code — multi-hop BFS toward MCU.
+  // neighborPin = the pin on the DESTINATION node when traversing each edge.
+  // When we step onto an MCU node, neighborPin is the exact MCU GPIO pin.
+  // Skip power-rail pins so led.K->mcu.GND never masks mcu.D13->resistor->led.
+  const graph = buildWiringGraph(project.wiring || []);
+
+  for (const startKey of componentKeys) {
+    const visited = new Set<string>([startKey]);
+    const queue: string[] = [startKey];
+
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+
+      for (const { partKey: next, neighborPin } of graph.get(current) || []) {
+        // ??$$$ newer code — always check MCU nodes regardless of visited,
+        // because a power-rail edge (led.K->GND) can mark MCU visited BEFORE
+        // the signal-path edge (resistor->mcu.D13) is reached, silently skipping it.
+        if (mcuKeys.has(next)) {
+          if (neighborPin && !POWER_PINS.has(neighborPin)) return neighborPin;
+          // Power-rail to MCU — keep searching, do NOT add to visited
+          continue;
+        }
+
+        if (visited.has(next)) continue;
+        visited.add(next);
+        queue.push(next);
+      }
     }
   }
 
   return '';
 };
+
 
 const resolveLedState = (project: ProjectData, pins: Record<string, boolean>) => {
   const pin = findWiredPin(project, (item) =>
@@ -144,6 +239,8 @@ interface ProjectState {
   currentTab: 'landing' | 'playground';
   project: ProjectData;
   simulationRunning: boolean;
+  compiling: boolean; // ??$$$ newer code — distinct compile-phase flag
+  compilePhase: string; // ??$$$ newer code — current compile step message
   ledState: boolean;
   buttonPressed: boolean;
   lcdLine1: string;
@@ -178,6 +275,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   currentTab: 'landing',
   project: projectData,
   simulationRunning: false,
+  compiling: false,       // ??$$$ newer code
+  compilePhase: '',       // ??$$$ newer code
   ledState: false,
   buttonPressed: false,
   lcdLine1: EMPTY_LCD_LINE,
@@ -220,6 +319,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       simulationEngine.clearListeners();
       set({
         simulationRunning: false,
+        compiling: false,
+        compilePhase: '',
         voltage: 0,
         cpuUsage: 0,
         ledState: false,
@@ -232,7 +333,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       return;
     }
 
-    if (get().simulationRunning) {
+    // ??$$$ newer code — block if already running OR compiling
+    if (get().simulationRunning || get().compiling) {
       return;
     }
 
@@ -240,6 +342,10 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     simulationEngine.stop();
     simulationEngine.clearListeners();
+
+    // ??$$$ newer code — enter compile phase
+    set({ compiling: true, compilePhase: 'Sending sketch to compiler...' });
+    get().addLog('[SIM] Starting compilation pipeline...', 'system');
 
     simulationEngine.onLCDUpdate((line1, line2, backlight) => {
       set({
@@ -250,36 +356,70 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     });
 
     simulationEngine.onGPIOUpdate((pins) => {
+      // ??$$$ newer code — debug: dump BOM + wiring + resolved pin on FIRST gpio event only
+      if (Object.keys(get().gpioPins).length === 0) {
+        const bomDump = project.bom.map((i: any) => `${i.key}[${i.type}]`).join(', ');
+        const wiringDump = (project.wiring || []).map((w: any) => `${w.from}->${w.to}`).join(' | ');
+        get().addLog(`[DEBUG-BOM] ${bomDump}`, 'system');
+        get().addLog(`[DEBUG-WIRING] ${wiringDump}`, 'system');
+      }
+      const ledPin = (() => {
+        try {
+          return findWiredPin(project, (item) =>
+            matchesComponent(item, (name, type) => type === 'led' || name.includes('led'))
+          );
+        } catch { return 'ERR'; }
+      })();
+      const d13Val = pins['D13'];
+      if (d13Val !== undefined) {
+        get().addLog(`[DEBUG] D13=${d13Val} | resolvedLedPin="${ledPin}" | ledState=${Boolean(pins[ledPin])}`, 'system');
+      }
       set({
         gpioPins: pins,
         ledState: resolveLedState(project, pins)
       });
     });
 
+
+
     simulationEngine.onSerial((text) => {
       get().addLog(text, inferLogType(text));
     });
 
+    // ??$$$ newer code — intercept log events to also update compilePhase
     simulationEngine.onLog((text, type) => {
       get().addLog(text, type);
+      if (text.includes('Compiling')) {
+        set({ compilePhase: 'Compiling Arduino sketch (avr-gcc)...' });
+      } else if (text.includes('Linking')) {
+        set({ compilePhase: 'Linking firmware binary...' });
+      } else if (text.includes('Flashing')) {
+        set({ compilePhase: 'Flashing firmware to virtual CPU...' });
+      } else if (text.includes('Compiled') || text.includes('running') || text.includes('online')) {
+        set({ compilePhase: 'Firmware ready — booting CPU...' });
+      }
     });
 
     try {
+      set({ compilePhase: 'Compiling Arduino sketch (avr-gcc)...' });
       await simulationEngine.start(project.sketch || '', project.bom, project.wiring);
       set({
         simulationRunning: true,
+        compiling: false,
+        compilePhase: '',
         voltage: 5,
         cpuUsage: 14,
-        lcdLine1: EMPTY_LCD_LINE,
-        lcdLine2: EMPTY_LCD_LINE,
-        lcdBacklight: false,
+        // ??$$$ newer code — do NOT reset LCD here; setup() already wrote via listeners
         buttonPressed: false
       });
+      get().addLog('[SIM] CPU core online — sketch executing', 'boot');
     } catch (error: any) {
       simulationEngine.stop();
       simulationEngine.clearListeners();
       set({
         simulationRunning: false,
+        compiling: false,
+        compilePhase: '',
         voltage: 0,
         cpuUsage: 0,
         lcdBacklight: false
@@ -338,6 +478,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const normalized = normalizeProjectData(get().project);
     set({
       simulationRunning: false,
+      compiling: false,       // ??$$$ newer code
+      compilePhase: '',       // ??$$$ newer code
       ledState: normalized.editableJson.ledInitialState,
       buttonPressed: normalized.editableJson.buttonInitialState,
       lcdLine1: EMPTY_LCD_LINE,

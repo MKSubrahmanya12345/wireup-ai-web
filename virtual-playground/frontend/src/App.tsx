@@ -21,6 +21,38 @@ import { motion } from 'framer-motion';
 
 
 
+// ??$$$ newer code — map API BOM fields to Scene.tsx component type strings
+const deriveComponentType = (item: any): string => {
+  const subsystem = String(item?.subsystem || '').toLowerCase();
+  const mpn = String(item?.mpn || '').toLowerCase();
+  const key = String(item?.key || '').toLowerCase();
+  const name = String(item?.displayName || item?.name || '').toLowerCase();
+
+  // Microcontroller
+  if (subsystem === 'mcu' || key === 'mcu' || name.includes('arduino') || name.includes('uno') || mpn.includes('arduino')) {
+    return 'microcontroller';
+  }
+  // LED
+  if (subsystem === 'output' && (name.includes('led') || mpn.includes('led')) || key === 'led' || name.includes('led')) {
+    return 'led';
+  }
+  // Button / Switch
+  if (subsystem === 'input' || key === 'button' || name.includes('button') || name.includes('pushbutton') || name.includes('switch') || mpn.includes('pushbutton') || mpn.includes('tactile')) {
+    return 'button';
+  }
+  // Display (LCD, OLED, screen)
+  if (subsystem === 'display' || key === 'lcd' || name.includes('lcd') || name.includes('oled') || name.includes('display') || name.includes('screen') || mpn.includes('lcd')) {
+    return 'display';
+  }
+  // Passive (resistor, capacitor, etc)
+  if (subsystem === 'passive' || key === 'resistor' || name.includes('resistor') || name.includes('capacitor') || mpn.includes('resistor')) {
+    return 'passive';
+  }
+
+  // Fallback: use existing type or 'module'
+  return String(item?.type || 'module').toLowerCase();
+};
+
 const buildPlaygroundProject = (rawProject: any) => {
   const bom = Array.isArray(rawProject?.bom) ? rawProject.bom : [];
   const wiring = Array.isArray(rawProject?.wiring) ? rawProject.wiring : [];
@@ -78,7 +110,8 @@ const buildPlaygroundProject = (rawProject: any) => {
         key,
         displayName,
         // ??$$$ newer code
-        type: String(item?.type || 'module').toLowerCase(),
+        // ??$$$ newer code — derive correct type for Scene.tsx dispatch
+        type: deriveComponentType(item),
         glbUrl: String(item?.glbUrl || ''),
         position: [Number(posX.toFixed(2)), baseY, baseZ],
         rotation: Array.isArray(item?.rotation) && item.rotation.length === 3 ? item.rotation : [0, Number((angle * -1).toFixed(2)), 0],

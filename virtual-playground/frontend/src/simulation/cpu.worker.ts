@@ -361,8 +361,15 @@ const readPinLevel = (runner: RunnerState, key: string) => {
     return false;
   }
 
-  const pinRegister = descriptor.port.portConfig.PIN;
-  return Boolean(runner.cpu.data[pinRegister] & (1 << descriptor.bit));
+  const { port, bit } = descriptor;
+  // ??$$$ newer code — AVR architecture: DDR=1 means OUTPUT (write to PORT register),
+  // DDR=0 means INPUT (read from PIN register). Using PORT for output pins is correct
+  // because digitalWrite() writes to PORT, not PIN. Reading PIN for an output pin
+  // reflects external input, not what the MCU is driving — so D13 LED always read false.
+  const ddrRegister = port.portConfig.DDR;
+  const isOutput = Boolean(runner.cpu.data[ddrRegister] & (1 << bit));
+  const reg = isOutput ? port.portConfig.PORT : port.portConfig.PIN;
+  return Boolean(runner.cpu.data[reg] & (1 << bit));
 };
 
 const capturePins = (runner: RunnerState) => {

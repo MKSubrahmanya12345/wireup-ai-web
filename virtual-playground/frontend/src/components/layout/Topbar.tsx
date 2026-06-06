@@ -32,6 +32,8 @@ import { motion } from 'framer-motion';
 export const Topbar: React.FC = () => {
   const {
     simulationRunning,
+    compiling,         // ??$$$ newer code
+    compilePhase,      // ??$$$ newer code
     setSimulationRunning,
     resetSimulation,
     showWires,
@@ -106,22 +108,32 @@ export const Topbar: React.FC = () => {
 
       {/* Simulator Action Controls */}
       <div className="flex items-center space-x-2 bg-[var(--surface-alt)] border border-[var(--border)] p-1 rounded-lg">
-        {/* RUN */}
+        {/* RUN — disabled while compiling */}
         <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+          whileHover={{ scale: compiling ? 1 : 1.05 }}
+          whileTap={{ scale: compiling ? 1 : 0.95 }}
           onClick={() => {
-            void setSimulationRunning(true);
+            if (!compiling) void setSimulationRunning(true);
           }}
+          disabled={compiling}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-md text-xs font-mono font-medium transition-all ${
-            simulationRunning
+            compiling
+              ? 'bg-amber-500/20 text-amber-400 border border-amber-500/50 cursor-not-allowed'
+              : simulationRunning
               ? 'bg-[#10b981]/20 text-[#10b981] border border-[#10b981]/50 shadow-[0_0_10px_rgba(16,185,129,0.3)]'
               : 'text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5'
           }`}
-          title="Run Simulator"
+          title={compiling ? 'Compiling...' : 'Run Simulator'}
         >
-          <Play className={`w-3.5 h-3.5 ${simulationRunning ? 'fill-current animate-pulse' : ''}`} />
-          <span>RUN</span>
+          {compiling ? (
+            <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+          ) : (
+            <Play className={`w-3.5 h-3.5 ${simulationRunning ? 'fill-current animate-pulse' : ''}`} />
+          )}
+          <span>{compiling ? 'COMPILING' : 'RUN'}</span>
         </motion.button>
 
         {/* PAUSE */}
@@ -187,6 +199,22 @@ export const Topbar: React.FC = () => {
 
       {/* Live Hardware Telemetry Panel */}
       <div className="flex items-center space-x-6 text-[11px] font-mono border-l border-[var(--border)] pl-6">
+        {/* ??$$$ newer code — compile phase status banner */}
+        {compiling && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -6 }}
+            className="flex items-center space-x-2 px-3 py-1.5 bg-amber-950/50 border border-amber-700/40 rounded-lg text-amber-300 text-[10px] font-mono"
+          >
+            <svg className="w-3 h-3 animate-spin flex-shrink-0" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+            </svg>
+            <span className="truncate max-w-[200px]">{compilePhase || 'Compiling...'}</span>
+          </motion.div>
+        )}
+
         <div className="flex items-center space-x-2">
           <span className="text-[var(--text-muted)]">VCC:</span>
           <span className={`font-semibold transition-colors ${simulationRunning ? 'text-emerald-400' : 'text-slate-500'}`}>

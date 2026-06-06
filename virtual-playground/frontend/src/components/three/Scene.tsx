@@ -11,6 +11,7 @@ import { Button } from './Button';
 import { LCD16x2 } from './LCD16x2';
 import { Wire } from './Wire';
 import { WebGLErrorBoundary } from './ErrorBoundary';
+import { Resistor } from './Resistor'; // ??$$ newer code
 import { SchematicView } from './SchematicView';
 
 const GenericPart: React.FC<{
@@ -272,6 +273,18 @@ export const Scene: React.FC = () => {
                     textLine1={lcdLine1}
                     textLine2={lcdLine2}
                     backlight={lcdBacklight}
+                  />
+                );
+              }
+
+              // ??$$$ newer code â€” render resistor as proper 3D component
+              if (itemType === 'passive' || itemName.includes('resistor')) {
+                return (
+                  <Resistor
+                    key={item?.key || `resistor-${index}`}
+                    position={position}
+                    componentKey={String(item?.key || `resistor${index + 1}`)}
+                    displayName={String(item?.displayName || 'Resistor')}
                   />
                 );
               }
