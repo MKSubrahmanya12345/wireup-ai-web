@@ -12,7 +12,11 @@ const readErrorMessage = async (response: Response) => {
 };
 
 export const compileSketch = async (sketch: string, fqbn = 'arduino:avr:uno') => {
-  const endpoints = [resolvePrimaryCompileEndpoint(), FALLBACK_COMPILE_ENDPOINT];
+  // ??$$$ newer code: Use primary backend for compilation, falling back to 5001 only in development
+  const endpoints = [
+    resolvePrimaryCompileEndpoint(),
+    ...(import.meta.env.DEV ? [FALLBACK_COMPILE_ENDPOINT] : [])
+  ];
   let lastError = 'Compilation request failed';
 
   for (const endpoint of endpoints) {

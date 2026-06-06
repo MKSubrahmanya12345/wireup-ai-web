@@ -3,6 +3,12 @@ import React, { useState } from 'react';
 import { useProjectStore } from '../../store/useProjectStore';
 import { FolderOpen, FileCode, FileJson, Cpu, Radio, CheckCircle, Layers } from 'lucide-react';
 
+// ??$$$ newer code: added props interface for mobile open/close
+export interface SidebarProps {
+  isOpenMobile?: boolean;
+}
+
+/* old code
 export const Sidebar: React.FC = () => {
   const { project, selectedFile, setSelectedFile, selectedComponent, setSelectedComponent } = useProjectStore();
   const [activeTab, setActiveTab] = useState<'explorer' | 'components'>('explorer');
@@ -17,6 +23,26 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside className="w-56 flex-shrink-0 border-r border-[var(--border)] bg-[var(--surface)] flex flex-col overflow-hidden">
+*/
+
+// ??$$$ newer code: Responsive layout with mobile sliding drawer support
+export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile = false }) => {
+  const { project, selectedFile, setSelectedFile, selectedComponent, setSelectedComponent } = useProjectStore();
+  const [activeTab, setActiveTab] = useState<'explorer' | 'components'>('explorer');
+
+  const filesList = [
+    { name: 'sketch.ino',    size: 'sketch', icon: FileCode },
+    { name: 'wiring.json',   size: 'wiring', icon: FileJson },
+    { name: 'editable.json', size: 'config', icon: FileJson },
+    { name: 'scenario.json', size: 'scene',  icon: FileJson },
+    { name: 'project.json',  size: 'full',   icon: FileJson },
+  ];
+
+  return (
+    <aside className={`w-56 flex-shrink-0 border-r border-[var(--border)] bg-[var(--surface)] flex flex-col overflow-hidden transition-transform duration-300 z-40
+      md:relative md:translate-x-0 md:flex
+      fixed inset-y-12 left-0 shadow-2xl md:shadow-none
+      ${isOpenMobile ? 'translate-x-0' : '-translate-x-full'}`}>
 
       {/* tab switcher */}
       <div className="flex border-b border-[var(--border)] bg-[var(--surface-alt)] p-1 gap-1 flex-shrink-0">

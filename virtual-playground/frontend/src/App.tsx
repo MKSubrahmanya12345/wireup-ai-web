@@ -8,6 +8,7 @@ import { RightSidebar } from './components/layout/RightSidebar';
 import { BottomPanel } from './components/layout/BottomPanel';
 import { Scene } from './components/three/Scene';
 import { CodeEditor } from './components/editor/CodeEditor';
+/* old code
 import {
   Play,
   Cpu,
@@ -16,6 +17,19 @@ import {
   Sparkles,
   ChevronRight,
   Code
+} from 'lucide-react';
+*/
+// ??$$$ newer code: added FolderOpen and Settings icons for mobile layout toggles
+import {
+  Play,
+  Cpu,
+  Layers,
+  Terminal,
+  Sparkles,
+  ChevronRight,
+  Code,
+  FolderOpen,
+  Settings
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -154,12 +168,32 @@ const buildPlaygroundProject = (rawProject: any) => {
     additionalTools: Array.isArray(rawProject?.additionalTools) ? rawProject.additionalTools : []
   };
 };
-
 function App() {
+  /* old code
   const { currentTab, setTab, loadProject, addLog } = useProjectStore();
   const [viewMode, setViewMode] = useState<'split' | 'three' | 'code'>('split');
   const [loadingRemoteProject, setLoadingRemoteProject] = useState(false);
   const [remoteLoadError, setRemoteLoadError] = useState<string | null>(null);
+  */
+  // ??$$$ newer code: added mobile tracking states and drawer toggle states
+  const { currentTab, setTab, loadProject, addLog } = useProjectStore();
+  const [viewMode, setViewMode] = useState<'split' | 'three' | 'code'>('split');
+  const [loadingRemoteProject, setLoadingRemoteProject] = useState(false);
+  const [remoteLoadError, setRemoteLoadError] = useState<string | null>(null);
+
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  const [mobileLeftOpen, setMobileLeftOpen] = useState(false);
+  const [mobileRightOpen, setMobileRightOpen] = useState(false);
+  const [mobileBottomOpen, setMobileBottomOpen] = useState(false);
+
+  const activeView = isMobile && viewMode === 'split' ? 'three' : viewMode;
 
   const searchParams = useMemo(() => new URLSearchParams(window.location.search), []);
   const sessionId = searchParams.get('sessionId');
@@ -218,8 +252,10 @@ function App() {
           }
 
           if (!loadedProject) {
-            // Try to load from local playground server (5001)
-            const res = await fetch(`http://localhost:5001/api/project?sessionId=${sessionId}`);
+            // ??$$$ old code
+            // const res = await fetch(`http://localhost:5001/api/project?sessionId=${sessionId}`);
+            // ??$$$ newer code: Use consolidated playground route
+            const res = await fetch(`${apiBaseUrl}/playground/project?sessionId=${sessionId}`);
             if (res.ok) {
               loadedProject = await res.json();
             } else {
@@ -412,6 +448,80 @@ function App() {
     );
   }
 
+  // old code:
+  // return (
+  //   <div className="h-screen w-screen flex flex-col bg-[var(--bg)] text-[var(--text)] overflow-hidden font-sans relative">
+  //     {loadingRemoteProject && (
+  //       <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+  //         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-8 py-5 text-sm font-semibold text-[var(--heading)] shadow-2xl">
+  //           Loading formulated project…
+  //         </div>
+  //       </div>
+  //     )}
+  // 
+  //     <Topbar />
+  // 
+  //     {/* body row — must be min-h-0 so it doesn't overflow the viewport */}
+  //     <div className="flex-1 flex min-h-0 overflow-hidden">
+  //       <Sidebar />
+  // 
+  //       {/* centre column */}
+  //       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--bg)]">
+  // 
+  //         {/* view-mode switcher */}
+  //         <div className="h-8 flex-shrink-0 bg-[var(--surface)] border-b border-[var(--border)] flex items-center px-4 gap-1 select-none">
+  //           <span className="text-[var(--text-muted)] font-sans text-[10px] uppercase tracking-widest mr-3">View</span>
+  //           {(['split', 'three', 'code'] as const).map((mode) => {
+  //             const labels = { split: 'Split View', three: '3D Only', code: 'Code Only' };
+  //             return (
+  //               <button
+  //                 key={mode}
+  //                 onClick={() => setViewMode(mode)}
+  //                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+  //                   viewMode === mode
+  //                     ? 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30'
+  //                     : 'text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5 dark:hover:bg-white/5'
+  //                 }`}
+  //               >
+  //                 {labels[mode]}
+  //               </button>
+  //             );
+  //           })}
+  //         </div>
+  // 
+  //         {/* canvas area — flex-1 min-h-0 is essential to prevent overflow */}
+  //         <div className="flex-1 min-h-0 flex overflow-hidden">
+  //           {viewMode === 'split' && (
+  //             <>
+  //               <div className="w-1/2 h-full flex flex-col min-w-0 overflow-hidden border-r border-[var(--border)]">
+  //                 <CodeEditor />
+  //               </div>
+  //               <div className="w-1/2 h-full relative min-w-0 overflow-hidden">
+  //                 <Scene />
+  //               </div>
+  //             </>
+  //           )}
+  //           {viewMode === 'three' && (
+  //             <div className="w-full h-full relative overflow-hidden">
+  //               <Scene />
+  //             </div>
+  //           )}
+  //           {viewMode === 'code' && (
+  //             <div className="w-full h-full flex flex-col overflow-hidden">
+  //               <CodeEditor />
+  //             </div>
+  //           )}
+  //         </div>
+  // 
+  //         <BottomPanel />
+  //       </div>
+  // 
+  //       <RightSidebar />
+  //     </div>
+  //   </div>
+  // );
+
+  // ??$$$ newer code: Responsive application layout and controls
   return (
     <div className="h-screen w-screen flex flex-col bg-[var(--bg)] text-[var(--text)] overflow-hidden font-sans relative">
       {loadingRemoteProject && (
@@ -425,14 +535,27 @@ function App() {
       <Topbar />
 
       {/* body row — must be min-h-0 so it doesn't overflow the viewport */}
-      <div className="flex-1 flex min-h-0 overflow-hidden">
-        <Sidebar />
+      <div className="flex-1 flex min-h-0 overflow-hidden relative">
+        
+        {/* Mobile menu backdrop overlays */}
+        {isMobile && mobileLeftOpen && (
+          <div className="fixed inset-0 top-12 bg-black/40 backdrop-blur-xs z-30 md:hidden" onClick={() => setMobileLeftOpen(false)} />
+        )}
+        {isMobile && mobileRightOpen && (
+          <div className="fixed inset-0 top-12 bg-black/40 backdrop-blur-xs z-30 md:hidden" onClick={() => setMobileRightOpen(false)} />
+        )}
+        {isMobile && mobileBottomOpen && (
+          <div className="fixed inset-0 top-12 bottom-12 bg-black/40 backdrop-blur-xs z-30 md:hidden" onClick={() => setMobileBottomOpen(false)} />
+        )}
+
+        {/* Left Sidebar */}
+        <Sidebar isOpenMobile={mobileLeftOpen} />
 
         {/* centre column */}
         <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--bg)]">
 
-          {/* view-mode switcher */}
-          <div className="h-8 flex-shrink-0 bg-[var(--surface)] border-b border-[var(--border)] flex items-center px-4 gap-1 select-none">
+          {/* view-mode switcher (Desktop only) */}
+          <div className="hidden md:flex h-8 flex-shrink-0 bg-[var(--surface)] border-b border-[var(--border)] items-center px-4 gap-1 select-none">
             <span className="text-[var(--text-muted)] font-sans text-[10px] uppercase tracking-widest mr-3">View</span>
             {(['split', 'three', 'code'] as const).map((mode) => {
               const labels = { split: 'Split View', three: '3D Only', code: 'Code Only' };
@@ -454,7 +577,7 @@ function App() {
 
           {/* canvas area — flex-1 min-h-0 is essential to prevent overflow */}
           <div className="flex-1 min-h-0 flex overflow-hidden">
-            {viewMode === 'split' && (
+            {activeView === 'split' && (
               <>
                 <div className="w-1/2 h-full flex flex-col min-w-0 overflow-hidden border-r border-[var(--border)]">
                   <CodeEditor />
@@ -464,23 +587,70 @@ function App() {
                 </div>
               </>
             )}
-            {viewMode === 'three' && (
+            {activeView === 'three' && (
               <div className="w-full h-full relative overflow-hidden">
                 <Scene />
               </div>
             )}
-            {viewMode === 'code' && (
+            {activeView === 'code' && (
               <div className="w-full h-full flex flex-col overflow-hidden">
                 <CodeEditor />
               </div>
             )}
           </div>
 
-          <BottomPanel />
+          {/* Bottom logs console */}
+          <BottomPanel isOpenMobile={mobileBottomOpen} />
         </div>
 
-        <RightSidebar />
+        {/* Right Sidebar */}
+        <RightSidebar isOpenMobile={mobileRightOpen} />
       </div>
+
+      {/* Mobile Toolbar (Mobile only) */}
+      {isMobile && (
+        <div className="h-12 bg-[var(--surface)] border-t border-[var(--border)] flex items-center justify-around z-50 md:hidden flex-shrink-0 select-none">
+          <button
+            onClick={() => { setMobileLeftOpen(!mobileLeftOpen); setMobileRightOpen(false); setMobileBottomOpen(false); }}
+            className={`flex flex-col items-center justify-center flex-1 h-full text-[10px] font-semibold transition-all cursor-pointer ${
+              mobileLeftOpen ? 'text-indigo-500 bg-indigo-500/5' : 'text-[var(--text-muted)]'
+            }`}
+          >
+            <FolderOpen className="w-4.5 h-4.5 mb-0.5" />
+            <span>Files</span>
+          </button>
+          
+          <button
+            onClick={() => { setViewMode(activeView === 'three' ? 'code' : 'three'); setMobileLeftOpen(false); setMobileRightOpen(false); setMobileBottomOpen(false); }}
+            className={`flex flex-col items-center justify-center flex-1 h-full text-[10px] font-semibold transition-all cursor-pointer ${
+              activeView === 'code' ? 'text-indigo-500 bg-indigo-500/5' : 'text-[var(--text-muted)]'
+            }`}
+          >
+            <Code className="w-4.5 h-4.5 mb-0.5" />
+            <span>{activeView === 'code' ? '3D View' : 'Code View'}</span>
+          </button>
+
+          <button
+            onClick={() => { setMobileRightOpen(!mobileRightOpen); setMobileLeftOpen(false); setMobileBottomOpen(false); }}
+            className={`flex flex-col items-center justify-center flex-1 h-full text-[10px] font-semibold transition-all cursor-pointer ${
+              mobileRightOpen ? 'text-indigo-500 bg-indigo-500/5' : 'text-[var(--text-muted)]'
+            }`}
+          >
+            <Settings className="w-4.5 h-4.5 mb-0.5" />
+            <span>Inspect</span>
+          </button>
+
+          <button
+            onClick={() => { setMobileBottomOpen(!mobileBottomOpen); setMobileLeftOpen(false); setMobileRightOpen(false); }}
+            className={`flex flex-col items-center justify-center flex-1 h-full text-[10px] font-semibold transition-all cursor-pointer ${
+              mobileBottomOpen ? 'text-indigo-500 bg-indigo-500/5' : 'text-[var(--text-muted)]'
+            }`}
+          >
+            <Terminal className="w-4.5 h-4.5 mb-0.5" />
+            <span>Console</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

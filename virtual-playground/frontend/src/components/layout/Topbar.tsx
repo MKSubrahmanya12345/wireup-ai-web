@@ -7,6 +7,9 @@ import {
 import { motion } from 'framer-motion';
 
 export const Topbar: React.FC = () => {
+  // ??$$$ newer code: mobile navigation menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
+
   const {
     simulationRunning, compiling, compilePhase,
     setSimulationRunning, resetSimulation,
@@ -40,7 +43,7 @@ export const Topbar: React.FC = () => {
   };
 
   return (
-    <header className="h-12 flex-shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 flex items-center justify-between select-none z-10">
+    <header className="h-12 flex-shrink-0 border-b border-[var(--border)] bg-[var(--surface)] px-4 flex items-center justify-between select-none z-50 relative">
 
       {/* Brand */}
       <div className="flex items-center gap-2.5">
@@ -56,7 +59,11 @@ export const Topbar: React.FC = () => {
       </div>
 
       {/* Controls */}
+      {/* old code
       <div className="flex items-center gap-1 bg-[var(--surface-alt)] border border-[var(--border)] rounded-xl p-1">
+      */}
+      {/* ??$$$ newer code: hide controls on mobile */}
+      <div className="hidden md:flex items-center gap-1 bg-[var(--surface-alt)] border border-[var(--border)] rounded-xl p-1">
         {/* RUN */}
         <motion.button
           whileTap={{ scale: compiling ? 1 : 0.95 }}
@@ -134,7 +141,11 @@ export const Topbar: React.FC = () => {
       </div>
 
       {/* Right: telemetry + actions */}
+      {/* old code
       <div className="flex items-center gap-4 text-xs font-mono border-l border-[var(--border)] pl-4">
+      */}
+      {/* ??$$$ newer code: hide right panel on mobile */}
+      <div className="hidden md:flex items-center gap-4 text-xs font-mono border-l border-[var(--border)] pl-4">
 
         {/* compile phase banner */}
         {compiling && (
@@ -178,6 +189,134 @@ export const Topbar: React.FC = () => {
           <span>Exit</span>
         </button>
       </div>
+
+      {/* ??$$$ newer code: Mobile hamburger menu toggle button */}
+      <div className="flex md:hidden items-center gap-2">
+        {compiling && (
+          <span className="text-[10px] text-amber-500 font-mono animate-pulse max-w-[80px] truncate">
+            {compilePhase || 'Building'}
+          </span>
+        )}
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text)] hover:bg-black/5 dark:hover:bg-white/5 transition-all cursor-pointer"
+        >
+          {mobileMenuOpen ? (
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          ) : (
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* ??$$$ newer code: Hamburger dropdown overlay menu */}
+      {mobileMenuOpen && (
+        <div className="absolute top-12 left-0 right-0 bg-[var(--surface)] border-b border-[var(--border)] shadow-xl p-4 flex flex-col gap-4 z-50 md:hidden">
+          {/* Simulation Commands */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Simulator Control</p>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => { if (!compiling) { void setSimulationRunning(true); setMobileMenuOpen(false); } }}
+                disabled={compiling}
+                className={`flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold border cursor-pointer ${
+                  compiling
+                    ? 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                    : simulationRunning
+                    ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+                    : 'bg-[var(--surface-alt)] text-[var(--text)] border-[var(--border)]'
+                }`}
+              >
+                <Play className="w-3 h-3" />
+                <span>Run</span>
+              </button>
+              <button
+                onClick={() => { void setSimulationRunning(false); setMobileMenuOpen(false); }}
+                className="flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold bg-[var(--surface-alt)] text-[var(--text)] border border-[var(--border)] cursor-pointer"
+              >
+                <Pause className="w-3 h-3" />
+                <span>Pause</span>
+              </button>
+              <button
+                onClick={() => { resetSimulation(); setMobileMenuOpen(false); }}
+                className="flex items-center justify-center gap-1 py-2 rounded-lg text-xs font-semibold bg-[var(--surface-alt)] text-red-500 border border-[var(--border)] cursor-pointer"
+              >
+                <RotateCcw className="w-3 h-3" />
+                <span>Reset</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Telemetry metrics */}
+          <div className="bg-[var(--surface-alt)] border border-[var(--border)] rounded-xl p-3">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2">Telemetry</p>
+            <div className="grid grid-cols-3 gap-2 text-center text-xs font-mono">
+              <div className="border-r border-[var(--border)]">
+                <span className="text-[9px] text-[var(--text-muted)] block">VCC</span>
+                <span className={`font-semibold ${simulationRunning ? 'text-emerald-500' : 'text-[var(--text-muted)]'}`}>{voltage.toFixed(2)}V</span>
+              </div>
+              <div className="border-r border-[var(--border)]">
+                <span className="text-[9px] text-[var(--text-muted)] block">CPU</span>
+                <span className={`font-semibold ${simulationRunning ? 'text-indigo-400' : 'text-[var(--text-muted)]'}`}>{cpuUsage}%</span>
+              </div>
+              <div>
+                <span className="text-[9px] text-[var(--text-muted)] block">FPS</span>
+                <span className={`font-semibold ${simulationRunning ? 'text-violet-400' : 'text-[var(--text-muted)]'}`}>{simulationRunning ? fps : 0}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* View Toggles */}
+          <div className="flex flex-col gap-1.5">
+            <p className="text-[9px] font-bold uppercase tracking-wider text-[var(--text-muted)]">Visual Layers</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={toggleWires}
+                className={`py-2 rounded-lg text-xs font-semibold border cursor-pointer text-center ${
+                  showWires
+                    ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20'
+                    : 'text-[var(--text-muted)] bg-[var(--surface-alt)] border-[var(--border)]'
+                }`}
+              >
+                Wires: {showWires ? 'Show' : 'Hide'}
+              </button>
+              <button
+                onClick={toggleLabels}
+                className={`py-2 rounded-lg text-xs font-semibold border cursor-pointer text-center ${
+                  showLabels
+                    ? 'text-indigo-500 bg-indigo-500/10 border-indigo-500/20'
+                    : 'text-[var(--text-muted)] bg-[var(--surface-alt)] border-[var(--border)]'
+                }`}
+              >
+                Labels: {showLabels ? 'Show' : 'Hide'}
+              </button>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="grid grid-cols-2 gap-2 border-t border-[var(--border)] pt-3">
+            <button
+              onClick={() => { void handleExport(); setMobileMenuOpen(false); }}
+              disabled={exporting}
+              className="flex items-center justify-center gap-1 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] text-[var(--text)] text-xs font-semibold cursor-pointer"
+            >
+              <HardDrive className="w-3.5 h-3.5" />
+              <span>{exporting ? 'Exporting' : 'Export'}</span>
+            </button>
+            <button
+              onClick={() => { resetSimulation(); setTab('landing'); setMobileMenuOpen(false); }}
+              className="flex items-center justify-center gap-1 py-2 rounded-lg border border-[var(--border)] bg-[var(--surface-alt)] text-red-500 text-xs font-semibold cursor-pointer"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              <span>Exit</span>
+            </button>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

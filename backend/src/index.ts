@@ -27,6 +27,7 @@ import libraryRoutes from "./routes/library.route";
 // ??$$$ NEW FLOW
 import newflowRoutes from "./routes/newflow.route";
 import partRoutes from "./routes/part.route";
+import playgroundRoutes from "./routes/playground.route";
 import { exec as cbExec } from "child_process";
 import { promisify } from "util";
 import { existsSync } from "fs";
@@ -113,6 +114,7 @@ app.use("/api", compileRoutes);
 app.use("/api", libraryRoutes);
 app.use("/api", newflowRoutes);
 app.use("/api", partRoutes);
+app.use("/api/playground", playgroundRoutes);
 
 // ??$$$ Serve locally cached 3D models from E: and backend storage folder
 const modelsDir = "E:\\wireup_formulation_exports\\models";

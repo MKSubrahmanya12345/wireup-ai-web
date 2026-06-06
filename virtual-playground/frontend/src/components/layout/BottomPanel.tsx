@@ -5,7 +5,18 @@ import type { LogEntry } from '../../store/useProjectStore';
 import { Trash2, Terminal, RefreshCw, Layers } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+// ??$$$ newer code: added props interface for mobile open/close
+export interface BottomPanelProps {
+  isOpenMobile?: boolean;
+}
+
+/* old code
 export const BottomPanel: React.FC = () => {
+  const { logs, clearLogs, simulationRunning, compiling, compilePhase } = useProjectStore();
+*/
+
+// ??$$$ newer code: Responsive layout with mobile sliding panel support
+export const BottomPanel: React.FC<BottomPanelProps> = ({ isOpenMobile = false }) => {
   const { logs, clearLogs, simulationRunning, compiling, compilePhase } = useProjectStore();
   const [activeTab, setActiveTab] = useState<'output' | 'ports'>('output');
   const [filter, setFilter] = useState<'all' | 'io' | 'system'>('all');
@@ -31,7 +42,14 @@ export const BottomPanel: React.FC = () => {
   };
 
   return (
+    /* old code
     <div className="h-44 flex-shrink-0 border-t border-[var(--border)] bg-[var(--surface)] flex flex-col overflow-hidden">
+    */
+    // ??$$$ newer code: Support sliding panel on mobile (sitting above bottom toolbar h-12)
+    <div className={`h-44 flex-shrink-0 border-t border-[var(--border)] bg-[var(--surface)] flex flex-col overflow-hidden transition-transform duration-300 z-40
+      md:relative md:translate-y-0 md:flex
+      fixed bottom-12 left-0 right-0 shadow-2xl md:shadow-none
+      ${isOpenMobile ? 'translate-y-0' : 'translate-y-full'}`}>
 
       {/* header */}
       <div className="h-8 flex-shrink-0 border-b border-[var(--border)] bg-[var(--surface-alt)] px-3 flex items-center justify-between">
