@@ -1,6 +1,5 @@
-// ??$$$ group 6 - Physical Enclosure & 3D Modeling (Phase 5)
-// @ts-nocheck
-// ??$$$ - Custom Physics Simulation Engine
+//This file has been inspected, and it is legacy, please change accordingly, and use better folder structuring
+//@ts-nocheck
 
 // Basic 3D Vector Math Helpers
 const vecAdd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];

@@ -1,4 +1,4 @@
-// ??$$$ group 1 - Landing Page & Authentication
+//This file is inspected and is fine for now, not certified tho, cause might need to come back again
 import { create } from "zustand";
 import { axiosInstance } from "../lib/axios.ts";
 import toast from "react-hot-toast";

@@ -1,8 +1,8 @@
-// ??$$$ group 8 - Core Platform & Shared Infrastructure
+//this file has been inspected and certified
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import App from "./App.jsx";
+import App from "./App.tsx";
 
 import { BrowserRouter } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
@@ -20,12 +20,16 @@ createRoot(rootElement).render(
       <Toaster
         position="top-right"
         toastOptions={{
+          duration: 3000,
           style: {
-            border: "1px solid var(--toast-border)",
-            background: "var(--toast-bg)",
-            color: "var(--toast-text)",
+            border: "1px solid #4ade80",
+            background: "#0a0f0a",
+            color: "#86efac",
+            fontFamily: "var(--font-mono)",
             fontWeight: "600",
-          },
+            letterSpacing: "0.02em",
+            borderRadius: "10px",
+          }
         }}
       />
     </BrowserRouter>

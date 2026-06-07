@@ -1,9 +1,9 @@
-// ??$$$ group 1 - Landing Page & Authentication
+//This file is inspected not certified, lots of changes to be done - ie: font, better background, better way to show logo, etc.
 import { useState, type FormEvent } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/useAuthStore.ts";
-import forgeLogo from "../assets/forge logo.png";
+import forgeLogo from "../assets/logo.jpg";
 
 export default function AuthPage() {
   const { login, signup } = useAuthStore();
@@ -38,13 +38,13 @@ export default function AuthPage() {
 
   return (
     <div className={`relative flex min-h-screen items-center justify-center px-4 py-10 ${
-      isDark ? "bg-[rgb(24,24,24)] text-[#e5e5e5]" : "bg-[#f5f5f5] text-[#1a1a1a]"
+      isDark ? "bg-[rgb(0,0,0)] text-[#e5e5e5]" : "bg-[#f5f5f5] text-[#1a1a1a]"
     }`}>
 
       <img
         src={forgeLogo}
         alt="Forge logo"
-        className="absolute left-6 top-6 h-12 w-auto object-contain"
+        className="absolute left-6 top-6 h-26 w-auto object-contain"
       />
 
 
@@ -66,8 +66,8 @@ export default function AuthPage() {
         transition={{ duration: 0.25 }}
         className={`w-full max-w-md rounded-2xl p-6 sm:p-8 border ${
           isDark
-            ? "bg-[#1a1a1a] border-yellow-300/10"
-            : "bg-yellow-400 border-black/10"
+            ? "bg-[#1a1a1a] border-black/10"
+            : "bg-[#1a1a1a] border-black/10"
         }`}
       >
         <p className={`text-xs font-semibold uppercase tracking-[0.16em] ${
@@ -76,7 +76,10 @@ export default function AuthPage() {
           Account
         </p>
 
-        <h2 className="mt-2 text-2xl font-semibold sm:text-3xl">
+        <h2
+          className="mt-3 text-4xl sm:text-5xl leading-none tracking-tight"
+          style={{ fontFamily: "var(--font-display)" }}
+        >
           {isLogin ? "Welcome back" : "Create your account"}
         </h2>
 
