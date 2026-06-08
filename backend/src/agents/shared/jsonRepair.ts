@@ -32,8 +32,8 @@ export function normalizeJsonishText(value = ""): string {
   return String(value || "")
     .replace(/[“”]/g, "\"")
     .replace(/[‘’]/g, "'")
-    .replace(/[â€œâ€ ]/g, "\"")
-    .replace(/[â€˜â€™]/g, "'")
+    .replace(/â€œ|â€/g, "\"")
+    .replace(/â€˜|â€™/g, "'")
     .trim();
 }
 

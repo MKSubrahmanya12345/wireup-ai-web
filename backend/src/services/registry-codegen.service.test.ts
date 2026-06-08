@@ -28,7 +28,7 @@ test("validatePlan: rejects invalid pin for a variant", () => {
 
   const result = validatePlan(registry, plan);
   assert.equal(result.ok, false);
-  assert.ok(result.errors.some((e) => e.includes('Invalid pin "COM.1"')));
+  assert.ok(result.errors.some((e) => e.includes('does not exist on type "SEVEN_SEGMENT_4"')));
 });
 
 test("validatePlan: accepts valid pins for SEVEN_SEGMENT_4", () => {

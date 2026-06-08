@@ -695,7 +695,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     await freshSession.save();
 
     try {
-      const exportDir = path.join("E:", "wireup_formulation_exports", `session_${sessionId}`);
+      const exportDir = process.env.EXPORT_DIR ? path.join(process.env.EXPORT_DIR, `session_${sessionId}`) : path.join(process.cwd(), "exports", `session_${sessionId}`);
       if (!fs.existsSync(exportDir)) {
         fs.mkdirSync(exportDir, { recursive: true });
       }
