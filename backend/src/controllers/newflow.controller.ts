@@ -724,7 +724,7 @@ export const getSessionByProject = async (req: Request, res: Response) => {
   }
 };
 
-// ??$$$ newer code — Export formulation data to local folder on E:
+// ??$$$ newer code — Export formulation data to local folder
 export const exportLocalSession = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.body;
@@ -737,8 +737,10 @@ export const exportLocalSession = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Session not found." });
     }
 
-    // Define export path on E: drive
-    const exportDir = `E:\\wireup_formulation_exports\\session_${sessionId}`;
+    // Define export path
+    const exportDir = process.env.EXPORT_DIR
+      ? path.join(process.env.EXPORT_DIR, `session_${sessionId}`)
+      : path.join(process.cwd(), "exports", `session_${sessionId}`);
 
     // Ensure directory exists
     if (!fs.existsSync(exportDir)) {

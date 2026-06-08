@@ -117,8 +117,8 @@ app.use("/api", newflowRoutes);
 app.use("/api", partRoutes);
 app.use("/api/playground", playgroundRoutes);
 
-// ??$$$ Serve locally cached 3D models from E: and backend storage folder
-const modelsDir = "E:\\wireup_formulation_exports\\models";
+// ??$$$ Serve locally cached 3D models from environment-defined or local exports and backend storage folder
+const modelsDir = process.env.MODELS_DIR || path.join(process.cwd(), "exports", "models");
 import fs from "fs";
 if (!fs.existsSync(modelsDir)) {
   try {

@@ -65,10 +65,10 @@ import { spawn } from 'child_process';
 app.get('/api/project', (req, res) => {
   const sessionId = req.query.sessionId;
   if (sessionId) {
-    const exportDir = path.join("E:", "wireup_formulation_exports", `session_${sessionId}`);
+    const exportDir = process.env.EXPORT_DIR ? path.join(process.env.EXPORT_DIR, `session_${sessionId}`) : path.join(process.cwd(), "exports", `session_${sessionId}`);
     if (fs.existsSync(exportDir)) {
       try {
-        console.log(`[API] Serving dynamic session project from E: drive for session: ${sessionId}`);
+        console.log(`[API] Serving dynamic session project for session: ${sessionId}`);
         const bom = JSON.parse(fs.readFileSync(path.join(exportDir, "bom.json"), "utf8") || "[]");
         const wiring = JSON.parse(fs.readFileSync(path.join(exportDir, "wiring.json"), "utf8") || "[]");
         const milestones = JSON.parse(fs.readFileSync(path.join(exportDir, "milestones.json"), "utf8") || "[]");

@@ -9,7 +9,7 @@ import path from "path";
 
 // ??$$$ newer code — cache online models locally to E: and return backend serve path
 export async function cacheModelLocally(mpn: string, url: string): Promise<string> {
-  const modelsDir = "E:\\wireup_formulation_exports\\models";
+  const modelsDir = process.env.MODELS_DIR || path.join(process.cwd(), "exports", "models");
   try {
     if (!fs.existsSync(modelsDir)) {
       fs.mkdirSync(modelsDir, { recursive: true });

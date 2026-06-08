@@ -263,7 +263,7 @@ const isNumericPin = (pinName) => {
   return /^\d+$/.test(String(pinName || "").trim());
 };
 
-const validatePlan = (registry, plan) => {
+export const validatePlan = (registry, plan) => {
   const errors = [];
   const add = (msg) => errors.push(msg);
 

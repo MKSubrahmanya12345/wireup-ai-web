@@ -28,7 +28,7 @@ async function main() {
   }
 
   // 2. Read session files from E:
-  const sessionPath = "E:\\wireup_formulation_exports\\session_6a18365bf27ac2c020b2f7d4";
+  const sessionPath = process.env.SESSION_PATH || path.join(process.cwd(), "exports", "session_6a18365bf27ac2c020b2f7d4");
   console.log(`[Seeder] Loading session data from: ${sessionPath}`);
 
   const bom = JSON.parse(fs.readFileSync(path.join(sessionPath, "bom.json"), "utf-8"));
