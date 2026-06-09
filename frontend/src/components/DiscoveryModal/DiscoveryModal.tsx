@@ -16,6 +16,7 @@ import { getCandidateParts, getDecisionReasons } from "./selectors/decision.sele
 import { getActiveStage } from "./selectors/stage.selectors";
 import { getConflictDetails } from "./selectors/conflict.selectors";
 import { ModelSelector } from "./components/ModelSelector";
+import wireupLogo from "../../assets/wireup-logo.jpeg";
 
 interface DiscoveryModalProps {
   initialIdea?: string;
@@ -563,10 +564,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
         <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-indigo-500 via-violet-500 to-pink-500 opacity-60" />
 
         <div className="flex items-center gap-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${dark ? "border-indigo-500/30 bg-indigo-500/15 text-indigo-400" : "border-indigo-200 bg-indigo-50 text-indigo-600"}`}>
-            <svg className="h-4.5 w-4.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${dark ? "border-indigo-500/30 bg-indigo-500/15" : "border-indigo-200 bg-indigo-50"}`}>
+            <img src={wireupLogo} alt="Wireup" className="h-6 w-6 object-contain rounded-md" />
           </div>
           <div>
             <h1 className={`text-sm font-bold tracking-tight ${textHead}`}>

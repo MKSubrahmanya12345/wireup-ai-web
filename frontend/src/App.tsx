@@ -6,7 +6,6 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "./store/useAuthStore.ts";
 
-const HeroPage = lazy(() => import("./pages/HeroPage.tsx"));
 const AuthPage = lazy(() => import("./pages/AuthPage.tsx"));
 const HomePage = lazy(() => import("./pages/HomePage.tsx"));
 const BuildNewPage = lazy(() => import("./pages/BuildNewPage.tsx"));
@@ -73,8 +72,8 @@ function App(): ReactNode {
       <Suspense fallback={<RouteLoader />}>
         
         <Routes>
-          {/* Public */}
-          <Route path="/" element={<HeroPage />} />
+          {/* Skip landing — go straight to home or auth */}
+          <Route path="/" element={<Navigate to={authUser ? "/home" : "/auth"} replace />} />
 
           <Route
             path="/auth"

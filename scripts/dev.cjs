@@ -70,6 +70,24 @@ function startOllama() {
 
 startOllama();
 
+// Start local Whisper STT server
+function startWhisper() {
+  console.log('[Whisper] Starting local Whisper STT server...');
+  const child = spawn('python', ['whisper-server/server.py'], {
+    cwd: workspaceRoot,
+    stdio: 'inherit',
+    shell: false,
+  });
+
+  child.on('error', (err) => {
+    console.error('[Whisper] Failed to start process:', err.message);
+  });
+
+  children.push(child);
+}
+
+startWhisper();
+
 startService('root-frontend', path.join(workspaceRoot, 'frontend'));
 startService('root-backend', path.join(workspaceRoot, 'backend'));
 startService('playground-frontend', path.join(workspaceRoot, 'virtual-playground', 'frontend'));
