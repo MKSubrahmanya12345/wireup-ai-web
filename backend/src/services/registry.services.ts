@@ -1,23 +1,40 @@
-// ??$$$ group 3 - Components BOM & Wiring (Phase 2)
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
+export type Registry = Record<string, ComponentDefinition>;
 
-type Registry = Record<string, any>;
-type AIContextItem = {
+export interface ComponentPin {
+  name: string;
+  signals: Array<{
+    type: string;
+    role?: string;
+    voltage?: number;
+    channel?: number;
+  }>;
+  description?: string;
+}
+
+export interface ComponentDefinition {
+  wokwiType: string;
+  category: string;
+  attrs?: Record<string, any>;
+  pins: ComponentPin[];
+  gltf?: string;
+}
+
+export interface AIContextItem {
   name: string;
   type: string;
   category: string;
   pins: string[];
   capabilities: Record<string, string[]>;
-};
+}
 
 let REGISTRY_CACHE: Registry | null = null;
 let AI_CONTEXT_CACHE: AIContextItem[] | null = null;
 
 const getRegistryPath = (): string => {
-  const here = __dirname;
-  return path.resolve(here, "../../data/componentRegistry.json");
+  return path.resolve(__dirname, "../../data/componentRegistry.json");
 };
 
 export function getRegistry(): Registry {
@@ -29,12 +46,10 @@ export function getRegistry(): Registry {
   return REGISTRY_CACHE;
 }
 
-// ??$$$ Optimized for token efficiency
 export function buildAIContext(registry: Registry): AIContextItem[] {
   if (!registry || typeof registry !== "object") return [];
 
-  return Object.entries(registry).map(([name, comp]: [string, any]) => {
-    // Only include pins that have actual signals or are critical
+  return Object.entries(registry).map(([name, comp]: [string, ComponentDefinition]) => {
     const filteredPins = (comp?.pins || [])
       .filter((p: any) => Array.isArray(p?.signals) && p.signals.length > 0)
       .map((p: any) => p.name);

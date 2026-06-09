@@ -1,35 +1,36 @@
-// ??$$$
 import mongoose from "mongoose";
 import Part from "../../../models/part.model";
 import { parseIfString } from "./utils";
+import { getRegistry } from "../../../services/registry.services";
 
 export async function executeGetWokwiPartType(args: any) {
   const { partId, partName } = args;
-
-  const LOOKUP_TABLE: Record<string, string> = {
-    "ESP32": "wokwi-esp32-devkit-v1",
-    "ESP8266": "wokwi-esp8266",
-    "Arduino Uno": "wokwi-uno",
-    "Arduino Nano": "wokwi-nano",
-    "Arduino Mega": "wokwi-mega2560",
-    "Raspberry Pi Pico": "wokwi-pi-pico",
-    "MPU6050": "wokwi-mpu6050",
-    "DHT22": "wokwi-dht22",
-    "DHT11": "wokwi-dht22",
-    "BMP280": "wokwi-bmp280",
-    "SSD1306": "wokwi-ssd1306",
-    "LCD1602": "wokwi-lcd1602",
-    "SG90": "wokwi-servo",
-    "servo": "wokwi-servo",
-    "LED": "wokwi-led",
-    "resistor": "wokwi-resistor",
-    "button": "wokwi-pushbutton",
-    "HC-SR04": "wokwi-hc-sr04",
-    "NeoPixel": "wokwi-neopixel",
-    "potentiometer": "wokwi-potentiometer"
-  };
+  const registry = getRegistry();
 
   try {
+    const normalizedPartName = String(partName || partId || "").toUpperCase().replace(/\s+/g, "_");
+    if (registry[normalizedPartName]) {
+      return {
+        partId,
+        partName: normalizedPartName,
+        wokwiPartType: registry[normalizedPartName].wokwiType,
+        simulatable: true,
+        notes: null
+      };
+    }
+
+    for (const [key, def] of Object.entries(registry)) {
+      if (normalizedPartName.includes(key)) {
+        return {
+          partId,
+          partName: key,
+          wokwiPartType: def.wokwiType,
+          simulatable: true,
+          notes: null
+        };
+      }
+    }
+
     let partDoc: any = null;
     if (mongoose.Types.ObjectId.isValid(partId)) {
       partDoc = await Part.findById(partId).lean();
@@ -37,8 +38,6 @@ export async function executeGetWokwiPartType(args: any) {
     if (!partDoc) {
       partDoc = await Part.findOne({ mpn: partId }).lean();
     }
-
-    const finalName = (partDoc?.name || partName || partId || "").toUpperCase();
 
     if (partDoc?.wokwiPartType) {
       return {
@@ -48,18 +47,6 @@ export async function executeGetWokwiPartType(args: any) {
         simulatable: true,
         notes: null
       };
-    }
-
-    for (const [key, value] of Object.entries(LOOKUP_TABLE)) {
-      if (finalName.includes(key.toUpperCase())) {
-        return {
-          partId,
-          partName: key,
-          wokwiPartType: value,
-          simulatable: true,
-          notes: null
-        };
-      }
     }
 
     return {
@@ -102,7 +89,7 @@ export async function executeCheckSimulationSupport(args: any) {
         physicalOnly.push({
           key: item.key,
           name: item.name,
-          reason: isPhysicalKeyword ? `${item.name} requires physical installation` : "No simulation model available"
+          reason: isPhysicalKeyword ? \`\${item.name} requires physical installation\` : "No simulation model available"
         });
       }
     }
@@ -128,8 +115,8 @@ export async function executeGenerateDiagramJson(args: any) {
 
   try {
     const formattedParts = parts.map((p: any, idx: number) => ({
-      type: p.wokwiPartType || "wokwi-esp32-devkit-v1",
-      id: p.id || p.key || `part_${idx}`,
+      type: p.wokwiPartType || "wokwi-arduino-uno",
+      id: p.id || p.key || \`part_\${idx}\`,
       top: idx * 250,
       left: 0,
       attrs: {}
@@ -157,7 +144,7 @@ export async function executeGenerateDiagramJson(args: any) {
         }
 
         const normalizedPin = pinRef.replace("GPIO", "");
-        return `${targetId}:${normalizedPin}`;
+        return \`\${targetId}:\${normalizedPin}\`;
       };
 
       const color = colorMap[c.color] || "gray";
