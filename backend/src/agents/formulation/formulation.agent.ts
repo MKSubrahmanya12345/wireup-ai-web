@@ -72,7 +72,7 @@ function sanitizeMessageHistory(messages: any[]): any[] {
 
   for (let i = 0; i < processed.length; i++) {
     const msg = processed[i];
-    
+
     if (msg.role === "assistant" || msg.role === "model") {
       if (msg.functionCalls && msg.functionCalls.length > 0) {
         pendingToolCalls = [];
@@ -304,7 +304,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
       for (let i = 0; i < fallbackAdapters.length; i++) {
         const currentTryAdapter = fallbackAdapters[i];
         const providerName = currentTryAdapter.constructor.name;
-        
+
         try {
           console.log(`[Agent2 Failover] Turn ${turns}: Attempting with ${providerName}...`);
           if (i > 0) {
@@ -315,18 +315,18 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
           }
 
           response = await currentTryAdapter.chat(systemPrompt, sanitizedMessages);
-          
+
           if (currentTryAdapter !== adapter) {
             console.log(`[Agent2 Failover] Successfully failed over. Promoting ${providerName} to primary.`);
             adapter = currentTryAdapter;
-            
+
             let newModelValue = "gemini-2.5-flash";
             if (providerName === "CerebrasAdapter") {
               newModelValue = (currentTryAdapter as any).model || "gpt-oss-120b";
             } else if (providerName === "GroqAdapter") {
               newModelValue = (currentTryAdapter as any).model || "meta-llama/llama-4-scout-17b-16e-instruct";
             }
-            
+
             if (io) {
               console.log(`[Agent2 Failover] Emitting model changed event to frontend: ${newModelValue}`);
               io.to(sessionId).emit("agent2:model_changed", {
@@ -394,13 +394,12 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
             messages.push({ role: "assistant", content: text || "Continuing..." });
             messages.push({
               role: "user",
-              content: `Code generation is incomplete. The following milestones still need code generated via generate_milestone:\n${
-                milestonesWithoutCode.map((m: any) => `- Milestone ${m.order}: "${m.title}" (subsystem: ${m.subsystem})`).join("\n")
-              }\nPlease call generate_milestone for each of these now, in order.`
+              content: `Code generation is incomplete. The following milestones still need code generated via generate_milestone:\n${milestonesWithoutCode.map((m: any) => `- Milestone ${m.order}: "${m.title}" (subsystem: ${m.subsystem})`).join("\n")
+                }\nPlease call generate_milestone for each of these now, in order.`
             });
             continue;
           }
-          
+
           const hasFinalSketch = session!.finalSketch && session!.finalSketch.trim().length > 0;
           if (!hasFinalSketch) {
             console.log("[Agent2 Debugger] All milestones have code, but final integrated sketch is missing. Generating final integrated sketch directly...");
@@ -666,13 +665,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         debugMessages: [],
         requiredLibraries: m.requiredLibraries || []
       })),
-      /* old code
-      milestonesGenerated: true,
-      activeMilestoneId: session!.milestones[0]?.id || "",
-      diagram: session!.diagram || session!.wiring,
-      wiring: session!.wiring || []
-      */
-      // ??$$$
+
       milestonesGenerated: true,
       activeMilestoneId: session!.milestones[0]?.id || "",
       diagram: session!.diagram || session!.wiring,
@@ -707,7 +700,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
       const sketchCode = session!.finalSketch || (
         [...(session!.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))
-        .find((m: any) => String(m?.code || "").trim().length > 0)?.code
+          .find((m: any) => String(m?.code || "").trim().length > 0)?.code
       ) || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
       fs.writeFileSync(path.join(exportDir, "sketch.ino"), sketchCode, "utf8");
 
@@ -715,19 +708,13 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         code: sketchCode,
         filename: "sketch.ino"
       }, null, 2), "utf8");
-      
+
       console.log(`[Agent2 Debugger] Automatically exported formulation files to ${exportDir}`);
     } catch (err: any) {
       console.error("[Agent2 Debugger] Automatic file export failed:", err);
     }
   }
 
-  /* old code
-  if (io) {
-    io.to(sessionId).emit("agent2:complete", { success: true, projectId });
-  }
-  */
-  // ??$$$
   if (io) {
     io.to(sessionId).emit("agent2:complete", {
       success: true,

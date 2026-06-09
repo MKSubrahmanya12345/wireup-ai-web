@@ -32,20 +32,56 @@ Your job is ONLY to orchestrate, plan, and call tools. You call tools to search 
 
 ## You are running on a small local model. Stay focused, use tools, don't ramble.`;
 
+
+//   const subsystems = Array.isArray(session.context?.subsystems) ? session.context.subsystems.join(", ") : "";
+//   const constraints = Array.isArray(session.context?.constraints) ? session.context.constraints.join(", ") : "";
+//   const qaHistory = Array.isArray(session.qaHistory)
+//     ? session.qaHistory.map((h: any) => `Q: ${h.question} -> A: ${h.answer}`).join(" | ")
+//     : "";
+// 
+//   return `Project Context:
+// Core Purpose: ${session.context?.corePurpose || ""}
+// Compute Brain: ${session.context?.mcu || ""}
+// Subsystems: ${subsystems}
+// Constraints: ${constraints}
+// Power Source: ${session.context?.powerSource || ""}
+// Connectivity: ${session.context?.connectivity || ""}
+// Open Questions Resolved: ${qaHistory}`;
+// }
+// ??$$$ newer code
 export function buildContextStr(session: any): string {
-  const subsystems = Array.isArray(session.context?.subsystems) ? session.context.subsystems.join(", ") : "";
+  let subsystemsStr = "";
+  if (Array.isArray(session.context?.subsystems)) {
+    subsystemsStr = session.context.subsystems.join(", ");
+  } else if (session.context?.subsystems && typeof session.context.subsystems === "object") {
+    const s = session.context.subsystems;
+    const parts = [];
+    if (Array.isArray(s.inputs) && s.inputs.length > 0) parts.push(`Inputs: [${s.inputs.join(", ")}]`);
+    if (Array.isArray(s.outputs) && s.outputs.length > 0) parts.push(`Outputs: [${s.outputs.join(", ")}]`);
+    if (Array.isArray(s.communication) && s.communication.length > 0) parts.push(`Communication: [${s.communication.join(", ")}]`);
+    if (Array.isArray(s.storage) && s.storage.length > 0) parts.push(`Storage: [${s.storage.join(", ")}]`);
+    if (Array.isArray(s.power) && s.power.length > 0) parts.push(`Power: [${s.power.join(", ")}]`);
+    subsystemsStr = parts.join(" | ");
+  }
+
   const constraints = Array.isArray(session.context?.constraints) ? session.context.constraints.join(", ") : "";
   const qaHistory = Array.isArray(session.qaHistory)
     ? session.qaHistory.map((h: any) => `Q: ${h.question} -> A: ${h.answer}`).join(" | ")
     : "";
 
+  const connectivityStr = Array.isArray(session.context?.connectivity)
+    ? session.context.connectivity.join(", ")
+    : (session.context?.connectivity || "");
+
   return `Project Context:
 Core Purpose: ${session.context?.corePurpose || ""}
 Compute Brain: ${session.context?.mcu || ""}
-Subsystems: ${subsystems}
+Subsystems: ${subsystemsStr}
 Constraints: ${constraints}
 Power Source: ${session.context?.powerSource || ""}
-Connectivity: ${session.context?.connectivity || ""}
+Connectivity: ${connectivityStr}
+Physical Form Factor: ${session.context?.formFactor || ""}
+Estimated Budget: ${session.context?.estimatedBudget || ""}
 Open Questions Resolved: ${qaHistory}`;
 }
 

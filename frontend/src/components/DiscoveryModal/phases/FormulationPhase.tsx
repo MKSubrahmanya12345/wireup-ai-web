@@ -399,6 +399,8 @@ export const FormulationPhase: React.FC<FormulationPhaseProps> = ({
             Project Constraints
           </p>
           <div className="space-y-3">
+            {/* ??$$$ old code */}
+            {/*
             {[
               { label: "Core Purpose", value: context.corePurpose },
               { label: "Compute Brain", value: context.mcu },
@@ -406,6 +408,22 @@ export const FormulationPhase: React.FC<FormulationPhaseProps> = ({
               { label: "Connectivity", value: context.connectivity },
             ]
               .filter((f) => f.value)
+            */}
+            {/* ??$$$ newer code */}
+            {[
+              { label: "Core Purpose", value: context.corePurpose },
+              { label: "Compute Brain", value: context.mcu },
+              { label: "Power Source", value: context.powerSource },
+              {
+                label: "Connectivity",
+                value: Array.isArray(context.connectivity)
+                  ? context.connectivity.join(", ")
+                  : context.connectivity
+              },
+              { label: "Form Factor", value: context.formFactor },
+              { label: "Estimated Budget", value: context.estimatedBudget }
+            ]
+              .filter((f) => f.value && (typeof f.value !== "string" || f.value.trim() !== ""))
               .map(({ label, value }) => (
                 <div key={label}>
                   <p

@@ -51,13 +51,21 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>([]);
   const [answerText, setAnswerText] = useState("");
-  const [context, setContext] = useState<any>({
+  const [context, setContext] = useState({
     corePurpose: "",
     mcu: "",
-    subsystems: [],
-    constraints: [],
+    subsystems: {
+      inputs: [],
+      outputs: [],
+      communication: [],
+      storage: [],
+      power: []
+    },
+    formFactor: "",
     powerSource: "",
-    connectivity: "",
+    connectivity: [],
+    estimatedBudget: "",
+    constraints: [],
     openQuestions: []
   });
 
@@ -84,61 +92,61 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   // ??$$$ newer code — Visual Progress Calculations
   const progressPercent = useMemo(
     () =>
-        getProgressPercent(
+      getProgressPercent(
         bom,
         wiring,
         milestones,
         logs,
         isCompleted,
         isFailed
-        ),
+      ),
     [bom, wiring, milestones, logs, isCompleted, isFailed]
-    );
+  );
 
-    const progressStatus = useMemo(
+  const progressStatus = useMemo(
     () =>
-        getProgressStatus(
+      getProgressStatus(
         progressPercent,
         isCompleted,
         isFailed
-        ),
+      ),
     [progressPercent, isCompleted, isFailed]
-    );
+  );
 
-    const candidates = useMemo(
-        () => getCandidateParts(logs, bom),
-        [logs, bom]
-    );
+  const candidates = useMemo(
+    () => getCandidateParts(logs, bom),
+    [logs, bom]
+  );
 
-    const decisions = useMemo(
-        () => getDecisionReasons(logs),
-        [logs]
-    );
+  const decisions = useMemo(
+    () => getDecisionReasons(logs),
+    [logs]
+  );
 
-    const activeStage = useMemo(
-        () =>
-            getActiveStage(
-            logs,
-            bom,
-            wiring,
-            milestones,
-            isCompleted,
-            isFailed
-            ),
-        [
-            logs,
-            bom,
-            wiring,
-            milestones,
-            isCompleted,
-            isFailed
-        ]
-    );
+  const activeStage = useMemo(
+    () =>
+      getActiveStage(
+        logs,
+        bom,
+        wiring,
+        milestones,
+        isCompleted,
+        isFailed
+      ),
+    [
+      logs,
+      bom,
+      wiring,
+      milestones,
+      isCompleted,
+      isFailed
+    ]
+  );
 
-    const conflictDetails = useMemo(
-        () => getConflictDetails(logs),
-        [logs]
-    );
+  const conflictDetails = useMemo(
+    () => getConflictDetails(logs),
+    [logs]
+  );
 
   const resolveConflict = async (choice: string) => {
     setLoading(true);
@@ -159,11 +167,11 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     }
   };
 
-  
 
 
 
-  
+
+
 
   // Setup Socket URL
   const getSocketUrl = () => {
@@ -215,7 +223,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     setIsCompleted,
     setCompletedProjectId,
     setFinalSketch
-    });
+  });
 
   // ??$$$ newer code — Handle starting a brand new session with selected model
   const handleStartSession = async () => {
@@ -250,66 +258,66 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     setLoading(true);
 
     try {
-        const res = await axiosInstance.post("/new-flow/restart", {
+      const res = await axiosInstance.post("/new-flow/restart", {
         sessionId,
-        });
+      });
 
-        setQuestion(res.data.question || "");
-        setOptions(res.data.options || []);
-        setContext(res.data.context || {});
+      setQuestion(res.data.question || "");
+      setOptions(res.data.options || []);
+      setContext(res.data.context || {});
 
-        setPhase(1);
+      setPhase(1);
 
-        toast.success("Discovery Q&A restarted!");
+      toast.success("Discovery Q&A restarted!");
     } catch {
-        toast.error("Failed to restart discovery.");
+      toast.error("Failed to restart discovery.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-    };
+  };
 
-    useFormulationSocket({
-        phase,
-        sessionId,
+  useFormulationSocket({
+    phase,
+    sessionId,
 
-        shouldAutoFormulate,
-        setShouldAutoFormulate,
+    shouldAutoFormulate,
+    setShouldAutoFormulate,
 
-        setLogs,
-        setBom,
-        setWiring,
-        setMilestones,
+    setLogs,
+    setBom,
+    setWiring,
+    setMilestones,
 
-        setFinalSketch,
+    setFinalSketch,
 
-        setIsCompleted,
-        setIsFailed,
+    setIsCompleted,
+    setIsFailed,
 
-        setCompletedProjectId,
+    setCompletedProjectId,
 
-        setModel,
+    setModel,
 
-        socketRef,
+    socketRef,
 
-        getSocketUrl
-    });
+    getSocketUrl
+  });
 
   // ??$$$ newer code — Fallback polling for session completion (every 5 seconds)
-    useDiscoverySession({
-        sessionId,
-        phase,
-        isCompleted,
+  useDiscoverySession({
+    sessionId,
+    phase,
+    isCompleted,
 
-        setIsCompleted,
-        setIsFailed,
-        setCompletedProjectId,
+    setIsCompleted,
+    setIsFailed,
+    setCompletedProjectId,
 
-        setBom,
-        setWiring,
-        setMilestones,
-        setLogs,
-        setFinalSketch
-    });
+    setBom,
+    setWiring,
+    setMilestones,
+    setLogs,
+    setFinalSketch
+  });
 
   // Submit Answer (Phase 1)
   const handleAnswer = async (selectedAnswer: string) => {
@@ -543,11 +551,11 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   };
 
   // ── Derived theme tokens ──────────────────────────────────────────────────
-  const modalBg    = dark ? "bg-[#0d0d12]"                  : "bg-slate-50";
-  const headerBg   = dark ? "bg-[#0d0d12]/80 border-white/[0.06]" : "bg-white/80 border-slate-200";
-  const textHead   = dark ? "text-slate-100"                : "text-slate-800";
-  const textSub    = dark ? "text-slate-500"                : "text-slate-400";
-  const selectCls  = dark
+  const modalBg = dark ? "bg-[#0d0d12]" : "bg-slate-50";
+  const headerBg = dark ? "bg-[#0d0d12]/80 border-white/[0.06]" : "bg-white/80 border-slate-200";
+  const textHead = dark ? "text-slate-100" : "text-slate-800";
+  const textSub = dark ? "text-slate-500" : "text-slate-400";
+  const selectCls = dark
     ? "rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500/60 transition-colors"
     : "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 transition-colors";
 
@@ -646,10 +654,10 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             setHybridPrimary={setHybridPrimary}
 
             handleStartSession={handleStartSession}
-            />
-          
+          />
+
         ) : phase === 1 ? (
-        <DiscoveryPhase
+          <DiscoveryPhase
             question={question}
             options={options}
             answerText={answerText}
@@ -672,7 +680,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             handleRestartDiscovery={handleRestartDiscovery}
             setPhase={setPhase}
             setShouldAutoFormulate={setShouldAutoFormulate}
-        />
+          />
         ) : (
           <FormulationPhase
             dark={dark}

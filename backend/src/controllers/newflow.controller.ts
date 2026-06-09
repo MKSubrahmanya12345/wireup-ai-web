@@ -111,7 +111,7 @@ const normalizeMcuPin = (pinStr: string): string => {
   if (parts.length < 2) return pinStr;
   const partKey = parts[0];
   const pinId = parts[1];
-  
+
   if (partKey.toLowerCase() === "mcu" || partKey.toLowerCase() === "arduino") {
     let pin = pinId.toUpperCase().trim();
     if (pin === "GPIO21" || pin === "SDA" || pin === "I2C_SDA") return "mcu.SDA";
@@ -184,23 +184,23 @@ const mapSessionToVirtualProject = (session: any) => {
       }
     }
 
-        /* old code
-    const pins = Array.isArray(item?.pins) && item.pins.length > 0
-      ? item.pins.map((pin: any, pinIndex: number) => {
-        const fallback = pickPinPosition(pinIndex);
-        return {
-          id: String(pin?.id || pin?.name || `P${pinIndex + 1}`),
-          x: Number.isFinite(pin?.x_mm) ? Number(pin.x_mm) / 10 : fallback.x,
-          y: Number.isFinite(pin?.z_mm) ? Number(pin.z_mm) / 10 : fallback.y,
-          z: Number.isFinite(pin?.y_mm) ? Number(pin.y_mm) / 10 : fallback.z,
-          type: String(pin?.type || "signal")
-        };
-      })
-      : [
-        { id: "P1", x: -0.25, y: 0.02, z: -0.2, type: "signal" },
-        { id: "P2", x: 0.25, y: 0.02, z: 0.2, type: "signal" }
-      ];
-    */
+    /* old code
+const pins = Array.isArray(item?.pins) && item.pins.length > 0
+  ? item.pins.map((pin: any, pinIndex: number) => {
+    const fallback = pickPinPosition(pinIndex);
+    return {
+      id: String(pin?.id || pin?.name || `P${pinIndex + 1}`),
+      x: Number.isFinite(pin?.x_mm) ? Number(pin.x_mm) / 10 : fallback.x,
+      y: Number.isFinite(pin?.z_mm) ? Number(pin.z_mm) / 10 : fallback.y,
+      z: Number.isFinite(pin?.y_mm) ? Number(pin.y_mm) / 10 : fallback.z,
+      type: String(pin?.type || "signal")
+    };
+  })
+  : [
+    { id: "P1", x: -0.25, y: 0.02, z: -0.2, type: "signal" },
+    { id: "P2", x: 0.25, y: 0.02, z: 0.2, type: "signal" }
+  ];
+*/
     // ??$$ newer code
     const pins = Array.isArray(item?.pins) && item.pins.length > 0
       ? item.pins.map((pin: any, pinIndex: number) => {
@@ -234,15 +234,15 @@ const mapSessionToVirtualProject = (session: any) => {
     };
   });
 
-    /* old code
-  const mappedWiring = wiring
-    .map((wire: any) => ({
-      from: String(wire?.from || ""),
-      to: String(wire?.to || ""),
-      color: String(wire?.color || "#1d4ed8")
-    }))
-    .filter((wire: any) => wire.from && wire.to);
-  */
+  /* old code
+const mappedWiring = wiring
+  .map((wire: any) => ({
+    from: String(wire?.from || ""),
+    to: String(wire?.to || ""),
+    color: String(wire?.color || "#1d4ed8")
+  }))
+  .filter((wire: any) => wire.from && wire.to);
+*/
   // ??$$ newer code
   const mappedWiring = wiring
     .map((wire: any) => {
@@ -302,6 +302,8 @@ const mapSessionToVirtualProject = (session: any) => {
       buttonInitialState: false
     },
     sketch,
+    // ??$$$ old code
+    /*
     context: {
       mcu: context?.mcu || "",
       powerSource: context?.powerSource || "",
@@ -309,6 +311,23 @@ const mapSessionToVirtualProject = (session: any) => {
       constraints: Array.isArray(context?.constraints) ? context.constraints : []
     },
     phases: Array.isArray(context?.subsystems) ? context.subsystems : [],
+    */
+    // ??$$$ newer code
+    context: {
+      mcu: context?.mcu || "",
+      powerSource: context?.powerSource || "",
+      connectivity: Array.isArray(context?.connectivity) ? context.connectivity.join(", ") : (context?.connectivity || ""),
+      constraints: Array.isArray(context?.constraints) ? context.constraints : []
+    },
+    phases: Array.isArray(context?.subsystems)
+      ? context.subsystems
+      : [
+        ...(context?.subsystems?.inputs || []),
+        ...(context?.subsystems?.outputs || []),
+        ...(context?.subsystems?.communication || []),
+        ...(context?.subsystems?.storage || []),
+        ...(context?.subsystems?.power || [])
+      ],
     milestones: byOrder.map((m: any) => ({
       id: m?.id,
       order: m?.order,
@@ -321,27 +340,43 @@ const mapSessionToVirtualProject = (session: any) => {
   };
 };
 
-export const AGENT1_SYSTEM_PROMPT = `You are a hardware engineering discovery agent.
-Your job is to ask the user clarifying questions about their project idea so that we can formulate it.
-Ask ONE clear question at a time. Provide 2 to 4 simple option chips as quick responses, but also allow custom text answers.
+export const AGENT1_SYSTEM_PROMPT = `You are a senior hardware engineer scoping an electronics project for a hardware formulation pipeline.
 
-Analyze the user's idea and the previous QA history.
-If you have enough information to build the project (MCU chosen, subsystems identified, power and connectivity requirements known), set "done" to true.
-If NOT done, return the next clarifying "question" and "options".
+Your ONLY goal: extract the minimum context needed to select the right components, wiring, and enclosure. Nothing else.
 
-You must respond ONLY with a JSON object, without markdown, without backticks:
+Before asking any question, ask yourself: "Does the answer to this question change which physical part gets selected?" If yes, ask it. If no, infer it or skip it entirely. Never ask about software, firmware logic, UI design, or protocols that do not affect the BOM.
+
+Stop asking when you know enough to pick every major component. Infer aggressively from the prompt — never ask what you can already infer.
+
+Rules:
+- Ask the highest-impact unknown first
+- Never ask about something already answered or inferable
+- Options must be real hardware-level choices an engineer would make
+- 2 to 4 options max, but always allow custom text
+
+- Always ask at least 2 questions minimum, even if context seems complete. Budget and enclosure type are never inferrable with certainty — always confirm these.
+
+Respond ONLY with this JSON, no markdown, no backticks:
 {
-  "question": "The next question to ask the user, or empty if done",
+  "question": "Next hardware-relevant question, or empty string if done",
   "options": ["Option A", "Option B", "Option C"],
   "done": false,
   "context": {
-    "corePurpose": "Summary of the project purpose",
-    "mcu": "Suggested microcontroller (e.g. ESP32, Arduino Nano, Raspberry Pi Pico)",
-    "subsystems": ["Subsystem1", "Subsystem2"],
-    "constraints": ["Constraint1", "Constraint2"],
-    "powerSource": "Suggested power source (e.g. USB 5V, Battery)",
-    "connectivity": "Suggested connectivity (e.g. WiFi, BLE, None)",
-    "openQuestions": ["Remaining unclear items"]
+    "corePurpose": "",
+    "mcu": "",
+    "subsystems": {
+      "inputs": [],
+      "outputs": [],
+      "communication": [],
+      "storage": [],
+      "power": []
+    },
+    "formFactor": "",
+    "powerSource": "",
+    "connectivity": [],
+    "estimatedBudget": "",
+    "constraints": [],
+    "openQuestions": []
   }
 }`;
 
@@ -637,6 +672,8 @@ export const restartSession = async (req: Request, res: Response) => {
     session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
 
     // Save context to database if provided
+    // ??$$$ old code
+    /*
     if (context) {
       session.context = {
         corePurpose: context.corePurpose || "",
@@ -645,6 +682,29 @@ export const restartSession = async (req: Request, res: Response) => {
         constraints: Array.isArray(context.constraints) ? context.constraints : [],
         powerSource: context.powerSource || "",
         connectivity: context.connectivity || "",
+        openQuestions: Array.isArray(context.openQuestions) ? context.openQuestions : []
+      };
+    }
+    */
+    // ??$$$ newer code
+    if (context) {
+      session.context = {
+        corePurpose: context.corePurpose || "",
+        mcu: context.mcu || "",
+        subsystems: {
+          inputs: context.subsystems?.inputs || [],
+          outputs: context.subsystems?.outputs || [],
+          communication: context.subsystems?.communication || [],
+          storage: context.subsystems?.storage || [],
+          power: context.subsystems?.power || []
+        },
+        formFactor: context.formFactor || "",
+        powerSource: context.powerSource || "",
+        connectivity: Array.isArray(context.connectivity)
+          ? context.connectivity
+          : (context.connectivity ? [context.connectivity] : []),
+        estimatedBudget: context.estimatedBudget || "",
+        constraints: Array.isArray(context.constraints) ? context.constraints : [],
         openQuestions: Array.isArray(context.openQuestions) ? context.openQuestions : []
       };
     }
@@ -702,17 +762,36 @@ export const getSessionByProject = async (req: Request, res: Response) => {
       });
 
       // Populate context from project details
-      if ((project as any).ideation) {
-        session.context = {
-          corePurpose: (project as any).ideation.objective || project.description || "",
-          mcu: (project as any).ideation.compute || "",
-          subsystems: (project as any).ideation.phases ? Object.keys((project as any).ideation.phases) : [],
-          constraints: (project as any).ideation.constraints ? [(project as any).ideation.constraints] : [],
-          powerSource: "",
-          connectivity: "",
-          openQuestions: (project as any).ideation.open ? [(project as any).ideation.open] : []
-        };
-      }
+      // ??$$$ old code
+      /*
+      session.context = {
+        corePurpose: (project as any).ideation.objective || project.description || "",
+        mcu: (project as any).ideation.compute || "",
+        subsystems: (project as any).ideation.phases ? Object.keys((project as any).ideation.phases) : [],
+        constraints: (project as any).ideation.constraints ? [(project as any).ideation.constraints] : [],
+        powerSource: "",
+        connectivity: "",
+        openQuestions: (project as any).ideation.open ? [(project as any).ideation.open] : []
+      };
+      */
+      // ??$$$ newer code
+      session.context = {
+        corePurpose: (project as any).ideation.objective || project.description || "",
+        mcu: (project as any).ideation.compute || "",
+        subsystems: {
+          inputs: [],
+          outputs: [],
+          communication: [],
+          storage: [],
+          power: []
+        },
+        formFactor: "",
+        powerSource: "",
+        connectivity: [],
+        estimatedBudget: "",
+        constraints: (project as any).ideation.constraints ? [(project as any).ideation.constraints] : [],
+        openQuestions: (project as any).ideation.open ? [(project as any).ideation.open] : []
+      };
 
       await session.save();
     }
@@ -777,7 +856,7 @@ export const exportLocalSession = async (req: Request, res: Response) => {
     // ??$$$ newer code
     const sketchCode = session.finalSketch || (
       [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))
-      .find((m: any) => String(m?.code || "").trim().length > 0)?.code
+        .find((m: any) => String(m?.code || "").trim().length > 0)?.code
     ) || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
     fs.writeFileSync(path.join(exportDir, "sketch.ino"), sketchCode, "utf8");
 

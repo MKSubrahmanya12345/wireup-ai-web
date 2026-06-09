@@ -1,14 +1,14 @@
 // ??$$$ group 2 - Ideation Stage (Phase 1)
 // ??$$$ NEW FLOW
 import mongoose from "mongoose";
-import Project from "../models/project.model";
-import Part from "../models/part.model";
-import { getRegistry } from "./registry.services";
-import { searchLibrary } from "./library.service";
-import rotationService from "./keyRotation.service";
+import Project from "../../models/project.model";
+import Part from "../../models/part.model";
+import { getRegistry } from "../../services/registry.services";
+import { searchLibrary } from "../../services/library.service";
+import rotationService from "../../services/keyRotation.service";
 // ??$$$ newer code
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { resolveWiring } from "./pinResolver.service";
+import { resolveWiring } from "../../services/pinResolver.service";
 import { packComponents } from "../../lib/binPacking";
 
 // ??$$$ NEW FLOW
@@ -37,7 +37,7 @@ async function retryWithBackoff<T>(fn: () => Promise<T>, retries = 3, delayMs = 
         errMsg.includes("exhausted") ||
         errMsg.includes("resource_exhausted") ||
         errMsg.includes("too many requests");
-      
+
       if (isRateLimit && i < retries - 1) {
         console.warn(`[Agent2Tools] Rate limit hit (429/quota). Retrying in ${delayMs / 1000}s... (Attempt ${i + 1}/${retries})`);
         await new Promise(resolve => setTimeout(resolve, delayMs));
@@ -126,7 +126,7 @@ async function executeGetPartDetails(args: any) {
       // Structure specs nicely
       const specsObj = partDoc.specs || {};
       let interfaces = partDoc.interfaces || (specsObj.Interface ? [specsObj.Interface] : []);
-      
+
       // If interfaces are empty, add defaults for common MCUs to fix compatibility checks
       const partNameLower = (partDoc.name || "").toLowerCase();
       if (interfaces.length === 0) {
@@ -136,7 +136,7 @@ async function executeGetPartDetails(args: any) {
           interfaces = ["WiFi", "Bluetooth", "I2C", "SPI", "UART", "GPIO", "Analog", "DAC"];
         }
       }
-      
+
       return {
         found: true,
         part: {
@@ -265,7 +265,7 @@ async function executeCheckCompatibility(args: any) {
       compatible = false;
     }
 
-    notes = compatible 
+    notes = compatible
       ? `Both parts are compatible. Connection Voltages match (${vA}V / ${vB}V).`
       : `Voltage or protocol mismatch detected between ${partA.name} and ${partB.name}.`;
 
@@ -275,8 +275,8 @@ async function executeCheckCompatibility(args: any) {
       notes,
       warnings,
       errors,
-      recommendation: compatible 
-        ? "Safe to connect directly" 
+      recommendation: compatible
+        ? "Safe to connect directly"
         : "Add a logic level converter or use a compatible alternative part"
     };
   } catch (err: any) {
@@ -289,7 +289,7 @@ async function executeCheckCompatibility(args: any) {
 async function executeValidatePinAssignment(args: any) {
   // ??$$$
   // const { mcu, assignments } = args;
-  
+
   // ??$$$ NEW FLOW
   const mcu = args.mcu;
   const assignments = parseIfString(args.assignments);
@@ -306,8 +306,8 @@ async function executeValidatePinAssignment(args: any) {
       }
     }
 
-    const availablePins: string[] = mcuEntry 
-      ? mcuEntry.pins.map((p: any) => p.name) 
+    const availablePins: string[] = mcuEntry
+      ? mcuEntry.pins.map((p: any) => p.name)
       : ["GPIO21", "GPIO22", "GPIO23", "GPIO19", "GPIO18", "GPIO1", "GPIO3", "3.3V", "5V", "GND", "3V3", "GND.1", "GND.2"];
 
     const conflicts: any[] = [];
@@ -327,7 +327,7 @@ async function executeValidatePinAssignment(args: any) {
         // Exclude I2C bus sharing warning/error
         const isI2C = users.every(u => u.toLowerCase().includes("sda") || u.toLowerCase().includes("scl") || u.toLowerCase().includes("i2c"));
         const isPower = pin.toLowerCase().includes("vcc") || pin.toLowerCase().includes("gnd") || pin.toLowerCase().includes("3v3") || pin.toLowerCase().includes("5v");
-        
+
         if (isI2C) {
           warnings.push(`Pin ${pin} is shared by multiple I2C lines: ${users.join(", ")}. This is standard I2C bus sharing.`);
         } else if (isPower) {
@@ -368,8 +368,8 @@ async function executeValidatePinAssignment(args: any) {
       invalidPins,
       missingConnections,
       warnings,
-      summary: valid 
-        ? `All pin assignments valid for ${mcu}. No conflicts detected.` 
+      summary: valid
+        ? `All pin assignments valid for ${mcu}. No conflicts detected.`
         : `${conflicts.length + invalidPins.length} issues found. See conflicts and invalidPins.`
     };
   } catch (err: any) {
@@ -424,7 +424,7 @@ async function executeSearchDatasheet(args: any) {
 
     const partName = partDoc ? partDoc.name : partId;
     let foundKey = "";
-    
+
     // Find matching part key in lookup table
     for (const key of Object.keys(LOOKUP_TABLE)) {
       if (partName.toUpperCase().includes(key.toUpperCase())) {
@@ -560,7 +560,7 @@ async function executeEstimatePowerBudget(args: any) {
       adequate,
       components: items,
       warnings,
-      recommendation: adequate 
+      recommendation: adequate
         ? "Power supply is adequate for this load configuration."
         : "Consider adding an external power source or battery regulator."
     };
@@ -685,7 +685,7 @@ async function executeCheckSimulationSupport(args: any) {
       physicalOnly,
       simulatableCount: simulatable.length,
       physicalCount: physicalOnly.length,
-      recommendation: physicalOnly.length > 0 
+      recommendation: physicalOnly.length > 0
         ? "Some components require physical setup; verify them individually."
         : "All components supported in Wokwi simulation."
     };
@@ -705,76 +705,13 @@ async function executeGenerateWiring(args: any) {
   const parts = parseIfString(args.parts);
 
   try {
-    // ??$$$ old code
-    /*
-    const registry = getRegistry();
-    let mcuEntry: any = null;
-
-    for (const [key, value] of Object.entries(registry)) {
-      if (key.toLowerCase().includes(mcu.toLowerCase()) || (value.wokwiType && value.wokwiType.toLowerCase().includes(mcu.toLowerCase()))) {
-        mcuEntry = value;
-        break;
-      }
-    }
-
-    const connections: any[] = [];
-    let connCounter = 1;
-
-    const assignPin = (fromPin: string, toPin: string, net: string, color: string, desc: string) => {
-      connections.push({
-        id: `conn_${connCounter++}`,
-        from: fromPin,
-        to: toPin,
-        net,
-        color,
-        description: desc
-      });
-    };
-
-    const isEsp32 = mcu.toLowerCase().includes("esp32");
-
-    parts.forEach((p: any) => {
-      if (p.role === "controller") return;
-
-      const pKey = p.key;
-      const pName = p.name.toLowerCase();
-
-      // Simple wire definitions
-      if (pName.includes("mpu6050") || pName.includes("gyro") || pName.includes("i2c")) {
-        // I2C mapping
-        assignPin(`mcu.${isEsp32 ? "GPIO21" : "A4"}`, `${pKey}.SDA`, "I2C_SDA", "#0066ff", "I2C data line");
-        assignPin(`mcu.${isEsp32 ? "GPIO22" : "A5"}`, `${pKey}.SCL`, "I2C_SCL", "#ffcc00", "I2C clock line");
-        assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "VCC power supply");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
-      } else if (pName.includes("led")) {
-        assignPin("mcu.GPIO13", `${pKey}.A`, "LED_ANODE", "#00ccff", "LED Anode Control");
-        assignPin("mcu.GND", `${pKey}.C`, "POWER_GND", "#000000", "LED Cathode Ground");
-      } else if (pName.includes("dht")) {
-        assignPin("mcu.GPIO15", `${pKey}.SDA`, "DHT_DATA", "#00ccff", "DHT data signal");
-        assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "DHT VCC");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "DHT Ground");
-      } else if (pName.includes("button") || pName.includes("switch") || pName.includes("tact")) {
-        assignPin(`mcu.${isEsp32 ? "GPIO2" : "D2"}`, `${pKey}.SIG`, "BUTTON_SIG", "#00cc66", "Button signal input");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Button Ground");
-      } else if (pName.includes("servo") || pName.includes("motor")) {
-        assignPin(`mcu.${isEsp32 ? "GPIO4" : "D4"}`, `${pKey}.PWM`, "SERVO_PWM", "#ff6600", "Servo control line");
-        assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Servo VCC");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Servo Ground");
-      } else {
-        // Generic defaults
-        assignPin("mcu.GPIO4", `${pKey}.SIG`, "SIGNAL", "#00ccff", "Signal line");
-        assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Power VCC");
-        assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
-      }
-    });
-    */
 
     // ??$$$ newer code
     const connections = resolveWiring(parts, mcu);
 
     // Generate pinUsage summary
     const pinUsage: Record<string, any> = {};
-    connections.forEach((conn) => {
+    connections.forEach((conn: { from: string; to: any; }) => {
       const fromMatch = conn.from.match(/mcu\.(.+)/);
       if (fromMatch) {
         const pin = fromMatch[1];
@@ -878,46 +815,7 @@ async function executeGenerateMilestone(args: any, sessionId?: string) {
     const wiringText = JSON.stringify(wiringSubset, null, 2);
     const prevText = previousMilestones ? previousMilestones.join(", ") : "None";
 
-        /* old code
-    const systemPrompt = "Return ONLY valid JSON. No markdown. No prose. No <think>. Keep compile errors out.";
-    const userPrompt = `You are writing firmware for a hardware project milestone.
-  
-  MCU: ${mcu}
-  Milestone: ${title}
-  Objective: ${objective}
-  Parts involved: ${partsInvolved.join(", ")}
-  Wiring for this milestone: ${wiringText}
-  Previous milestones completed: ${prevText}
-  Is first milestone: ${isFirstMilestone || false}
-  
-  Rules:
-  - Write complete, compilable Arduino code
-  - Include only what is needed for THIS milestone
-  - If isFirstMilestone: bare LED blink ONLY, zero includes except Arduino.h implicit, zero external libraries
-  - Use exact pin numbers from the wiring subset provided
-  - Use exact I2C addresses and register values (not guesses)
-  - Add clear comments explaining each section
-  - Code must work standalone without previous milestone code
-  
-  Return ONLY valid JSON, no markdown:
-  {
-    "code": "full .ino code here",
-    "explanation": "why this step matters, what we learn from it",
-    "expectedOutput": "exact serial monitor output on success",
-    "passCondition": "plain english: what success looks like",
-    "commonProblems": ["problem 1 and fix", "problem 2 and fix"],
-    "simulatable": true,
-    "requiredLibraries": [
-      {
-        "name": "Wire",
-        "type": "core",
-        "version": null,
-        "installCommand": null
-      }
-    ]
-  }`;
-    */
-    // ??$$ newer code
+
     const systemPrompt = "Return ONLY valid JSON. No markdown. No prose. No <think>. Keep compile errors out.";
     const userPrompt = `You are writing firmware for a hardware project milestone.
   
@@ -956,128 +854,7 @@ async function executeGenerateMilestone(args: any, sessionId?: string) {
     ]
   }`;
 
-    /* old code
-    let raw = "";
 
-    const useGemini = modelName.toLowerCase().includes("gemini");
-    const useDeepSeek = modelName.toLowerCase().includes("deepseek");
-    const useOllama = modelName.toLowerCase().includes("ollama");
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-
-    if (useGemini && geminiApiKey) {
-      console.log("[Agent2Tools] Generating milestone using Gemini directly...");
-      const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const geminiModel = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        systemInstruction: systemPrompt,
-        generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
-      });
-      const result = await geminiModel.generateContent(userPrompt);
-      raw = result.response.text().trim();
-    } else if (useDeepSeek) {
-      // ??$$$ newer code
-      const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
-      if (!deepseekApiKey) throw new Error("DEEPSEEK_API_KEY is missing in env");
-      console.log("[Agent2Tools] Generating milestone using DeepSeek directly...");
-      const response = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${deepseekApiKey}`
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.2
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`DeepSeek API call failed: ${response.statusText} - ${errText}`);
-      }
-
-      const data: any = await response.json();
-      raw = data.choices[0]?.message?.content?.trim() || "";
-    } else if (useOllama) {
-      // ??$$$ newer code
-      const modelTag = modelName.split("/")[1] || "qwen2.5:3b";
-      console.log(`[Agent2Tools] Generating milestone locally using Ollama (${modelTag})...`);
-      const response = await fetch("http://localhost:11434/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: modelTag,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          response_format: { type: "json_object" },
-          temperature: 0.2,
-          options: {
-            num_ctx: 8192
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Ollama API call failed: ${response.statusText} - ${errText}`);
-      }
-
-      const data: any = await response.json();
-      raw = data.choices[0]?.message?.content?.trim() || "";
-    } else {
-      try {
-        console.log(`[Agent2Tools] Generating milestone using Groq (${modelName})...`);
-        const groq = await rotationService.getClient();
-        const completion = await groq.chat.completions.create({
-          model: modelName.toLowerCase().includes("qwen") ? "qwen/qwen3-32b" : "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.2
-        });
-        raw = completion.choices[0]?.message?.content?.trim() || "";
-      } catch (err: any) {
-        console.warn("[Agent2Tools] Groq milestone generation failed. Trying Gemini fallback...", err.message || err);
-        if (geminiApiKey) {
-          const genAI = new GoogleGenerativeAI(geminiApiKey);
-          const geminiModel = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            systemInstruction: systemPrompt,
-            generationConfig: { responseMimeType: "application/json", temperature: 0.2 }
-          });
-          const result = await geminiModel.generateContent(userPrompt);
-          raw = result.response.text().trim();
-        } else {
-          throw err;
-        }
-      }
-    }
-
-    const clean = raw.replace(/```json|```/g, "").trim();
-    const parsed = JSON.parse(clean);
-
-    return {
-      id: `milestone_${Math.floor(Math.random() * 1000)}`,
-      order: 1,
-      title,
-      objective,
-      subsystem,
-      partsInvolved,
-      wiringInstructions: wiringSubset.map((w: any) => `${w.from} -> ${w.to} (${w.net})`).join(", "),
-      ...parsed
-    };
-    */
-    // ??$$$ newer code - retry wrappers, JSON sanitization/manual extract fallback, and dynamic order logic
     let raw = "";
 
     const useGemini = modelName.toLowerCase().includes("gemini");
@@ -1201,7 +978,7 @@ async function executeGenerateMilestone(args: any, sessionId?: string) {
       console.warn("[Agent2Tools] JSON.parse failed, attempting manual extraction/fallback", e);
       const codeMatch = raw.match(/"code"\s*:\s*"([\s\S]*?)(?<!\\)",/);
       if (codeMatch) {
-        const fixedRaw = raw.replace(codeMatch[0], 
+        const fixedRaw = raw.replace(codeMatch[0],
           `"code": ${JSON.stringify(codeMatch[1])},`
         );
         parsed = JSON.parse(fixedRaw.replace(/```json|```/g, '').trim());
@@ -1327,7 +1104,7 @@ async function executeGenerateDiagramJson(args: any) {
         const partsList = pStr.split(".");
         const partRef = partsList[0];
         let pinRef = partsList[1] || "";
-        
+
         let targetId = partRef;
         const matchingPart = parts.find((p: any) => p.key === partRef);
         if (matchingPart) {
@@ -1432,7 +1209,7 @@ async function executeSaveProgress(args: any, sessionId: string) {
   }
 }
 
-// ??$$$ TOOL 13: generate_final_sketch
+
 /* old code
 async function executeGenerateFinalSketch(args: any, sessionId?: string) {
   const objective = args.objective;
@@ -1776,7 +1553,7 @@ export async function executeTool(
   name: string,
   args: any,
   sessionId: string
- ): Promise<any> {
+): Promise<any> {
   switch (name) {
     case "search_library":
       return executeSearchLibrary(args);

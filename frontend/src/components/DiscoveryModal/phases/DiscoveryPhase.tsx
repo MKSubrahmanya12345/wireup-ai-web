@@ -173,6 +173,8 @@ export function DiscoveryPhase(props: any) {
                     </div>
                   </div>
 
+                  {/* ??$$$ old code */}
+                  {/*
                   <div>
                     <div className="text-zinc-400 font-semibold mb-1.5">Subsystems</div>
                     <div className="flex flex-wrap gap-1">
@@ -201,6 +203,64 @@ export function DiscoveryPhase(props: any) {
                       {context.connectivity || "Not specified"}
                     </div>
                   </div>
+                  */}
+                  {/* ??$$$ newer code */}
+                  <div>
+                    <div className="text-zinc-400 font-semibold mb-1.5">Subsystems</div>
+                    <div className="flex flex-wrap gap-1">
+                      {(() => {
+                        const subs: string[] = [];
+                        if (Array.isArray(context.subsystems)) {
+                          subs.push(...context.subsystems);
+                        } else if (context.subsystems && typeof context.subsystems === "object") {
+                          const s = context.subsystems;
+                          if (Array.isArray(s.inputs)) subs.push(...s.inputs.map((x: string) => `Input: ${x}`));
+                          if (Array.isArray(s.outputs)) subs.push(...s.outputs.map((x: string) => `Output: ${x}`));
+                          if (Array.isArray(s.communication)) subs.push(...s.communication.map((x: string) => `Comm: ${x}`));
+                          if (Array.isArray(s.storage)) subs.push(...s.storage.map((x: string) => `Storage: ${x}`));
+                          if (Array.isArray(s.power)) subs.push(...s.power.map((x: string) => `Power: ${x}`));
+                        }
+                        if (subs.length > 0) {
+                          return subs.map((sub: string, i: number) => (
+                            <span key={i} className="rounded bg-zinc-900 px-2 py-1 text-[10px] text-zinc-300 border border-zinc-800">
+                              {sub}
+                            </span>
+                          ));
+                        }
+                        return <span className="text-zinc-600 italic">None identified</span>;
+                      })()}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-zinc-400 font-semibold mb-1">Power Source</div>
+                    <div className="text-zinc-300">
+                      {context.powerSource || "Not specified"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-zinc-400 font-semibold mb-1">Connectivity</div>
+                    <div className="text-zinc-300">
+                      {Array.isArray(context.connectivity)
+                        ? (context.connectivity.join(", ") || "None")
+                        : (context.connectivity || "Not specified")}
+                    </div>
+                  </div>
+
+                  {context.formFactor && (
+                    <div>
+                      <div className="text-zinc-400 font-semibold mb-1">Form Factor</div>
+                      <div className="text-zinc-350 bg-zinc-900/40 p-2 rounded border border-zinc-800/60">{context.formFactor}</div>
+                    </div>
+                  )}
+
+                  {context.estimatedBudget && (
+                    <div>
+                      <div className="text-zinc-400 font-semibold mb-1">Estimated Budget</div>
+                      <div className="text-zinc-350 bg-zinc-900/40 p-2 rounded border border-zinc-800/60">{context.estimatedBudget}</div>
+                    </div>
+                  )}
 
                   {context.constraints?.length > 0 && (
                     <div>

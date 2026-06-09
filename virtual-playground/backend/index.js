@@ -91,7 +91,20 @@ app.get('/api/project', (req, res) => {
           },
           sketch,
           context,
-          phases: context.subsystems || [],
+          // ??$$$ old code
+          // phases: context.subsystems || [],
+          // ??$$$ newer code
+          phases: Array.isArray(context.subsystems)
+            ? context.subsystems
+            : (context.subsystems && typeof context.subsystems === "object"
+                ? [
+                    ...(context.subsystems.inputs || []),
+                    ...(context.subsystems.outputs || []),
+                    ...(context.subsystems.communication || []),
+                    ...(context.subsystems.storage || []),
+                    ...(context.subsystems.power || [])
+                  ]
+                : []),
           milestones,
           additionalTools: [
             "Soldering iron",

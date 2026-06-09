@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { projectData } from '../data/project';
 import { simulationEngine } from '../simulation/SimulationEngine';
-import type { ComponentItem, ProjectData } from '../types/project';
+import type { ComponentItem, ProjectData, Wiring } from '../types/project';
 
 const EMPTY_LCD_LINE = ''.padEnd(16, ' ');
 
@@ -96,7 +96,7 @@ const buildWiringGraph = (wiring: Wiring[]) => {
 
   for (const wire of wiring || []) {
     const from = parseEndpoint(wire.from);
-    const to   = parseEndpoint(wire.to);
+    const to = parseEndpoint(wire.to);
     if (!from.partKey || !to.partKey) continue;
     add(from.partKey, to.partKey, normalizePin(to.pin));   // forward
     add(to.partKey, from.partKey, normalizePin(from.pin)); // backward
@@ -115,9 +115,9 @@ const findWiredPin = (
   const allWiringPartKeys = new Set<string>();
   for (const wire of project.wiring || []) {
     const from = parseEndpoint(wire.from);
-    const to   = parseEndpoint(wire.to);
+    const to = parseEndpoint(wire.to);
     if (from.partKey) allWiringPartKeys.add(from.partKey);
-    if (to.partKey)   allWiringPartKeys.add(to.partKey);
+    if (to.partKey) allWiringPartKeys.add(to.partKey);
   }
 
   // Build the set of effective keys for the matched BOM items:
@@ -152,7 +152,7 @@ const findWiredPin = (
   // ??$$$ newer code — fast path: direct single-hop wire, must be a GPIO signal pin
   for (const wire of project.wiring || []) {
     const from = parseEndpoint(wire.from);
-    const to   = parseEndpoint(wire.to);
+    const to = parseEndpoint(wire.to);
 
     if (componentKeys.has(from.partKey) && mcuKeys.has(to.partKey)) {
       const pin = normalizePin(to.pin);

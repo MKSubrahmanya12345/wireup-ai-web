@@ -80,9 +80,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-// ??$$$ old code
-// app.options("(.*)", cors(corsOptions));
-// ??$$$ newer code
+
 app.options(/.*/, cors(corsOptions));
 
 app.use(cookieParser());
@@ -162,38 +160,6 @@ const getGroqClient = (customKey?: string) => {
   return new Groq({ apiKey });
 };
 
-/**
- * -----------------------
- * FORGE3D PROMPT
- * -----------------------
- */
-const FORGE3D_SYSTEM_PROMPT = `
-You are a professional 3D CAD designer and model generator.
-Output ONLY valid JSON. No markdown, no explanation.
-
-Schema:
-{
-  "name": "string",
-  "objects": [
-    {
-      "id": "string",
-      "type": "box|sphere|cylinder|cone|torus",
-      "dimensions": [],
-      "position": [x,y,z],
-      "rotation": [x,y,z],
-      "color": "#HEX",
-      "material": "standard|metal|glass|glowing|toon",
-      "isElectronic": boolean,
-      "physics": {
-        "isStatic": boolean,
-        "mass": number,
-        "restitution": number,
-        "velocity": [vx,vy,vz]
-      }
-    }
-  ]
-}
-`;
 
 interface ExistingObject {
   id: string;
@@ -256,7 +222,6 @@ app.post(
       const completion = await groq.chat.completions.create({
         model,
         messages: [
-          { role: "system", content: FORGE3D_SYSTEM_PROMPT },
           { role: "user", content: userMessage },
         ],
         response_format: { type: "json_object" },
@@ -281,17 +246,7 @@ app.post(
   }
 );
 
-/**
- * -----------------------
- * GENERATE HEALTH
- * -----------------------
- */
-app.get("/api/generate/health", (_req, res) => {
-  res.json({
-    status: "OK",
-    hasEnvKey: !!process.env.GROQ_API_KEY,
-  });
-});
+
 
 /**
  * -----------------------
@@ -322,17 +277,6 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
-// ??$$$
-// const httpServer = createServer(app);
-// const io = new Server(httpServer, {
-//   cors: {
-//     origin: "*",
-//     credentials: true
-//   }
-// });
-// (global as any).io = io;
-
-// ??$$$ NEW FLOW
 const httpServer = createServer(app);
 const io = new Server(httpServer, {
   cors: {
@@ -367,8 +311,7 @@ io.on("connection", (socket) => {
  * START SERVER
  * -----------------------
  */
-// ??$$$ newer code
-// ??$$$ newer code - resolve arduino-cli path based on environments
+
 function resolveArduinoCliPath() {
   if (process.env.ARDUINO_CLI_PATH?.trim()) {
     return process.env.ARDUINO_CLI_PATH.trim();
@@ -383,7 +326,7 @@ function resolveArduinoCliPath() {
   return "arduino-cli";
 }
 
-// ??$$$
+
 // async function ensureBoardCoresInstalled() {
 //   const arduinoCliPath = resolveArduinoCliPath();
 //   const cores = [
@@ -464,9 +407,7 @@ async function ensureBoardCoresInstalled() {
 
       if (!stdout.includes(coreFamily)) {
         console.log(`[BoardCoreInstaller Debugger] Core ${core} not found. Attempting install...`);
-        // ??$$$ old code
-        // const installCmd = `"${arduinoCliPath}" core install ${core}`;
-        // ??$$$ newer code
+
         const installCmd = `"${arduinoCliPath}" core install ${core} --additional-urls "${urls}"`;
         console.log(`[BoardCoreInstaller Debugger] Running: ${installCmd}`);
         const { stdout: installOut, stderr: installErr } = await exec(installCmd);

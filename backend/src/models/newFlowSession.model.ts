@@ -9,13 +9,33 @@ export interface IQaHistory {
   timestamp: Date;
 }
 
+// export interface IProjectContext {
+//   corePurpose: string;
+//   mcu: string;
+//   subsystems: string[];
+//   constraints: string[];
+//   powerSource: string;
+//   connectivity: string;
+//   openQuestions: string[];
+// }
+// ??$$$ newer code
+export interface IProjectSubsystems {
+  inputs: string[];
+  outputs: string[];
+  communication: string[];
+  storage: string[];
+  power: string[];
+}
+
 export interface IProjectContext {
   corePurpose: string;
   mcu: string;
-  subsystems: string[];
-  constraints: string[];
+  subsystems: IProjectSubsystems;
+  formFactor?: string;
   powerSource: string;
-  connectivity: string;
+  connectivity: string[];
+  estimatedBudget?: string;
+  constraints: string[];
   openQuestions: string[];
 }
 
@@ -139,13 +159,25 @@ const qaHistorySchema = new Schema<IQaHistory>({
   timestamp: { type: Date, default: Date.now }
 }, { _id: false });
 
+// const projectContextSchema = new Schema<IProjectContext>({
+//   corePurpose: { type: String, default: "" },
+//   mcu: { type: String, default: "" },
+//   subsystems: [{ type: String }],
+//   constraints: [{ type: String }],
+//   powerSource: { type: String, default: "" },
+//   connectivity: { type: String, default: "" },
+//   openQuestions: [{ type: String }]
+// }, { _id: false });
+// ??$$$ newer code
 const projectContextSchema = new Schema<IProjectContext>({
   corePurpose: { type: String, default: "" },
   mcu: { type: String, default: "" },
-  subsystems: [{ type: String }],
-  constraints: [{ type: String }],
+  subsystems: { type: Schema.Types.Mixed, default: () => ({ inputs: [], outputs: [], communication: [], storage: [], power: [] }) },
+  formFactor: { type: String, default: "" },
   powerSource: { type: String, default: "" },
-  connectivity: { type: String, default: "" },
+  connectivity: { type: Schema.Types.Mixed, default: () => [] },
+  estimatedBudget: { type: String, default: "" },
+  constraints: [{ type: String }],
   openQuestions: [{ type: String }]
 }, { _id: false });
 
