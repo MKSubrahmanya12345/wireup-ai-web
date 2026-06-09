@@ -1,6 +1,6 @@
 // ??$$$ group 2 - Ideation Stage (Phase 1)
 // @ts-nocheck
-import { getVoiceRuntimeHealth, synthesizeWithElevenLabs, transcribeWithDeepgram } from "../services/voice.service";
+import { getVoiceRuntimeHealth, synthesizeWithElevenLabs, transcribeWithDeepgram, transcribeWithWhisper } from "../services/voice.service";
 
 const buildRequestId = () => `voice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
@@ -101,4 +101,30 @@ export const getVoiceHealth = (_req, res) => {
     ok: true,
     ...getVoiceRuntimeHealth()
   });
+};
+
+export const transcribeWithWhisperController = async (req, res) => {
+  try {
+    const { audioBase64, mimeType = "audio/webm", filename = "audio.webm" } = req.body || {};
+
+    if (!audioBase64 || typeof audioBase64 !== "string") {
+      return res.status(400).json({ error: "audioBase64 is required", code: "missing_audio_base64" });
+    }
+
+    if (audioBase64.length > 10 * 1024 * 1024) {
+      return res.status(413).json({ error: "Audio payload too large.", code: "audio_payload_too_large" });
+    }
+
+    const audioBuffer = Buffer.from(audioBase64, "base64");
+
+    const result = await transcribeWithWhisper({ audioBuffer, mimeType, filename });
+
+    res.json({
+      provider: "whisper",
+      transcript: result.transcript,
+      detectedLanguage: result.detectedLanguage ?? null,
+    });
+  } catch (error) {
+    sendVoiceError(res, error, "Whisper transcription failed");
+  }
 };

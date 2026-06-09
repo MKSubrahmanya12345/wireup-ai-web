@@ -1,5 +1,6 @@
 // ??$$$ group 2 - Ideation Stage (Phase 1)
 // @ts-nocheck
+import { Readable } from "stream";
 class VoiceProviderError extends Error {
   constructor(message, { code = "voice_provider_error", statusCode = 500, provider = "voice", details = "" } = {}) {
     super(message);
@@ -372,10 +373,73 @@ export const synthesizeWithElevenLabs = async ({
 
 export const getVoiceRuntimeHealth = () => {
   return {
-    deepgramConfigured: Boolean(process.env.DEEPGRAM_API_KEY?.trim()),
+    deepgramConfigured:   Boolean(process.env.DEEPGRAM_API_KEY?.trim()),
     elevenLabsConfigured: Boolean(process.env.ELEVENLABS_API_KEY?.trim()),
     elevenLabsVoiceConfigured: Boolean(
       process.env.ELEVENLABS_VOICE_ID?.trim() || process.env.ELEVENLABS_DEFAULT_VOICE_ID?.trim()
-    )
+    ),
+    whisperLocal: `http://localhost:${process.env.WHISPER_PORT || 8765}`,
+  };
+};
+
+// ── Whisper STT — proxies to local Python faster-whisper server ──────────────
+export const transcribeWithWhisper = async ({
+  audioBuffer,
+  mimeType = "audio/webm",
+  filename = "audio.webm",
+}: {
+  audioBuffer: Buffer;
+  mimeType?: string;
+  filename?: string;
+}): Promise<{ transcript: string; detectedLanguage?: string }> => {
+  if (!audioBuffer || audioBuffer.length === 0) {
+    throw new VoiceProviderError("Audio payload is empty", {
+      code: "empty_audio",
+      statusCode: 400,
+      provider: "whisper",
+    });
+  }
+
+  const whisperPort = process.env.WHISPER_PORT || "8765";
+  const whisperUrl  = `http://localhost:${whisperPort}/transcribe`;
+
+  const audioBase64 = audioBuffer.toString("base64");
+
+  let res: Response;
+  try {
+    res = await fetch(whisperUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ audioBase64, mimeType, filename }),
+    });
+  } catch (err: any) {
+    throw new VoiceProviderError(
+      "Local Whisper server is not running. Start it with: python whisper-server/server.py",
+      { code: "whisper_unavailable", statusCode: 503, provider: "whisper", details: err?.message }
+    );
+  }
+
+  let data: any;
+  try {
+    data = await res.json();
+  } catch {
+    throw new VoiceProviderError("Invalid response from Whisper server", {
+      code: "whisper_bad_response",
+      statusCode: 502,
+      provider: "whisper",
+    });
+  }
+
+  if (!res.ok) {
+    throw new VoiceProviderError(data?.error || "Whisper transcription failed", {
+      code: "whisper_stt_failed",
+      statusCode: res.status,
+      provider: "whisper",
+    });
+  }
+
+  return {
+    transcript:       String(data.transcript || "").trim(),
+    detectedLanguage: data.detectedLanguage ?? undefined,
   };
 };
