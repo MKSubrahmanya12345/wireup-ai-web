@@ -37,44 +37,44 @@ export const Resistor: React.FC<ResistorProps> = ({
       )}
 
       {/* Left Lead Wire */}
-      <mesh position={[-0.42, 0, 0]}>
-        <cylinderGeometry args={[0.018, 0.018, 0.36, 8]} rotation={[0, 0, Math.PI / 2]} />
+      <mesh position={[-0.42, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.018, 0.018, 0.36, 8]} />
         <meshStandardMaterial color="#c0c0c0" metalness={0.9} roughness={0.1} />
       </mesh>
 
       {/* Right Lead Wire */}
-      <mesh position={[0.42, 0, 0]}>
-        <cylinderGeometry args={[0.018, 0.018, 0.36, 8]} rotation={[0, 0, Math.PI / 2]} />
+      <mesh position={[0.42, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.018, 0.018, 0.36, 8]} />
         <meshStandardMaterial color="#c0c0c0" metalness={0.9} roughness={0.1} />
       </mesh>
 
       {/* Body — tan/beige carbon film cylinder */}
-      <mesh castShadow receiveShadow>
-        <cylinderGeometry args={[0.09, 0.09, 0.42, 16]} rotation={[0, 0, Math.PI / 2]} />
+      <mesh castShadow receiveShadow rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.09, 0.09, 0.42, 16]} />
         <meshStandardMaterial color="#d2b48c" roughness={0.7} metalness={0.05} />
       </mesh>
 
       {/* Band 1 — Red (2) */}
-      <mesh position={[-0.14, 0, 0]}>
-        <cylinderGeometry args={[0.092, 0.092, 0.04, 16]} rotation={[0, 0, Math.PI / 2]} />
+      <mesh position={[-0.14, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.092, 0.092, 0.04, 16]} />
         <meshStandardMaterial color="#cc0000" roughness={0.5} />
       </mesh>
 
       {/* Band 2 — Red (2) */}
-      <mesh position={[-0.05, 0, 0]}>
-        <cylinderGeometry args={[0.092, 0.092, 0.04, 16]} rotation={[0, 0, Math.PI / 2]} />
+      <mesh position={[-0.05, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.092, 0.092, 0.04, 16]} />
         <meshStandardMaterial color="#cc0000" roughness={0.5} />
       </mesh>
 
       {/* Band 3 — Brown (×10 multiplier) */}
-      <mesh position={[0.06, 0, 0]}>
-        <cylinderGeometry args={[0.092, 0.092, 0.04, 16]} rotation={[0, 0, Math.PI / 2]} />
+      <mesh position={[0.06, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.092, 0.092, 0.04, 16]} />
         <meshStandardMaterial color="#8b4513" roughness={0.5} />
       </mesh>
 
       {/* Band 4 — Gold (5% tolerance) */}
-      <mesh position={[0.16, 0, 0]}>
-        <cylinderGeometry args={[0.092, 0.092, 0.035, 16]} rotation={[0, 0, Math.PI / 2]} />
+      <mesh position={[0.16, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.092, 0.092, 0.035, 16]} />
         <meshStandardMaterial color="#ffd700" roughness={0.3} metalness={0.6} />
       </mesh>
 

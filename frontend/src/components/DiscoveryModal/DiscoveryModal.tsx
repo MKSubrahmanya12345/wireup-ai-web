@@ -5,7 +5,7 @@ import { Socket } from "socket.io-client";
 import { axiosInstance } from "../../lib/axios";
 import { useThemeStore } from "../../store/useThemeStore.ts";
 import { DiscoveryPhase } from "./phases/DiscoveryPhase";
-import { X, HardDrive, Layers } from "lucide-react";
+import { X, HardDrive, Layers, Cpu } from "lucide-react"; // ??$$$ newer code
 import toast from "react-hot-toast";
 import { FormulationPhase } from "./phases/FormulationPhase";
 import { useSessionRestore } from "./hooks/useSessionRestore";
@@ -582,36 +582,28 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   };
 
   // ── Derived theme tokens ──────────────────────────────────────────────────
-  const modalBg = dark ? "bg-[#0d0d12]" : "bg-slate-50";
-  const headerBg = dark ? "bg-[#0d0d12]/80 border-white/[0.06]" : "bg-white/80 border-slate-200";
-  const textHead = dark ? "text-slate-100" : "text-slate-800";
-  const textSub = dark ? "text-slate-500" : "text-slate-400";
-  const selectCls = dark
-    ? "rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-slate-200 outline-none focus:border-indigo-500/60 transition-colors"
-    : "rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 outline-none focus:border-indigo-400 transition-colors";
+  // ??$$$ newer code - VSCode monochromatic styling
+  const modalBg = "bg-[#1e1e1e]";
+  const headerBg = "bg-[#252526] border-[#2d2d2d]";
+  const textHead = "text-white";
+  const textSub = "text-zinc-500";
+  const selectCls = "rounded border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-[#007acc] transition-colors";
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col font-sans antialiased overflow-hidden ${dark ? "text-slate-100" : "text-slate-800"} ${modalBg}`}>
-      {/* Ambient glow */}
-      <div className="pointer-events-none absolute top-0 left-1/4 h-100 w-150 -translate-y-1/2 rounded-full bg-indigo-500/10 blur-[130px]" />
-      <div className="pointer-events-none absolute bottom-0 right-1/4 h-100 w-150 translate-y-1/2 rounded-full bg-violet-500/8 blur-[130px]" />
-
+    <div className={`fixed inset-0 z-50 flex flex-col font-sans antialiased overflow-hidden text-zinc-350 bg-[#1e1e1e]`}>
+      
       {/* ── Top Header ── */}
-      <header className={`relative z-10 flex h-16 shrink-0 items-center justify-between border-b px-6 backdrop-blur-xl ${headerBg}`}>
-        {/* top gradient line */}
-        <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-indigo-500 via-violet-500 to-pink-500 opacity-60" />
-
+      <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-[#2d2d2d] px-6 bg-[#252526]">
+        
         <div className="flex items-center gap-3">
-          <div className={`flex h-9 w-9 items-center justify-center rounded-xl border ${dark ? "border-indigo-500/30 bg-indigo-500/15 text-indigo-400" : "border-indigo-200 bg-indigo-50 text-indigo-600"}`}>
-            <svg className="h-4.5 w-4.5 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-[#1e1e1e] border border-[#2d2d2d] text-[#007acc]">
+            <Cpu className="h-4 w-4" />
           </div>
           <div>
-            <h1 className={`text-sm font-bold tracking-tight ${textHead}`}>
+            <h1 className="text-xs font-bold text-white uppercase tracking-wider">
               AI Build Session
             </h1>
-            <p className={`text-[11px] ${textSub}`}>
+            <p className="text-[10px] text-zinc-500 font-mono">
               {phase === 1 ? "Discovery Loop" : "Autonomous Formulation Pipeline"}
             </p>
           </div>
@@ -621,23 +613,12 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           {/* Model Selector */}
           {started && (
             <div className="flex items-center gap-2">
-              <span className={`text-xs ${textSub}`}>Agent Brain:</span>
+              <span className="text-[10px] text-zinc-400 font-mono">Agent Brain:</span>
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 className={selectCls}
               >
-                /* old code
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="qwen/qwen3-32b">Groq Llama 4 Scout</option>
-                <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
-                <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
-                <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
-                <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
-                <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
-                <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
-                <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
-                */
                 {/* ??$$$ newer code */}
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                 <option value="gpt-oss-120b">Cerebras gpt-oss-120b</option>
@@ -657,7 +638,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           {/* Close button */}
           <button
             onClick={onClose}
-            className={`flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${dark ? "text-slate-400 hover:bg-white/8 hover:text-slate-200" : "text-slate-400 hover:bg-slate-100 hover:text-slate-700"}`}
+            className="flex h-7 w-7 items-center justify-center rounded text-zinc-400 hover:bg-[#333333] hover:text-white transition-colors"
           >
             <X className="h-4 w-4" />
           </button>

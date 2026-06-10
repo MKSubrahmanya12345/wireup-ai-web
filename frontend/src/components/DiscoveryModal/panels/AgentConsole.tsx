@@ -29,7 +29,8 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
   handleCopyAllData,
 }) => {
   return (
-    <div className="flex-1 flex overflow-hidden h-[calc(100vh-280px)]">
+    // ??$$$ newer code
+    <div className="flex-1 flex overflow-hidden h-full">
       {/* Left Column: Log Feed */}
       <div className="w-[42%] flex flex-col border-r border-zinc-800 bg-zinc-950/40 overflow-hidden">
         <div className="p-3 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/10">
@@ -147,13 +148,13 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                 <div
                   key={idx}
                   onClick={() => setSelectedLog(log)}
-                  className={`p-3 rounded-lg border text-[11px] cursor-pointer transition-all bg-purple-500/5 hover:bg-purple-500/10 ${
+                  className={`p-3 rounded-lg border text-[11px] cursor-pointer transition-all bg-[#007acc]/5 hover:bg-[#007acc]/10 ${
                     isSelected
-                      ? "border-purple-500 bg-purple-500/10"
-                      : "border-purple-500/20"
+                      ? "border-[#007acc] bg-[#007acc]/10"
+                      : "border-[#007acc]/20"
                   }`}
                 >
-                  <div className="flex justify-between items-center text-[9px] text-purple-400 mb-1">
+                  <div className="flex justify-between items-center text-[9px] text-[#007acc] mb-1">
                     <span className="font-bold uppercase tracking-wider flex items-center gap-1">
                       <CheckCircle className="h-3 w-3" /> Decision Logged
                     </span>

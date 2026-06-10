@@ -6,7 +6,8 @@ export type PeripheralType =
   | 'ClickButton'
   | 'BatteryGauge'
   | 'SerialMonitor'
-  | 'LEDIndicator';
+  | 'LEDIndicator'
+  | 'SensorInput'; // ??$$$ newer code
 
 export interface PeripheralConfig {
   key: string;
@@ -207,9 +208,11 @@ export function deriveManifest(project: any, blueprint: any): SimulationManifest
     const capacityMah = batteryItem.displayName?.match(/(\d+)\s*mah/i)?.[1]
       ? parseInt(batteryItem.displayName.match(/(\d+)\s*mah/i)![1])
       : 1000;
+    // ??$$$ newer code
     peripherals.push({
       key: batteryItem.key,
       type: 'BatteryGauge',
+      pins: [],
       config: { capacityMah, chargingPin: chargerItem ? 'charger.CHRG' : '' }
     });
   }

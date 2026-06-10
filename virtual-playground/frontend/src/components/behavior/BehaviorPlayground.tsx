@@ -13,7 +13,16 @@ import {
   Layers,
   Volume2,
   Keyboard,
-  FileAudio
+  FileAudio,
+  // ??$$$ newer code
+  Folder,
+  File,
+  Sliders,
+  ChevronDown,
+  ChevronRight,
+  PlayCircle,
+  Settings,
+  RefreshCw
 } from 'lucide-react';
 /* old code
 import { deriveManifest, SimulationManifest } from '../../simulation/behavior/SimulationManifest';
@@ -64,6 +73,11 @@ export const BehaviorPlayground: React.FC<BehaviorPlaygroundProps> = ({ sessionI
 
   // ??$$$ newer code
   const [sensorInputs, setSensorInputs] = useState<Record<string, Record<string, number>>>({});
+  const [activeFile, setActiveFile] = useState<'sketch.ino' | 'wiring.json' | 'bom.json' | 'manifest.json'>('sketch.ino');
+  const [activeSidebarTab, setActiveSidebarTab] = useState<'explorer' | 'sensors'>('explorer');
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(true);
+  const [rawProject, setRawProject] = useState<any>(null);
 
   const sensors = useMemo(() => {
     if (!manifest) return [];
@@ -340,6 +354,9 @@ export const BehaviorPlayground: React.FC<BehaviorPlaygroundProps> = ({ sessionI
         if (!rawProject) {
           throw new Error('Project formulation payload not found.');
         }
+        
+        // ??$$$ newer code
+        setRawProject(rawProject);
 
         // Fetch blueprint
         let blueprint: any = null;
@@ -459,7 +476,10 @@ export const BehaviorPlayground: React.FC<BehaviorPlaygroundProps> = ({ sessionI
       setFiles(list);
       renderOLEDFrame();
     });
-    return unsub;
+    return () => {
+      // ??$$$ newer code
+      unsub();
+    };
   }, []);
 
   // Auto-scroll serial log
@@ -576,32 +596,47 @@ export const BehaviorPlayground: React.FC<BehaviorPlaygroundProps> = ({ sessionI
       </div>
     );
   }
+  // ??$$$ newer code
+  const getFileContent = () => {
+    if (activeFile === 'sketch.ino') {
+      return rawProject?.sketch || '';
+    }
+    if (activeFile === 'wiring.json') {
+      return JSON.stringify(rawProject?.wiring || [], null, 2);
+    }
+    if (activeFile === 'bom.json') {
+      return JSON.stringify(rawProject?.bom || [], null, 2);
+    }
+    if (activeFile === 'manifest.json') {
+      return JSON.stringify(manifest, null, 2);
+    }
+    return '';
+  };
+
+  const codeContent = getFileContent();
+  const codeLines = codeContent.split('\n');
 
   return (
-    <div className="flex h-screen w-screen flex-col bg-[#0a0a0f] text-slate-200 font-sans antialiased overflow-hidden select-none">
-      {/* 1. Header Bar */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-zinc-900 bg-[#0d0d15] px-6">
-        <div className="flex items-center gap-3">
-          <div className="w-6 h-6 rounded bg-linear-to-tr from-violet-600 to-indigo-500 flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <Cpu className="w-3.5 h-3.5 text-white" />
+    <div className="flex h-screen w-screen flex-col bg-[#1e1e1e] text-[#d4d4d4] font-mono text-xs select-none overflow-hidden antialiased">
+      {/* VSCode Titlebar */}
+      <div className="h-9 shrink-0 bg-[#2d2d2d] border-b border-[#252526] flex items-center justify-between px-3 text-[11px] text-zinc-400">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5 font-bold text-[#007acc] text-xs">
+            <Cpu className="w-3.5 h-3.5" />
+            <span>WIREUP.AI</span>
           </div>
-          <span className="font-mono text-xs font-bold tracking-widest text-slate-100 uppercase">
-            WIREUP<span className="text-indigo-400">.AI</span>
-          </span>
-          <div className="h-4 w-px bg-zinc-800" />
-          <span className="text-xs font-semibold text-slate-350 tracking-wide">{manifest.projectName}</span>
+          <div className="flex gap-3 text-zinc-450 font-sans">
+            <span className="hover:text-white cursor-pointer transition-colors">File</span>
+            <span className="hover:text-white cursor-pointer transition-colors">Edit</span>
+            <span className="hover:text-white cursor-pointer transition-colors">Selection</span>
+            <span className="hover:text-white cursor-pointer transition-colors">View</span>
+            <span className="hover:text-white cursor-pointer transition-colors font-semibold text-[#007acc]">Run Simulation</span>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 border border-zinc-800 px-2.5 py-1 text-[10px] font-bold text-indigo-400 tracking-wider uppercase font-mono">
-            <Cpu className="h-3 w-3" />
-            {manifest.mcu}
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-zinc-900 border border-zinc-800 px-2.5 py-1 text-[10px] font-bold text-violet-400 tracking-wider uppercase font-mono">
-            <Layers className="h-3 w-3" />
-            {manifest.archetype}
-          </span>
-          <div className="h-4 w-px bg-zinc-800 mx-1" />
+        <div className="truncate text-zinc-400 select-none max-w-[400px]">
+          {manifest.projectName} — {activeFile} — Wireup IDE
+        </div>
+        <div className="flex items-center gap-3">
           <button
             onClick={() => {
               if (conductorRef.current) {
@@ -609,478 +644,590 @@ export const BehaviorPlayground: React.FC<BehaviorPlaygroundProps> = ({ sessionI
               }
               window.location.href = `${virtualPlaygroundUrl}/?sessionId=${sessionId}${projectId ? `&projectId=${projectId}` : ''}`;
             }}
-            className="flex items-center gap-1.5 rounded-lg bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 hover:text-white px-3.5 py-1.5 text-xs font-bold text-slate-300 transition-all active:scale-[0.98]"
+            className="flex items-center gap-1.5 rounded bg-[#333333] hover:bg-[#444444] border border-[#444444] hover:text-white px-2 py-0.5 text-[10px] font-sans font-bold text-zinc-300 transition-all active:scale-[0.98]"
           >
-            <ArrowLeft className="h-3.5 w-3.5" />
+            <ArrowLeft className="h-3 w-3" />
             Back to 3D View
           </button>
+          <div className="flex gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-zinc-700 hover:bg-red-500/80 cursor-pointer" />
+            <div className="w-3 h-3 rounded-full bg-zinc-700 hover:bg-yellow-500/80 cursor-pointer" />
+            <div className="w-3 h-3 rounded-full bg-zinc-700 hover:bg-green-500/80 cursor-pointer" />
+          </div>
         </div>
-      </header>
+      </div>
 
-      {/* Main Panel Content */}
+      {/* Main Workspace Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Side: VirtualFS or Pin Monitor */}
-        {manifest.archetype === 'audio-device' ? (
-          <aside className="w-72 border-r border-zinc-900 bg-[#0a0a0f] p-5 flex flex-col gap-4 overflow-hidden">
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-1">SD Card Storage</h3>
-              <p className="text-[10px] text-slate-500 font-mono">Upload audio tracks to simulate playback</p>
-            </div>
-
-            {/* Drop Zone */}
-            <div
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              className="border border-dashed border-zinc-800 rounded-xl bg-[#0d0d15] p-5 text-center flex flex-col items-center justify-center gap-2 hover:border-zinc-700 transition-colors relative"
+        
+        {/* Activity Bar (VSCode Left Rail) */}
+        <div className="w-12 shrink-0 bg-[#333333] border-r border-[#252526] flex flex-col justify-between items-center py-2">
+          <div className="flex flex-col gap-4 w-full items-center">
+            {/* Explorer button */}
+            <button
+              onClick={() => {
+                setSidebarOpen(true);
+                setActiveSidebarTab('explorer');
+              }}
+              className={`relative p-2 rounded text-zinc-450 hover:text-white transition-colors ${
+                sidebarOpen && activeSidebarTab === 'explorer' ? 'text-white bg-[#252526]' : ''
+              }`}
             >
-              <Upload className="h-6 w-6 text-zinc-500" />
-              <div className="text-[11px] text-zinc-400 font-medium">Drop MP3/WAV tracks here</div>
-              <label className="mt-1 cursor-pointer rounded-lg bg-zinc-900 hover:bg-zinc-800 px-3 py-1.5 text-[10px] font-bold text-slate-300 border border-zinc-800 transition-all">
-                Choose Files
-                <input
-                  type="file"
-                  multiple
-                  accept="audio/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            {/* Files List */}
-            <div className="flex-1 overflow-y-auto space-y-2">
-              <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider font-mono">Tracks Directory</div>
-              {files.length === 0 ? (
-                <div className="text-xs italic text-zinc-600 p-2 text-center font-mono">No files uploaded.</div>
-              ) : (
-                files.map((file) => (
-                  <div
-                    key={file}
-                    className={`flex items-center justify-between p-2.5 rounded-lg border text-xs font-mono transition-all ${
-                      simState.trackName === file
-                        ? 'border-indigo-500/40 bg-indigo-500/5 text-indigo-300'
-                        : 'border-zinc-900 bg-zinc-950/40 text-slate-400'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 truncate flex-1">
-                      <FileAudio className={`h-4 w-4 ${simState.trackName === file ? 'text-indigo-400' : 'text-zinc-650'}`} />
-                      <span className="truncate">{file}</span>
-                    </div>
-                    <button
-                      onClick={() => virtualFSRef.current.deleteFile(file)}
-                      className="text-zinc-600 hover:text-red-400 p-1 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                ))
+              <Folder className="w-5 h-5" />
+              {sidebarOpen && activeSidebarTab === 'explorer' && (
+                <div className="absolute left-0 top-2 bottom-2 w-[2px] bg-[#007acc]" />
               )}
-            </div>
-          </aside>
-        ) : (
-          <aside className="w-72 border-r border-zinc-900 bg-[#0a0a0f] p-5 flex flex-col gap-4 overflow-hidden">
-            {/* ??$$$ newer code */}
-            {/* Environment controls for active sensors */}
-            {sensors.length > 0 && (
-              <div className="space-y-4 border-b border-zinc-900 pb-4 shrink-0">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-1">Environment Simulator</h3>
-                  <p className="text-[10px] text-slate-500 font-mono">Adjust environment values below</p>
+            </button>
+
+            {/* Sensors button */}
+            <button
+              onClick={() => {
+                setSidebarOpen(true);
+                setActiveSidebarTab('sensors');
+              }}
+              className={`relative p-2 rounded text-zinc-450 hover:text-white transition-colors ${
+                sidebarOpen && activeSidebarTab === 'sensors' ? 'text-white bg-[#252526]' : ''
+              }`}
+            >
+              <Sliders className="w-5 h-5" />
+              {sidebarOpen && activeSidebarTab === 'sensors' && (
+                <div className="absolute left-0 top-2 bottom-2 w-[2px] bg-[#007acc]" />
+              )}
+            </button>
+
+            {/* Terminal toggle button */}
+            <button
+              onClick={() => setBottomPanelOpen(!bottomPanelOpen)}
+              className={`p-2 rounded text-zinc-450 hover:text-white transition-colors ${
+                bottomPanelOpen ? 'text-[#007acc]' : ''
+              }`}
+            >
+              <Terminal className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="flex flex-col gap-3 items-center">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 text-zinc-500 hover:text-white"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* VSCode Sidebar */}
+        {sidebarOpen && (
+          <div className="w-60 shrink-0 bg-[#252526] border-r border-[#2d2d2d] flex flex-col overflow-hidden text-zinc-400">
+            {activeSidebarTab === 'explorer' ? (
+              <div className="flex flex-col flex-1 overflow-hidden">
+                <div className="h-9 flex items-center justify-between px-3 text-[10px] uppercase font-bold tracking-wider text-zinc-500 border-b border-[#2d2d2d]">
+                  <span>Explorer: Workspace</span>
                 </div>
-                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
-                  {sensors.map((sensor) => {
-                    const sensorState = sensorInputs[sensor.key] || {};
-                    return (
-                      <div key={sensor.key} className="space-y-3 p-3 rounded-lg border border-zinc-900 bg-zinc-950/40">
-                        <div className="flex items-center justify-between text-xs font-mono">
-                          <span className="text-indigo-400 font-semibold">{sensor.config.label}</span>
-                          <span className="text-[10px] text-zinc-500">Pin: {sensor.config.gpioPin}</span>
-                        </div>
-                        
-                        {sensor.config.sensorType === 'DHT22' ? (
-                          <div className="space-y-3">
-                            <div className="space-y-1.5">
-                              <div className="flex justify-between text-[10px] font-mono">
-                                <span className="text-zinc-400">Temperature</span>
-                                <span className="text-indigo-300">{(sensorState['Temp'] ?? 24).toFixed(1)}°C</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="-40"
-                                max="80"
-                                step="0.5"
-                                value={sensorState['Temp'] ?? 24}
-                                onChange={(e) => handleSensorValueChange(sensor.key, 'Temp', parseFloat(e.target.value))}
-                                className="w-full accent-indigo-500 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                              />
-                            </div>
-                            
-                            <div className="space-y-1.5">
-                              <div className="flex justify-between text-[10px] font-mono">
-                                <span className="text-zinc-400">Humidity</span>
-                                <span className="text-indigo-300">{Math.round(sensorState['Humidity'] ?? 50)}%</span>
-                              </div>
-                              <input
-                                type="range"
-                                min="0"
-                                max="100"
-                                step="1"
-                                value={sensorState['Humidity'] ?? 50}
-                                onChange={(e) => handleSensorValueChange(sensor.key, 'Humidity', parseInt(e.target.value))}
-                                className="w-full accent-indigo-500 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                              />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-1.5">
-                            <div className="flex justify-between text-[10px] font-mono">
-                              <span className="text-zinc-400">
-                                {sensor.config.sensorType === 'Potentiometer' ? 'Rotation / Value'
-                                 : sensor.config.sensorType === 'Photoresistor' ? 'Light Level'
-                                 : 'Analog Value'}
-                              </span>
-                              <span className="text-indigo-300">
-                                {sensor.config.sensorType === 'Potentiometer'
-                                  ? `${sensorState['Value'] ?? 512} (${((sensorState['Value'] ?? 512) / 1023 * 3.3).toFixed(1)}V)`
-                                  : sensor.config.sensorType === 'Photoresistor'
-                                  ? `${sensorState['Light'] ?? 600} lx`
-                                  : sensorState['Value'] ?? 512}
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min={sensor.config.min}
-                              max={sensor.config.max}
-                              value={sensor.config.sensorType === 'Photoresistor' ? (sensorState['Light'] ?? 600) : (sensorState['Value'] ?? 512)}
-                              onChange={(e) => {
-                                const valName = sensor.config.sensorType === 'Photoresistor' ? 'Light' : 'Value';
-                                handleSensorValueChange(sensor.key, valName, parseInt(e.target.value));
-                              }}
-                              className="w-full accent-indigo-500 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
-                            />
-                          </div>
-                        )}
+                
+                {/* File Explorer Tree */}
+                <div className="flex-1 overflow-y-auto py-2">
+                  <div className="px-2 flex items-center gap-1 text-[11px] font-bold text-zinc-350">
+                    <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+                    <span>wireup-project</span>
+                  </div>
+                  <div className="pl-6 pr-2 py-0.5 space-y-0.5 mt-1">
+                    {[
+                      { name: 'sketch.ino', key: 'sketch.ino' },
+                      { name: 'wiring.json', key: 'wiring.json' },
+                      { name: 'bom.json', key: 'bom.json' },
+                      { name: 'manifest.json', key: 'manifest.json' }
+                    ].map((f) => (
+                      <div
+                        key={f.key}
+                        onClick={() => setActiveFile(f.key as any)}
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors ${
+                          activeFile === f.key
+                            ? 'bg-[#37373d] text-white font-semibold'
+                            : 'hover:bg-[#2a2a2b] text-zinc-400'
+                        }`}
+                      >
+                        <Cpu className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                        <span className="truncate">{f.name}</span>
                       </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono mb-1">Sensor Inputs</h3>
-              <p className="text-[10px] text-slate-500 font-mono">Live GPIO Pin Bus Monitor</p>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-              {sensorValues.length === 0 ? (
-                <div className="text-xs italic text-zinc-600 p-2 text-center font-mono">No active input lines.</div>
-              ) : (
-                sensorValues.map((sv, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between p-2.5 rounded-lg border border-zinc-900 bg-zinc-950/40 text-xs font-mono"
-                  >
-                    <span className="text-zinc-400">{sv.pin}</span>
-                    <span
-                      className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                        sv.val === false || sv.val === 0
-                          ? 'bg-red-500/10 text-red-400 border border-red-500/20'
-                          : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                      }`}
-                    >
-                      {typeof sv.val === 'boolean' ? (sv.val ? 'HIGH' : 'LOW') : sv.val}
-                    </span>
+                    ))}
                   </div>
-                ))
-              )}
-            </div>
-          </aside>
-        )}
 
-        {/* Center Panel: Device Frame & OLED */}
-        <main className="flex-1 bg-[#07070a] p-8 flex flex-col items-center justify-center overflow-y-auto">
-          <div className="w-[320px] rounded-3xl bg-[#14141e] border border-zinc-800 p-6 flex flex-col items-center gap-6 shadow-2xl relative">
-            
-            {/* Battery Indicator on device top */}
-            <div className="absolute top-2.5 right-6 flex items-center gap-1">
-              <span className="text-[9px] font-mono text-zinc-500 font-semibold">{Math.round(batteryPct)}%</span>
-              <div className="w-5 h-2.5 border border-zinc-600 rounded-xs p-px flex items-center">
-                <div
-                  className="h-full bg-emerald-500 rounded-2xs"
-                  style={{ width: `${batteryPct}%` }}
-                />
-              </div>
-            </div>
+                  {/* Virtual SD Card storage in Explorer */}
+                  {manifest.archetype === 'audio-device' && (
+                    <div className="mt-4">
+                      <div className="px-2 flex items-center gap-1 text-[11px] font-bold text-zinc-350 border-t border-[#2d2d2d] pt-3">
+                        <ChevronDown className="w-3.5 h-3.5 text-zinc-500" />
+                        <span>SD Card Storage</span>
+                      </div>
+                      
+                      <div className="px-3 py-2 space-y-3">
+                        <div
+                          onDragOver={handleDragOver}
+                          onDrop={handleDrop}
+                          className="border border-dashed border-[#3c3c3c] rounded bg-[#1e1e1e] p-3 text-center flex flex-col items-center justify-center gap-1.5 hover:border-zinc-550 transition-colors"
+                        >
+                          <Upload className="h-4 w-4 text-zinc-500" />
+                          <div className="text-[9px] text-zinc-400">Drag files here</div>
+                          <label className="mt-1 cursor-pointer rounded bg-[#333333] hover:bg-[#444444] px-2 py-1 text-[9px] text-zinc-300 border border-[#444444] transition-all">
+                            Browse
+                            <input
+                              type="file"
+                              multiple
+                              accept="audio/*"
+                              onChange={handleFileUpload}
+                              className="hidden"
+                            />
+                          </label>
+                        </div>
 
-            {/* OLED Frame */}
-            <div className="w-full flex justify-center mt-2">
-              <div
-                className="relative p-2 rounded-xl bg-zinc-950 border-2 border-zinc-800 shadow-[0_0_25px_rgba(0,255,136,0.06)]"
-                style={{ borderRadius: '14px' }}
-              >
-                {/* 128x64 display scaled 2x */}
-                <canvas
-                  ref={canvasRef}
-                  width={256}
-                  height={128}
-                  className="rounded-lg bg-[#0a1a0a] shadow-[inset_0_0_10px_rgba(0,255,136,0.2)]"
-                  style={{ width: '256px', height: '128px' }}
-                />
-                {/* CRT Scanline Overlay */}
-                <div className="absolute inset-2 pointer-events-none bg-linear-to-b from-transparent via-[#00ff88]/[0.015] to-transparent bg-[size:100%_4px] rounded-lg" />
-              </div>
-            </div>
-
-            {/* Button Layouts */}
-            {manifest.archetype === 'audio-device' ? (
-              <div className="w-full flex flex-col gap-3">
-                {/* Top Row: Play/Pause/Cycle */}
-                <div className="flex justify-between gap-3">
-                  <button
-                    onMouseDown={() => handleButtonPress('btnPrev')}
-                    onMouseUp={() => handleButtonRelease('btnPrev')}
-                    onMouseLeave={() => handleButtonRelease('btnPrev')}
-                    onTouchStart={() => handleButtonPress('btnPrev')}
-                    onTouchEnd={() => handleButtonRelease('btnPrev')}
-                    className={`flex-1 rounded-xl p-3 border text-xs font-bold font-mono transition-all text-slate-300 ${
-                      btnActive['btnPrev']
-                        ? 'bg-zinc-800 border-zinc-700 transform scale-[0.96] shadow-inner'
-                        : 'bg-zinc-900 border-zinc-800 shadow-md hover:bg-zinc-850'
-                    }`}
-                  >
-                    PREV
-                    <span className="block text-[8px] text-zinc-600 mt-1 font-semibold">◀ key</span>
-                  </button>
-                  <button
-                    onMouseDown={() => handleButtonPress('btnPlay')}
-                    onMouseUp={() => handleButtonRelease('btnPlay')}
-                    onMouseLeave={() => handleButtonRelease('btnPlay')}
-                    onTouchStart={() => handleButtonPress('btnPlay')}
-                    onTouchEnd={() => handleButtonRelease('btnPlay')}
-                    className={`flex-1 rounded-xl p-3 border text-xs font-bold font-mono transition-all text-slate-200 ${
-                      btnActive['btnPlay']
-                        ? 'bg-zinc-800 border-zinc-700 transform scale-[0.96] shadow-inner'
-                        : 'bg-zinc-900 border-zinc-800 shadow-md hover:bg-zinc-850'
-                    }`}
-                  >
-                    {simState.playing ? 'PAUSE' : 'PLAY'}
-                    <span className="block text-[8px] text-zinc-600 mt-1 font-semibold">Space</span>
-                  </button>
-                  <button
-                    onMouseDown={() => handleButtonPress('btnNext')}
-                    onMouseUp={() => handleButtonRelease('btnNext')}
-                    onMouseLeave={() => handleButtonRelease('btnNext')}
-                    onTouchStart={() => handleButtonPress('btnNext')}
-                    onTouchEnd={() => handleButtonRelease('btnNext')}
-                    className={`flex-1 rounded-xl p-3 border text-xs font-bold font-mono transition-all text-slate-300 ${
-                      btnActive['btnNext']
-                        ? 'bg-zinc-800 border-zinc-700 transform scale-[0.96] shadow-inner'
-                        : 'bg-zinc-900 border-zinc-800 shadow-md hover:bg-zinc-850'
-                    }`}
-                  >
-                    NEXT
-                    <span className="block text-[8px] text-zinc-600 mt-1 font-semibold">▶ key</span>
-                  </button>
-                </div>
-
-                {/* Bottom Row: Volume controls */}
-                <div className="flex justify-between gap-3">
-                  <button
-                    onMouseDown={() => handleButtonPress('btnVolDown')}
-                    onMouseUp={() => handleButtonRelease('btnVolDown')}
-                    onMouseLeave={() => handleButtonRelease('btnVolDown')}
-                    onTouchStart={() => handleButtonPress('btnVolDown')}
-                    onTouchEnd={() => handleButtonRelease('btnVolDown')}
-                    className={`flex-1 rounded-xl p-3 border text-xs font-bold font-mono transition-all text-slate-350 ${
-                      btnActive['btnVolDown']
-                        ? 'bg-zinc-850 border-zinc-700 transform scale-[0.96] shadow-inner'
-                        : 'bg-[#181825] border-zinc-850 shadow-md hover:bg-zinc-850'
-                    }`}
-                  >
-                    VOL -
-                    <span className="block text-[8px] text-zinc-650 mt-1 font-semibold">▼ key</span>
-                  </button>
-                  <button
-                    onMouseDown={() => handleButtonPress('btnVolUp')}
-                    onMouseUp={() => handleButtonRelease('btnVolUp')}
-                    onMouseLeave={() => handleButtonRelease('btnVolUp')}
-                    onTouchStart={() => handleButtonPress('btnVolUp')}
-                    onTouchEnd={() => handleButtonRelease('btnVolUp')}
-                    className={`flex-1 rounded-xl p-3 border text-xs font-bold font-mono transition-all text-slate-350 ${
-                      btnActive['btnVolUp']
-                        ? 'bg-zinc-850 border-zinc-700 transform scale-[0.96] shadow-inner'
-                        : 'bg-[#181825] border-zinc-850 shadow-md hover:bg-zinc-850'
-                    }`}
-                  >
-                    VOL +
-                    <span className="block text-[8px] text-zinc-650 mt-1 font-semibold">▲ key</span>
-                  </button>
-                </div>
-
-                {/* Side Keys: Power & Bluetooth */}
-                <div className="flex justify-between gap-3 border-t border-zinc-800 pt-3">
-                  <button
-                    onMouseDown={() => handleButtonPress('btnPower')}
-                    onMouseUp={() => handleButtonRelease('btnPower')}
-                    onMouseLeave={() => handleButtonRelease('btnPower')}
-                    onTouchStart={() => handleButtonPress('btnPower')}
-                    onTouchEnd={() => handleButtonRelease('btnPower')}
-                    className={`flex-1 rounded-lg p-2 border text-[10px] font-bold font-mono transition-all text-slate-400 ${
-                      btnActive['btnPower']
-                        ? 'bg-zinc-850 border-zinc-750 transform scale-[0.97]'
-                        : 'bg-[#14141f] border-zinc-900 hover:bg-zinc-850'
-                    }`}
-                  >
-                    POWER [P]
-                  </button>
-                  <button
-                    onMouseDown={() => handleButtonPress('btnPair')}
-                    onMouseUp={() => handleButtonRelease('btnPair')}
-                    onMouseLeave={() => handleButtonRelease('btnPair')}
-                    onTouchStart={() => handleButtonPress('btnPair')}
-                    onTouchEnd={() => handleButtonRelease('btnPair')}
-                    className={`flex-1 rounded-lg p-2 border text-[10px] font-bold font-mono transition-all text-slate-400 ${
-                      btnActive['btnPair']
-                        ? 'bg-zinc-850 border-zinc-750 transform scale-[0.97]'
-                        : 'bg-[#14141f] border-zinc-900 hover:bg-zinc-850'
-                    }`}
-                  >
-                    PAIR [B]
-                  </button>
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider">Storage Files</div>
+                          {files.length === 0 ? (
+                            <div className="text-[10px] italic text-zinc-600 py-1 font-mono">Empty storage.</div>
+                          ) : (
+                            files.map((file) => (
+                              <div
+                                key={file}
+                                className={`flex items-center justify-between p-1.5 rounded text-[10px] font-mono border transition-all ${
+                                  simState.trackName === file
+                                    ? 'border-[#007acc] bg-[#1e1e24] text-white'
+                                    : 'border-transparent bg-transparent text-zinc-400 hover:bg-[#2a2a2b]'
+                                }`}
+                              >
+                                <div className="flex items-center gap-1.5 truncate flex-1">
+                                  <FileAudio className={`h-3 w-3 ${simState.trackName === file ? 'text-[#007acc]' : 'text-zinc-600'}`} />
+                                  <span className="truncate">{file}</span>
+                                </div>
+                                <button
+                                  onClick={() => virtualFSRef.current.deleteFile(file)}
+                                  className="text-zinc-650 hover:text-red-400 p-0.5 transition-colors"
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (
-              // Generic layout — buttons + LED indicators
-              <div className="w-full flex flex-col gap-3">
-                {/* LED output indicators */}
-                {manifest.peripherals.filter((p) => p.type === 'LEDIndicator').length > 0 && (
-                  <div className="flex flex-wrap gap-2 pb-2 border-b border-zinc-800">
-                    {manifest.peripherals
-                      .filter((p) => p.type === 'LEDIndicator')
-                      .map((led) => {
-                        const isOn = !!(simState as any).outputStates?.[led.config.label || led.key];
-                        const colorMap: Record<string, string> = {
-                          red: isOn ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'bg-red-950 border-red-900',
-                          green: isOn ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]' : 'bg-emerald-950 border-emerald-900',
-                          blue: isOn ? 'bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.8)]' : 'bg-blue-950 border-blue-900',
-                          yellow: isOn ? 'bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.8)]' : 'bg-yellow-950 border-yellow-900',
-                          white: isOn ? 'bg-white shadow-[0_0_8px_rgba(255,255,255,0.8)]' : 'bg-zinc-800 border-zinc-700',
-                        };
-                        const colorClass = colorMap[led.config.color] || colorMap.green;
-                        return (
-                          <div key={led.key} className="flex items-center gap-2">
-                            <div className={`w-4 h-4 rounded-full border transition-all duration-150 ${colorClass}`} />
-                            <span className="text-[10px] font-mono text-zinc-400">{led.config.label || led.key}</span>
-                            <span className={`text-[9px] font-bold font-mono ${isOn ? 'text-emerald-400' : 'text-zinc-600'}`}>
-                              {isOn ? 'ON' : 'OFF'}
-                            </span>
+              <div className="flex flex-1 flex-col overflow-hidden">
+                <div className="h-9 flex items-center px-3 text-[10px] uppercase font-bold tracking-wider text-zinc-500 border-b border-[#2d2d2d]">
+                  <span>Environment Simulator</span>
+                </div>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {sensors.length === 0 ? (
+                    <div className="text-[10px] italic text-zinc-600 text-center font-mono py-4">No sensor inputs mapped.</div>
+                  ) : (
+                    sensors.map((sensor) => {
+                      const sensorState = sensorInputs[sensor.key] || {};
+                      return (
+                        <div key={sensor.key} className="space-y-2.5 p-2.5 rounded border border-[#3c3c3c] bg-[#1e1e1e]">
+                          <div className="flex items-center justify-between font-mono text-[10px]">
+                            <span className="text-[#007acc] font-bold">{sensor.config.label}</span>
+                            <span className="text-zinc-600">Pin {sensor.config.gpioPin}</span>
                           </div>
-                        );
-                      })}
-                  </div>
-                )}
-                {/* Button grid */}
-                <div className="grid grid-cols-2 gap-3">
-                  {manifest.peripherals
-                    .filter((p) => p.type === 'ClickButton')
-                    .slice(0, 6)
-                    .map((btn) => (
-                      <button
-                        key={btn.key}
-                        onMouseDown={() => handleButtonPress(btn.key)}
-                        onMouseUp={() => handleButtonRelease(btn.key)}
-                        onMouseLeave={() => handleButtonRelease(btn.key)}
-                        onTouchStart={() => handleButtonPress(btn.key)}
-                        onTouchEnd={() => handleButtonRelease(btn.key)}
-                        className={`rounded-xl p-3 border text-xs font-bold font-mono transition-all text-slate-300 truncate ${
-                          btnActive[btn.key]
-                            ? 'bg-zinc-850 border-zinc-700 transform scale-[0.96] shadow-inner'
-                            : 'bg-zinc-900 border-zinc-850 shadow-md hover:bg-zinc-850'
-                        }`}
-                      >
-                        {btn.config.label || btn.key}
-                        {btn.config.keyboardKey && (
-                          <span className="block text-[8px] text-zinc-600 mt-1 font-semibold font-mono">[{btn.config.keyboardKey}]</span>
-                        )}
-                      </button>
-                    ))}
+                          
+                          {sensor.config.sensorType === 'DHT22' ? (
+                            <div className="space-y-2.5">
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-[9px]">
+                                  <span className="text-zinc-500">Temperature</span>
+                                  <span className="text-zinc-350">{(sensorState['Temp'] ?? 24).toFixed(1)}°C</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="-40"
+                                  max="80"
+                                  step="0.5"
+                                  value={sensorState['Temp'] ?? 24}
+                                  onChange={(e) => handleSensorValueChange(sensor.key, 'Temp', parseFloat(e.target.value))}
+                                  className="w-full accent-[#007acc] h-1 bg-[#2d2d2d] rounded-lg appearance-none cursor-pointer"
+                                />
+                              </div>
+                              
+                              <div className="space-y-1">
+                                <div className="flex justify-between text-[9px]">
+                                  <span className="text-zinc-500">Humidity</span>
+                                  <span className="text-zinc-350">{Math.round(sensorState['Humidity'] ?? 50)}%</span>
+                                </div>
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="100"
+                                  step="1"
+                                  value={sensorState['Humidity'] ?? 50}
+                                  onChange={(e) => handleSensorValueChange(sensor.key, 'Humidity', parseInt(e.target.value))}
+                                  className="w-full accent-[#007acc] h-1 bg-[#2d2d2d] rounded-lg appearance-none cursor-pointer"
+                                />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-1">
+                              <div className="flex justify-between text-[9px]">
+                                <span className="text-zinc-500">
+                                  {sensor.config.sensorType === 'Potentiometer' ? 'Analog Pot'
+                                   : sensor.config.sensorType === 'Photoresistor' ? 'Ambient Light'
+                                   : 'Analog Pin'}
+                                </span>
+                                <span className="text-zinc-350">
+                                  {sensor.config.sensorType === 'Potentiometer'
+                                    ? `${sensorState['Value'] ?? 512} (${((sensorState['Value'] ?? 512) / 1023 * 3.3).toFixed(1)}V)`
+                                    : sensor.config.sensorType === 'Photoresistor'
+                                    ? `${sensorState['Light'] ?? 600} lx`
+                                    : sensorState['Value'] ?? 512}
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={sensor.config.min}
+                                max={sensor.config.max}
+                                value={sensor.config.sensorType === 'Photoresistor' ? (sensorState['Light'] ?? 600) : (sensorState['Value'] ?? 512)}
+                                onChange={(e) => {
+                                  const valName = sensor.config.sensorType === 'Photoresistor' ? 'Light' : 'Value';
+                                  handleSensorValueChange(sensor.key, valName, parseInt(e.target.value));
+                                }}
+                                className="w-full accent-[#007acc] h-1 bg-[#2d2d2d] rounded-lg appearance-none cursor-pointer"
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             )}
           </div>
-        </main>
+        )}
 
-        {/* Right Side: Serial Monitor, Battery, Shortcuts */}
-        <aside className="w-80 border-l border-zinc-900 bg-[#0a0a0f] p-5 flex flex-col gap-6 overflow-hidden">
+        {/* Center Panel (Split Editor & Webview Layout) */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
           
-          {/* Battery Status */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider font-mono">Power Station</div>
-            <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-4 space-y-3">
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-zinc-500">Power Draw</span>
-                <span className="font-bold text-slate-300">{manifest.powerDrawMa} mA</span>
-              </div>
-              <div className="flex justify-between items-center text-xs font-mono">
-                <span className="text-zinc-500">Capacity</span>
-                <span className="font-bold text-slate-300">{manifest.batteryCapacityMah} mAh</span>
-              </div>
-              <div className="h-px bg-zinc-900 my-1" />
-              <div className="space-y-1">
-                <div className="flex justify-between items-center text-xs font-mono">
-                  <span className="text-zinc-500">Est. Runtime</span>
-                  <span className="font-bold text-indigo-400">
-                    {batteryStats.hrs} hrs {batteryStats.mins} min
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Serial Monitor */}
-          <div className="flex-1 flex flex-col gap-2 overflow-hidden">
-            <div className="flex justify-between items-center">
-              <span className="text-[10px] font-bold text-zinc-550 uppercase tracking-wider font-mono">Serial Monitor</span>
-              <button
-                onClick={() => setSerialLines([])}
-                className="text-[9px] font-bold text-zinc-500 hover:text-slate-300 transition-colors uppercase font-mono"
-              >
-                Clear
-              </button>
-            </div>
-            <div className="flex-1 rounded-xl border border-zinc-900 bg-zinc-950/80 p-4 font-mono text-[10px] leading-relaxed text-emerald-500/90 overflow-y-auto space-y-1 shadow-inner select-text">
-              {serialLines.length === 0 ? (
-                <div className="text-zinc-700 italic select-none">Monitor idle. Setup ready...</div>
-              ) : (
-                serialLines.map((line) => (
-                  <div key={line.id} className="whitespace-pre-wrap">
-                    <span className="text-zinc-650">[{new Date().toLocaleTimeString()}]</span> {line.text}
-                  </div>
-                ))
-              )}
-              <div ref={serialEndRef} />
-            </div>
-          </div>
-
-          {/* Keyboard Reference */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold text-zinc-555 uppercase tracking-wider font-mono flex items-center gap-1.5">
-              <Keyboard className="h-3.5 w-3.5 text-zinc-600" />
-              Keyboard Mapping
-            </div>
-            <div className="rounded-xl border border-zinc-900 bg-zinc-950/40 p-3 text-[10px] font-mono text-zinc-500 space-y-1.5">
-              {manifest.peripherals
-                .filter((p) => p.type === 'ClickButton' && p.config.keyboardKey)
-                .map((btn) => (
-                  <div key={btn.key} className="flex justify-between">
-                    <span>{btn.config.label || btn.key}</span>
-                    <span className="text-slate-350 bg-zinc-900 border border-zinc-850 px-1.5 rounded-xs font-bold uppercase">{btn.config.keyboardKey}</span>
+          <div className="flex-1 flex overflow-hidden">
+            {/* Code Editor view on the Left */}
+            <div className="flex-1 flex flex-col overflow-hidden border-r border-[#2d2d2d] bg-[#1e1e1e]">
+              
+              {/* Tabs Bar */}
+              <div className="h-9 shrink-0 bg-[#2d2d2d] flex items-center overflow-x-auto border-b border-[#1e1e1e]">
+                {[
+                  { name: 'sketch.ino', key: 'sketch.ino' },
+                  { name: 'wiring.json', key: 'wiring.json' },
+                  { name: 'bom.json', key: 'bom.json' },
+                  { name: 'manifest.json', key: 'manifest.json' }
+                ].map((f) => (
+                  <div
+                    key={f.key}
+                    onClick={() => setActiveFile(f.key as any)}
+                    className={`h-full flex items-center gap-2 px-4 border-r border-[#1e1e1e] cursor-pointer text-[11px] transition-colors ${
+                      activeFile === f.key
+                        ? 'bg-[#1e1e1e] text-white border-t-2 border-[#007acc] font-semibold'
+                        : 'bg-[#2d2d2d] text-zinc-500 hover:bg-[#2b2b2b] hover:text-zinc-350'
+                    }`}
+                  >
+                    <Cpu className="w-3.5 h-3.5 text-zinc-650" />
+                    <span>{f.name}</span>
                   </div>
                 ))}
+              </div>
+
+              {/* Editor Code Text */}
+              <div className="flex-1 flex overflow-auto bg-[#1e1e1e] font-mono text-[11px]">
+                {/* Line Numbers Gutter */}
+                <div className="w-10 select-none text-right pr-3 text-zinc-600 border-r border-[#2d2d2d] bg-[#1e1e1e] py-3 leading-relaxed">
+                  {/* ??$$$ newer code */}
+                  {codeLines.map((_: any, i: number) => (
+                    <div key={i}>{i + 1}</div>
+                  ))}
+                </div>
+                {/* Code Body */}
+                <pre className="flex-1 overflow-visible p-3 pl-4 text-[#d4d4d4] selection:bg-[#264f78] outline-none leading-relaxed select-text">
+                  <code>{codeContent}</code>
+                </pre>
+              </div>
+
             </div>
+
+            {/* Split Screen Webview Panel on the Right */}
+            <div className="w-96 shrink-0 flex flex-col bg-[#181818] overflow-hidden">
+              
+              {/* Webview Title Bar */}
+              <div className="h-9 shrink-0 bg-[#2d2d2d] border-b border-[#1e1e1e] flex items-center justify-between px-3 text-[10px] text-zinc-400 uppercase font-bold tracking-wider">
+                <span>Preview: Live Hardware Display</span>
+                <span className="text-[#007acc] text-[9px] font-mono">ONLINE</span>
+              </div>
+
+              {/* Webview Main Content */}
+              <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 items-center">
+                
+                {/* Flat OLED display render frame */}
+                <div className="w-full flex flex-col items-center p-4 rounded bg-[#1e1e1e] border border-[#2d2d2d]">
+                  <div className="w-full flex items-center justify-between text-[10px] text-zinc-500 font-mono mb-2">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      128x64 OLED Panel
+                    </span>
+                    <span className="text-[9px]">{Math.round(batteryPct)}% BAT</span>
+                  </div>
+
+                  <div className="relative p-1 bg-black border border-[#2d2d2d] rounded">
+                    {/* 128x64 display scaled 2x */}
+                    <canvas
+                      ref={canvasRef}
+                      width={256}
+                      height={128}
+                      className="bg-[#0a1a0a]"
+                      style={{ width: '256px', height: '128px' }}
+                    />
+                  </div>
+                </div>
+
+                {/* Power Station Profile */}
+                <div className="w-full p-3.5 rounded bg-[#1e1e1e] border border-[#2d2d2d] space-y-2">
+                  <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Power Metrics</div>
+                  <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+                    <div className="p-2 bg-[#181818] rounded border border-[#2d2d2d]">
+                      <div className="text-zinc-500">Current Draw</div>
+                      <div className="text-white font-bold text-xs mt-0.5">{manifest.powerDrawMa} mA</div>
+                    </div>
+                    <div className="p-2 bg-[#181818] rounded border border-[#2d2d2d]">
+                      <div className="text-zinc-500">Capacity</div>
+                      <div className="text-white font-bold text-xs mt-0.5">{manifest.batteryCapacityMah} mAh</div>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center px-1 text-[10px] font-mono pt-1 text-zinc-400">
+                    <span>Est. Runtime:</span>
+                    <span className="text-[#007acc] font-bold">{batteryStats.hrs}h {batteryStats.mins}m</span>
+                  </div>
+                </div>
+
+                {/* LED output indicators */}
+                {manifest.peripherals.filter((p) => p.type === 'LEDIndicator').length > 0 && (
+                  <div className="w-full p-3.5 rounded bg-[#1e1e1e] border border-[#2d2d2d] space-y-2">
+                    <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">GPIO LED Output</div>
+                    <div className="flex flex-col gap-2 font-mono">
+                      {manifest.peripherals
+                        .filter((p) => p.type === 'LEDIndicator')
+                        .map((led) => {
+                          const isOn = !!(simState as any).outputStates?.[led.config.label || led.key];
+                          const colorMap: Record<string, string> = {
+                            red: isOn ? 'bg-red-500 shadow-[0_0_6px_rgba(239,68,68,0.7)]' : 'bg-red-950 border-red-900',
+                            green: isOn ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.7)]' : 'bg-emerald-950 border-emerald-900',
+                            blue: isOn ? 'bg-blue-500 shadow-[0_0_6px_rgba(59,130,246,0.7)]' : 'bg-blue-950 border-blue-900',
+                            yellow: isOn ? 'bg-yellow-400 shadow-[0_0_6px_rgba(250,204,21,0.7)]' : 'bg-yellow-950 border-yellow-900',
+                            white: isOn ? 'bg-white shadow-[0_0_6px_rgba(255,255,255,0.7)]' : 'bg-zinc-800 border-zinc-700',
+                          };
+                          const colorClass = colorMap[led.config.color] || colorMap.green;
+                          return (
+                            <div key={led.key} className="flex items-center justify-between p-1.5 rounded bg-[#181818] border border-[#2d2d2d]">
+                              <div className="flex items-center gap-2">
+                                <div className={`w-3.5 h-3.5 rounded-full border transition-all duration-150 ${colorClass}`} />
+                                <span className="text-[10px] text-zinc-400">{led.config.label || led.key}</span>
+                              </div>
+                              <span className={`text-[9px] font-bold ${isOn ? 'text-emerald-400' : 'text-zinc-600'}`}>
+                                {isOn ? 'HIGH (3.3V)' : 'LOW (0V)'}
+                              </span>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tactile user interactive controls */}
+                <div className="w-full p-3.5 rounded bg-[#1e1e1e] border border-[#2d2d2d] space-y-3">
+                  <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Tactile Buttons</div>
+                  {manifest.archetype === 'audio-device' ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex gap-2">
+                        <button
+                          onMouseDown={() => handleButtonPress('btnPrev')}
+                          onMouseUp={() => handleButtonRelease('btnPrev')}
+                          onMouseLeave={() => handleButtonRelease('btnPrev')}
+                          className={`flex-1 rounded border text-[10px] py-2 font-bold transition-all text-zinc-300 ${
+                            btnActive['btnPrev']
+                              ? 'bg-[#37373d] border-zinc-650'
+                              : 'bg-[#2d2d2d] border-[#3c3c3c] hover:bg-[#37373d]'
+                          }`}
+                        >
+                          PREV
+                        </button>
+                        <button
+                          onMouseDown={() => handleButtonPress('btnPlay')}
+                          onMouseUp={() => handleButtonRelease('btnPlay')}
+                          onMouseLeave={() => handleButtonRelease('btnPlay')}
+                          className={`flex-1 rounded border text-[10px] py-2 font-bold transition-all text-zinc-300 ${
+                            btnActive['btnPlay']
+                              ? 'bg-[#37373d] border-zinc-650'
+                              : 'bg-[#2d2d2d] border-[#3c3c3c] hover:bg-[#37373d]'
+                          }`}
+                        >
+                          {simState.playing ? 'PAUSE' : 'PLAY'}
+                        </button>
+                        <button
+                          onMouseDown={() => handleButtonPress('btnNext')}
+                          onMouseUp={() => handleButtonRelease('btnNext')}
+                          onMouseLeave={() => handleButtonRelease('btnNext')}
+                          className={`flex-1 rounded border text-[10px] py-2 font-bold transition-all text-zinc-300 ${
+                            btnActive['btnNext']
+                              ? 'bg-[#37373d] border-zinc-650'
+                              : 'bg-[#2d2d2d] border-[#3c3c3c] hover:bg-[#37373d]'
+                          }`}
+                        >
+                          NEXT
+                        </button>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onMouseDown={() => handleButtonPress('btnVolDown')}
+                          onMouseUp={() => handleButtonRelease('btnVolDown')}
+                          onMouseLeave={() => handleButtonRelease('btnVolDown')}
+                          className={`flex-1 rounded border text-[10px] py-2 font-bold transition-all text-zinc-300 ${
+                            btnActive['btnVolDown']
+                              ? 'bg-[#37373d] border-zinc-650'
+                              : 'bg-[#2d2d2d] border-[#3c3c3c] hover:bg-[#37373d]'
+                          }`}
+                        >
+                          VOL -
+                        </button>
+                        <button
+                          onMouseDown={() => handleButtonPress('btnVolUp')}
+                          onMouseUp={() => handleButtonRelease('btnVolUp')}
+                          onMouseLeave={() => handleButtonRelease('btnVolUp')}
+                          className={`flex-1 rounded border text-[10px] py-2 font-bold transition-all text-zinc-300 ${
+                            btnActive['btnVolUp']
+                              ? 'bg-[#37373d] border-zinc-650'
+                              : 'bg-[#2d2d2d] border-[#3c3c3c] hover:bg-[#37373d]'
+                          }`}
+                        >
+                          VOL +
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-2">
+                      {manifest.peripherals
+                        .filter((p) => p.type === 'ClickButton')
+                        .slice(0, 6)
+                        .map((btn) => (
+                          <button
+                            key={btn.key}
+                            onMouseDown={() => handleButtonPress(btn.key)}
+                            onMouseUp={() => handleButtonRelease(btn.key)}
+                            onMouseLeave={() => handleButtonRelease(btn.key)}
+                            className={`rounded border text-[10px] py-2 font-bold transition-all text-zinc-300 truncate ${
+                              btnActive[btn.key]
+                                ? 'bg-[#37373d] border-zinc-650'
+                                : 'bg-[#2d2d2d] border-[#3c3c3c] hover:bg-[#37373d]'
+                            }`}
+                          >
+                            {btn.config.label || btn.key}
+                          </button>
+                        ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Keyboard Reference Mapping */}
+                <div className="w-full p-3.5 rounded bg-[#1e1e1e] border border-[#2d2d2d] space-y-2">
+                  <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <Keyboard className="h-3.5 w-3.5 text-zinc-550" />
+                    Keyboard Intercept
+                  </div>
+                  <div className="rounded border border-[#2d2d2d] bg-[#181818] p-2.5 text-[9px] font-mono text-zinc-500 space-y-1">
+                    {manifest.peripherals
+                      .filter((p) => p.type === 'ClickButton' && p.config.keyboardKey)
+                      .map((btn) => (
+                        <div key={btn.key} className="flex justify-between items-center">
+                          <span>{btn.config.label || btn.key}</span>
+                          <span className="text-[#007acc] bg-[#2d2d2d] border border-[#3c3c3c] px-1 rounded font-bold uppercase">{btn.config.keyboardKey}</span>
+                        </div>
+                      ))}
+                    <div className="text-[8px] text-zinc-600 italic mt-1.5 text-center">Focus dashboard workspace to capture keys</div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
           </div>
 
-        </aside>
+          {/* Bottom Panel (VSCode Terminal/Console) */}
+          {bottomPanelOpen && (
+            <div className="h-56 shrink-0 bg-[#1e1e1e] border-t border-[#2d2d2d] flex flex-col overflow-hidden">
+              {/* Terminal tabs */}
+              <div className="h-9 bg-[#2d2d2d] border-b border-[#1e1e1e] flex items-center justify-between px-4 text-[10px] text-zinc-400">
+                <div className="flex gap-4">
+                  <span className="text-[#007acc] border-b-2 border-[#007acc] font-semibold pb-1.5 pt-1.5 cursor-pointer">
+                    TERMINAL (Serial Console)
+                  </span>
+                  <span className="hover:text-zinc-200 cursor-pointer pb-1.5 pt-1.5">PROBLEMS</span>
+                  <span className="hover:text-zinc-200 cursor-pointer pb-1.5 pt-1.5">OUTPUT</span>
+                  <span className="hover:text-zinc-200 cursor-pointer pb-1.5 pt-1.5">DEBUG CONSOLE</span>
+                </div>
+                <button
+                  onClick={() => setSerialLines([])}
+                  className="hover:text-white font-bold transition-colors uppercase text-[9px]"
+                >
+                  Clear Logs
+                </button>
+              </div>
+
+              {/* Monospace output text */}
+              <div className="flex-1 p-3 bg-black text-[#85e89d] font-mono text-[11px] overflow-y-auto space-y-1 leading-normal select-text">
+                {serialLines.length === 0 ? (
+                  <div className="text-zinc-700 italic select-none">Terminal idle. Serial link is listening on UART_TX...</div>
+                ) : (
+                  serialLines.map((line) => {
+                    const text = line.text || '';
+                    let colorClass = 'text-zinc-350';
+                    if (text.includes('[SYSTEM]')) colorClass = 'text-[#007acc] font-semibold';
+                    else if (text.includes('[CALCULATION]')) colorClass = 'text-amber-400/90';
+                    else if (text.includes('[INPUT]')) colorClass = 'text-violet-400';
+                    else if (text.includes('[FS]')) colorClass = 'text-emerald-400';
+                    return (
+                      <div key={line.id} className="whitespace-pre-wrap">
+                        <span className="text-zinc-700">[{new Date().toLocaleTimeString()}]</span>{' '}
+                        <span className={colorClass}>{text}</span>
+                      </div>
+                    );
+                  })
+                )}
+                <div ref={serialEndRef} />
+              </div>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
+      {/* VSCode Blue Status Bar */}
+      <div className="h-6 shrink-0 bg-[#007acc] text-white flex items-center justify-between px-3 text-[10px] font-sans">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+            <span>main*</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <RefreshCw className="w-3 h-3 animate-spin-slow" />
+            <span>Syncing Live Node</span>
+          </div>
+          <span>Errors: 0</span>
+          <span>Warnings: 0</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span>Board: {manifest.mcu}</span>
+          <span>Battery: {Math.round(batteryPct)}%</span>
+          <span>BT: {simState.btConnected ? 'Connected' : 'Disconnected'}</span>
+          <span>Spaces: 2</span>
+          <span>UTF-8</span>
+          <span>Arduino C++</span>
+        </div>
       </div>
     </div>
   );

@@ -13,7 +13,8 @@ export const MilestoneCard: React.FC<{ m: any; idx: number }> = ({ m, idx }) => 
         className="p-4 flex justify-between items-center cursor-pointer hover:bg-zinc-900/30 select-none"
       >
         <div className="flex gap-3 items-center">
-          <div className="h-6 w-6 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-400 font-bold text-xs flex items-center justify-center">
+          {/* ??$$$ newer code */}
+          <div className="h-6 w-6 rounded-full bg-[#007acc]/15 border border-[#007acc]/30 text-[#007acc] font-bold text-xs flex items-center justify-center">
             {idx + 1}
           </div>
           <div>

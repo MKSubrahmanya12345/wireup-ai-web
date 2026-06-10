@@ -7,7 +7,9 @@ import { useProjectStore, Milestone } from "../store/useProjectStore";
 import WokwiSimulator from "../components/WokwiSimulator";
 import {
   ArrowLeft, Cpu, Code, Terminal, MessageSquare, Play, RefreshCw, CheckCircle2,
-  Lock, AlertTriangle, AlertCircle, Sparkles, HelpCircle, HardDrive, PlayCircle
+  Lock, AlertTriangle, AlertCircle, Sparkles, HelpCircle, HardDrive, PlayCircle,
+  // ??$$$ newer code
+  Folder, File, ChevronDown, ChevronRight, Settings, Keyboard, Activity
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -38,10 +40,8 @@ export default function BuildNewPage() {
   const [issueDescription, setIssueDescription] = useState("");
   const [reportingIssue, setReportingIssue] = useState(false);
 
-  /* old code
-  const saveTimer = useRef<NodeJS.Timeout | null>(null);
-  */
   // ??$$$ newer code
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const saveTimer = useRef<any>(null);
 
   // Load project on mount
@@ -207,175 +207,216 @@ export default function BuildNewPage() {
     );
   }
 
+  // ??$$$ newer code
   return (
-    <div className="flex h-screen flex-col bg-zinc-950 font-sans text-zinc-100 antialiased overflow-hidden">
-      {/* Top Header */}
-      <header className="flex h-14 items-center justify-between border-b border-zinc-850 bg-zinc-900/60 px-6 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate("/home")} className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-800 hover:text-zinc-100 transition-colors">
-            <ArrowLeft className="h-4.5 w-4.5" />
+    <div className="flex h-screen flex-col bg-[#1e1e1e] font-mono text-zinc-300 antialiased overflow-hidden select-none">
+      
+      {/* VSCode Title Bar / Header */}
+      <header className="flex h-9 items-center justify-between border-b border-[#2d2d2d] bg-[#2d2d2d] px-3 text-[11px] text-zinc-400 select-none">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate("/home")}
+            className="flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
           </button>
-          <div>
-            <h1 className="text-sm font-bold tracking-tight bg-gradient-to-r from-zinc-100 to-zinc-400 bg-clip-text text-transparent">
+          <div className="flex items-center gap-1.5 font-bold">
+            <span className="text-[#007acc]">WIREUP IDE</span>
+            <span className="text-zinc-600">|</span>
+            <span className="text-zinc-300 font-normal truncate max-w-xs md:max-w-md">
               {project.description || "Autonomous Project Space"}
-            </h1>
-            <p className="text-[10px] text-zinc-500">Autonomous Runner Stage</p>
+            </span>
           </div>
         </div>
 
         {/* Global Progress Bar */}
         <div className="flex items-center gap-3">
-          <div className="text-right">
-            <span className="text-[10px] text-zinc-500 block">Workspace Health</span>
-            <span className="text-xs font-bold text-emerald-400">Online</span>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+            <span className="text-[10px] text-zinc-300">Live Node Connected</span>
           </div>
-          <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
         </div>
       </header>
 
-      {/* Main Workspace Grid */}
+      {/* Main VSCode Layout Workspace */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left Milestones Sidebar */}
-        <aside className="w-80 border-r border-zinc-850 bg-zinc-900/10 flex flex-col overflow-hidden">
-          <div className="p-4 border-b border-zinc-850 bg-zinc-900/20">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 flex items-center gap-1.5">
-              <Cpu className="h-3.5 w-3.5 text-zinc-400" /> Milestone Curriculum
-            </h3>
+        
+        {/* VSCode Left Activity Bar */}
+        <div className="w-12 shrink-0 bg-[#333333] border-r border-[#252526] flex flex-col justify-between items-center py-2 z-10">
+          <div className="flex flex-col gap-4 w-full items-center">
+            
+            {/* File Explorer icon */}
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className={`relative p-2 rounded text-zinc-400 hover:text-white transition-colors ${
+                sidebarOpen ? "text-white bg-[#252526]" : ""
+              }`}
+            >
+              <Folder className="w-5 h-5" />
+              {sidebarOpen && (
+                <div className="absolute left-0 top-2 bottom-2 w-[2px] bg-[#007acc]" />
+              )}
+            </button>
           </div>
-          
-          <div className="flex-1 overflow-y-auto p-3 space-y-2">
-            {project.milestones?.map((m, idx) => {
-              const isActive = m.id === activeMilestoneId;
-              const isLocked = m.status === "locked";
-              const isPassed = m.status === "passed" || m.userConfirmed;
-              
-              return (
-                <button
-                  key={m.id}
-                  disabled={isLocked && !isActive}
-                  onClick={() => setActiveMilestoneId(m.id)}
-                  className={`w-full rounded-xl border text-left p-3.5 transition-all flex items-start gap-3 relative overflow-hidden ${
-                    isActive
-                      ? "border-emerald-500/50 bg-zinc-900/60 shadow-[0_0_12px_rgba(16,185,129,0.05)]"
-                      : isLocked
-                      ? "border-zinc-900/60 bg-zinc-950/20 opacity-40 cursor-not-allowed"
-                      : "border-zinc-850 bg-zinc-900/20 hover:border-zinc-750 hover:bg-zinc-900/40"
-                  }`}
-                >
-                  {/* Status Indicator Indicator */}
-                  <div className={`h-6 w-6 rounded-full flex-shrink-0 text-xs font-bold flex items-center justify-center border ${
-                    isPassed
-                      ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                      : isActive
-                      ? "bg-blue-500/10 border-blue-500/30 text-blue-400"
-                      : "bg-zinc-850 border-zinc-800 text-zinc-400"
-                  }`}>
-                    {isPassed ? "✓" : idx + 1}
-                  </div>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="text-xs font-bold text-zinc-200 truncate flex items-center gap-1">
-                      {m.title}
-                      {isLocked && <Lock className="h-2.5 w-2.5 text-zinc-650 flex-shrink-0" />}
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-0.5 truncate">{m.objective}</div>
-                  </div>
-                </button>
-              );
-            })}
+          <div className="flex flex-col gap-3 items-center">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="p-2 text-zinc-500 hover:text-white"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
-        </aside>
+        </div>
 
-        {/* Central Stage & Interactive Editor */}
-        {milestone ? (
-          <div className="flex-1 flex overflow-hidden bg-zinc-950">
-            {/* Center: Details & Editor */}
-            <div className="flex-1 flex flex-col border-r border-zinc-850 overflow-hidden">
-              {/* Milestone Details Card */}
-              <div className="p-5 border-b border-zinc-850 bg-zinc-900/10 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div>
-                    {/* old code
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      Step {milestone.order} · {milestone.subsystem || "Core"}
-                    </span>
-                    */}
-                    // ??$$$ newer code
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                      Step {milestone.order} · {(milestone as any).subsystem || "Core"}
-                    </span>
-                    <h2 className="text-base font-bold text-zinc-100 mt-2">{milestone.title}</h2>
-                  </div>
+        {/* Left Milestones Sidebar (Explorer panel style) */}
+        {sidebarOpen && (
+          <aside className="w-64 shrink-0 bg-[#252526] border-r border-[#2d2d2d] flex flex-col overflow-hidden text-zinc-400">
+            <div className="h-9 flex items-center justify-between px-3 text-[10px] uppercase font-bold tracking-wider text-zinc-500 border-b border-[#2d2d2d]">
+              <span>Milestone Curriculum</span>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-2 space-y-1 select-text">
+              {project.milestones?.map((m, idx) => {
+                const isActive = m.id === activeMilestoneId;
+                const isLocked = m.status === "locked";
+                const isPassed = m.status === "passed" || m.userConfirmed;
+                
+                return (
                   <button
-                    onClick={() => setShowIssueModal(true)}
-                    className="rounded-lg border border-zinc-800 bg-zinc-900/60 px-3 py-1.5 text-xs text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-all"
+                    key={m.id}
+                    disabled={isLocked && !isActive}
+                    onClick={() => setActiveMilestoneId(m.id)}
+                    className={`w-full rounded border text-left px-2.5 py-2 transition-all flex items-start gap-2 relative overflow-hidden ${
+                      isActive
+                        ? "border-[#007acc] bg-[#1e1e1e] text-white"
+                        : isLocked
+                        ? "border-transparent bg-transparent opacity-35 cursor-not-allowed"
+                        : "border-transparent bg-transparent hover:bg-[#2d2d2d] text-zinc-400 hover:text-zinc-200"
+                    }`}
                   >
-                    Report Hardware Issue
+                    {/* Status Indicator Icon */}
+                    <div className={`h-4.5 w-4.5 rounded-full flex-shrink-0 text-[9px] font-bold flex items-center justify-center border ${
+                      isPassed
+                        ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-400"
+                        : isActive
+                        ? "bg-[#007acc]/10 border-[#007acc]/30 text-[#007acc]"
+                        : "bg-[#2d2d2d] border-[#3c3c3c] text-zinc-500"
+                    }`}>
+                      {isPassed ? "✓" : idx + 1}
+                    </div>
+
+                    <div className="min-w-0 flex-1 leading-snug">
+                      <div className="text-[10px] font-bold truncate flex items-center gap-1">
+                        {m.title}
+                        {isLocked && <Lock className="h-2.5 w-2.5 text-zinc-650 flex-shrink-0" />}
+                      </div>
+                      <div className="text-[9px] text-zinc-500 truncate mt-0.5">{m.objective}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+        )}
+
+        {/* Central Stage & Interactive Workspace */}
+        {milestone ? (
+          <div className="flex-1 flex overflow-hidden bg-[#1e1e1e]">
+            
+            {/* Center Area: Tabs & Active Panel */}
+            <div className="flex-1 flex flex-col border-r border-[#2d2d2d] overflow-hidden">
+              
+              {/* Tab selector bar */}
+              <div className="flex h-9 border-b border-[#1e1e1e] bg-[#2d2d2d] px-2 items-center justify-between shrink-0">
+                <div className="flex items-center overflow-x-auto h-full">
+                  <button
+                    onClick={() => setActiveTab("code")}
+                    className={`h-full flex items-center gap-1.5 px-4 border-r border-[#1e1e1e] text-[11px] transition-colors ${
+                      activeTab === "code"
+                        ? "bg-[#1e1e1e] text-white border-t-2 border-[#007acc] font-semibold"
+                        : "bg-[#2d2d2d] text-zinc-500 hover:bg-[#2b2b2b] hover:text-zinc-350"
+                    }`}
+                  >
+                    <Code className="h-3.5 w-3.5" />
+                    <span>sketch.ino</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab("simulator")}
+                    className={`h-full flex items-center gap-1.5 px-4 border-r border-[#1e1e1e] text-[11px] transition-colors ${
+                      activeTab === "simulator"
+                        ? "bg-[#1e1e1e] text-white border-t-2 border-[#007acc] font-semibold"
+                        : "bg-[#2d2d2d] text-zinc-500 hover:bg-[#2b2b2b] hover:text-zinc-350"
+                    }`}
+                  >
+                    <PlayCircle className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>simulation.json</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setActiveTab("coach")}
+                    className={`h-full flex items-center gap-1.5 px-4 border-r border-[#1e1e1e] text-[11px] transition-colors ${
+                      activeTab === "coach"
+                        ? "bg-[#1e1e1e] text-white border-t-2 border-[#007acc] font-semibold"
+                        : "bg-[#2d2d2d] text-zinc-500 hover:bg-[#2b2b2b] hover:text-zinc-350"
+                    }`}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 text-amber-400" />
+                    <span>coach_chat.log</span>
                   </button>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div className="space-y-1 bg-zinc-900/30 p-3 rounded-lg border border-zinc-850/80">
-                    <div className="text-zinc-500 font-semibold">Objective</div>
-                    <p className="text-zinc-300 leading-relaxed">{milestone.objective}</p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowIssueModal(true)}
+                    className="flex items-center gap-1 rounded bg-[#333333] hover:bg-[#444444] border border-[#444444] text-[9px] text-zinc-300 px-2 py-0.5 transition-all"
+                  >
+                    Report Connection Issue
+                  </button>
+                </div>
+              </div>
+
+              {/* Milestone Sub-Header Meta */}
+              <div className="p-4 border-b border-[#2d2d2d] bg-[#1a1a1a] space-y-3 shrink-0">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
+                      Step {milestone.order} · {(milestone as any).subsystem || "Core"}
+                    </span>
+                    <h2 className="text-xs font-bold text-white mt-1.5">{milestone.title}</h2>
                   </div>
-                  <div className="space-y-1 bg-zinc-900/30 p-3 rounded-lg border border-zinc-850/80">
-                    <div className="text-zinc-500 font-semibold">Components Involved</div>
-                    <div className="flex flex-wrap gap-1.5 mt-1">
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-[10px]">
+                  <div className="space-y-1 bg-[#1e1e1e] p-2 rounded border border-[#2d2d2d]">
+                    <div className="text-zinc-500 font-bold uppercase text-[9px]">Objective</div>
+                    <p className="text-zinc-350 leading-normal">{milestone.objective}</p>
+                  </div>
+                  <div className="space-y-1 bg-[#1e1e1e] p-2 rounded border border-[#2d2d2d]">
+                    <div className="text-zinc-500 font-bold uppercase text-[9px]">Target Components</div>
+                    <div className="flex flex-wrap gap-1 mt-1">
                       {milestone.componentsInvolved?.map((comp, idx) => (
-                        <span key={idx} className="rounded bg-zinc-850 px-2 py-0.5 text-[10px] text-zinc-300 border border-zinc-800">
+                        <span key={idx} className="rounded bg-[#2d2d2d] px-1.5 py-0.5 text-[9px] text-zinc-300 border border-[#3c3c3c]">
                           {comp}
                         </span>
-                      )) || <span className="text-zinc-600 italic">None</span>}
+                      )) || <span className="text-zinc-650 italic">None</span>}
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-zinc-900/30 p-3.5 rounded-lg border border-zinc-850/80 text-xs">
-                  <div className="text-zinc-500 font-semibold mb-1">Wiring Instructions</div>
-                  <p className="text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap">{milestone.wiringInstructions}</p>
+                <div className="bg-[#1e1e1e] p-2.5 rounded border border-[#2d2d2d] text-[10px]">
+                  <div className="text-zinc-500 font-bold uppercase text-[9px] mb-0.5">Wiring Schematics</div>
+                  <p className="text-zinc-350 font-mono leading-relaxed whitespace-pre-wrap">{milestone.wiringInstructions}</p>
                 </div>
               </div>
 
-              {/* Tabs for Stage */}
-              <div className="flex h-11 border-b border-zinc-850 bg-zinc-900/10 px-4">
-                <button
-                  onClick={() => setActiveTab("code")}
-                  className={`flex items-center gap-1.5 border-b-2 px-4 text-xs font-semibold transition-colors ${
-                    activeTab === "code"
-                      ? "border-emerald-500 text-emerald-400"
-                      : "border-transparent text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  <Code className="h-3.5 w-3.5" /> Firmware Sketch
-                </button>
-                <button
-                  onClick={() => setActiveTab("simulator")}
-                  className={`flex items-center gap-1.5 border-b-2 px-4 text-xs font-semibold transition-colors ${
-                    activeTab === "simulator"
-                      ? "border-emerald-500 text-emerald-400"
-                      : "border-transparent text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  <PlayCircle className="h-3.5 w-3.5" /> Live Simulation
-                </button>
-                <button
-                  onClick={() => setActiveTab("coach")}
-                  className={`flex items-center gap-1.5 border-b-2 px-4 text-xs font-semibold transition-colors ${
-                    activeTab === "coach"
-                      ? "border-emerald-500 text-emerald-400"
-                      : "border-transparent text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  <MessageSquare className="h-3.5 w-3.5" /> Debug Coach Chat
-                </button>
-              </div>
-
-              {/* Active Tab Panel */}
-              <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Active Tab Panel Body */}
+              <div className="flex-1 flex flex-col overflow-hidden relative">
+                
                 {activeTab === "code" ? (
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex-1 relative overflow-hidden bg-zinc-950">
+                    <div className="flex-1 relative overflow-hidden bg-black/20">
                       <Editor
                         height="100%"
                         defaultLanguage="cpp"
@@ -384,7 +425,7 @@ export default function BuildNewPage() {
                         onChange={(v) => handleCodeChange(v || "")}
                         options={{
                           minimap: { enabled: false },
-                          fontSize: 13,
+                          fontSize: 12,
                           lineNumbers: "on",
                           scrollbar: { vertical: "visible" },
                           tabSize: 2,
@@ -393,29 +434,31 @@ export default function BuildNewPage() {
                       />
                     </div>
 
-                    {/* Console & Compile Panel */}
-                    <div className="h-60 border-t border-zinc-850 bg-zinc-950 flex flex-col overflow-hidden">
-                      <div className="flex h-10 items-center justify-between border-b border-zinc-850 bg-zinc-900/20 px-4">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                          <Terminal className="h-3.5 w-3.5 text-zinc-500" /> Build Console
+                    {/* Integrated VSCode Build Console */}
+                    <div className="h-44 border-t border-[#2d2d2d] bg-[#1e1e1e] flex flex-col overflow-hidden shrink-0">
+                      <div className="flex h-8 items-center justify-between border-b border-[#2d2d2d] bg-[#2d2d2d] px-4 shrink-0 select-none">
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                          <Terminal className="h-3 w-3 text-zinc-550" /> BUILD CONSOLE
                         </span>
+                        
                         <button
                           onClick={handleCompile}
                           disabled={compiling}
-                          className="flex items-center gap-1.5 rounded bg-emerald-500 px-3 py-1 text-[11px] font-bold text-zinc-950 hover:bg-emerald-400 transition-colors disabled:bg-zinc-800 disabled:text-zinc-650"
+                          className="flex items-center gap-1 rounded bg-[#007acc] px-2.5 py-0.5 text-[9px] font-bold text-white hover:bg-[#0062a3] transition-colors disabled:bg-[#333333] disabled:text-zinc-500"
                         >
                           {compiling ? (
-                            <RefreshCw className="h-3 w-3 animate-spin" />
+                            <RefreshCw className="h-3 w-3 animate-spin text-white" />
                           ) : (
-                            <Play className="h-3 w-3" />
+                            <Play className="h-3 w-3 text-white" />
                           )}
                           Verify & Compile Code
                         </button>
                       </div>
-                      <div className="flex-1 p-4 font-mono text-xs text-zinc-400 overflow-y-auto whitespace-pre-wrap leading-relaxed">
-                        {compilationConsole || "Console idle. Ready for compilation."}
+                      <div className="flex-1 p-3 font-mono text-[10px] text-[#85e89d] overflow-y-auto whitespace-pre-wrap leading-relaxed select-text bg-black">
+                        {compilationConsole || "Build pipeline ready. Trigger code verify above..."}
                       </div>
                     </div>
+
                   </div>
                 ) : activeTab === "simulator" ? (
                   <div className="flex-1 flex flex-col overflow-hidden">
@@ -426,57 +469,58 @@ export default function BuildNewPage() {
                         sketchCode={milestone.code}
                       />
                     ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-zinc-500 bg-[#1a1a1a]">
-                        <HardDrive className="h-10 w-10 text-zinc-700 mb-3" />
-                        <h3 className="text-sm font-bold text-zinc-350">Simulator Locked</h3>
-                        <p className="text-xs text-zinc-600 mt-1 max-w-sm">
-                          Please run compilation in the Firmware tab successfully before starting simulation.
+                      <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-zinc-500 bg-[#1e1e1e]">
+                        <HardDrive className="h-8 w-8 text-zinc-700 mb-2" />
+                        <h3 className="text-xs font-bold text-zinc-400">Simulation Uncompiled</h3>
+                        <p className="text-[10px] text-zinc-600 mt-1 max-w-xs">
+                          Trigger verification compile inside the sketch.ino tab first before starting simulator.
                         </p>
                       </div>
                     )}
                   </div>
                 ) : (
-                  /* COACH CHAT PANEL */
-                  <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950">
-                    <div className="flex h-10 items-center justify-between border-b border-zinc-850 bg-zinc-900/10 px-4">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-purple-400 flex items-center gap-1">
-                        <Sparkles className="h-3.5 w-3.5" /> AI Debug Coach
+                  
+                  /* VSCode Debug Coach Chat interface (Monochromatic) */
+                  <div className="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
+                    <div className="flex h-8 items-center justify-between border-b border-[#2d2d2d] bg-[#2d2d2d] px-3 shrink-0 select-none">
+                      <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
+                        <Sparkles className="h-3.5 w-3.5 text-amber-500" /> AI DEBUG COACH
                       </span>
                       <button
                         onClick={handleRegenCode}
-                        className="rounded border border-purple-500/20 bg-purple-500/10 px-2.5 py-0.5 text-[10px] font-semibold text-purple-400 hover:bg-purple-500/20 transition-all"
+                        className="rounded border border-[#3c3c3c] bg-[#333333] px-2 py-0.5 text-[9px] font-semibold text-zinc-300 hover:bg-[#444444] transition-all"
                       >
-                        Auto-Fix Sketch Code
+                        Auto-Fix firmware code
                       </button>
                     </div>
 
                     {/* Chat Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 leading-relaxed">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3 leading-relaxed select-text font-mono">
                       {milestone.debugMessages && milestone.debugMessages.length > 0 ? (
                         milestone.debugMessages.map((msg, idx) => (
                           <div
                             key={idx}
-                            className={`p-3.5 rounded-xl border max-w-[85%] text-xs font-mono whitespace-pre-wrap ${
+                            className={`p-3 rounded border max-w-[85%] text-[10px] whitespace-pre-wrap ${
                               msg.role === "model"
-                                ? "bg-purple-950/10 border-purple-950/20 text-purple-200 self-start mr-auto"
-                                : "bg-zinc-900 border-zinc-800 text-zinc-300 self-end ml-auto"
+                                ? "bg-[#2d2d2d]/50 border-[#3c3c3c] text-zinc-200 self-start mr-auto"
+                                : "bg-black/30 border-[#2d2d2d] text-zinc-350 self-end ml-auto"
                             }`}
                           >
-                            <div className="text-[9px] text-zinc-550 mb-1">
-                              {msg.role === "model" ? "COACH" : "USER"}
+                            <div className="text-[8px] text-[#007acc] font-bold mb-1">
+                              {msg.role === "model" ? "COACH" : "DEVELOPER"}
                             </div>
                             {msg.content}
                           </div>
                         ))
                       ) : (
-                        <div className="text-center text-xs text-zinc-650 p-10 font-mono">
-                          Describe any compiling errors, wiring problems, or serial issues to the Debug Coach above.
+                        <div className="text-center text-[10px] text-zinc-600 p-8">
+                          Describe active compiler errors, wiring snags, or logic bugs to the AI Coach below.
                         </div>
                       )}
                     </div>
 
                     {/* Send Input */}
-                    <div className="p-3 border-t border-zinc-850 bg-zinc-900/20 flex gap-2">
+                    <div className="p-2 border-t border-[#2d2d2d] bg-[#181818] flex gap-2 shrink-0">
                       <input
                         type="text"
                         value={chatMessage}
@@ -485,12 +529,12 @@ export default function BuildNewPage() {
                           if (e.key === "Enter") handleSendChatMessage();
                         }}
                         placeholder="Ask the coach for assistance..."
-                        className="flex-1 rounded-lg border border-zinc-850 bg-zinc-950 px-3 py-2 text-xs text-zinc-100 placeholder-zinc-500 outline-none focus:border-purple-500 transition-colors"
+                        className="flex-1 rounded border border-[#3c3c3c] bg-black px-2.5 py-1.5 text-[11px] text-zinc-100 placeholder-zinc-600 outline-none focus:border-[#007acc] transition-colors"
                       />
                       <button
                         onClick={handleSendChatMessage}
                         disabled={chatLoading || !chatMessage.trim()}
-                        className="rounded-lg bg-purple-600 px-4 py-2 text-xs font-semibold hover:bg-purple-500 transition-colors disabled:bg-zinc-800 disabled:text-zinc-600"
+                        className="rounded bg-[#007acc] px-4 py-1.5 text-[10px] text-white font-bold hover:bg-[#0062a3] transition-colors disabled:bg-[#333333] disabled:text-zinc-600"
                       >
                         Send
                       </button>
@@ -498,121 +542,138 @@ export default function BuildNewPage() {
                   </div>
                 )}
               </div>
+
             </div>
 
-            {/* Right: Verification & Output Stage */}
-            <aside className="w-80 bg-zinc-900/10 p-5 overflow-y-auto space-y-6">
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-4 flex items-center gap-1.5">
-                  <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Milestone Verification
-                </h3>
+            {/* Right: Verification & Output panel */}
+            <aside className="w-80 shrink-0 bg-[#252526] p-4 overflow-y-auto space-y-4 text-zinc-400 select-text">
+              <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-3 flex items-center gap-1.5 border-b border-[#2d2d2d] pb-2 select-none">
+                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> MILESTONE VERIFICATION
+              </h3>
 
-                <div className="space-y-4 text-xs font-mono">
-                  {/* Expected Output Card */}
-                  <div className="bg-zinc-900/40 p-3.5 rounded-lg border border-zinc-850/80 space-y-1">
-                    <div className="text-zinc-500 font-bold uppercase text-[9px] tracking-wide">Expected Output</div>
-                    <p className="text-zinc-300 leading-relaxed">{milestone.test?.expectedSerialOutput || "Check objectives."}</p>
-                  </div>
+              <div className="space-y-4 text-[10px] font-mono">
+                {/* Expected Output Card */}
+                <div className="bg-[#1e1e1e] p-3 rounded border border-[#2d2d2d] space-y-1">
+                  <div className="text-zinc-555 font-bold uppercase text-[9px] tracking-wide text-[#007acc]">Expected Output</div>
+                  <p className="text-zinc-350 leading-relaxed">{milestone.test?.expectedSerialOutput || "Check objectives."}</p>
+                </div>
 
-                  {/* Pass Condition Card */}
-                  <div className="bg-zinc-900/40 p-3.5 rounded-lg border border-zinc-850/80 space-y-1">
-                    <div className="text-zinc-500 font-bold uppercase text-[9px] tracking-wide">Verification Criteria</div>
-                    <p className="text-zinc-300 leading-relaxed">{milestone.test?.passCondition || "Success verification check."}</p>
-                  </div>
+                {/* Pass Criteria Card */}
+                <div className="bg-[#1e1e1e] p-3 rounded border border-[#2d2d2d] space-y-1">
+                  <div className="text-zinc-555 font-bold uppercase text-[9px] tracking-wide text-[#007acc]">Verification Criteria</div>
+                  <p className="text-zinc-350 leading-relaxed">{milestone.test?.passCondition || "Success verification check."}</p>
+                </div>
 
-                  {/* Serial Output validation input */}
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Capture Serial Output</label>
-                    <textarea
-                      value={serialInput}
-                      onChange={(e) => setSerialInput(e.target.value)}
-                      placeholder="Paste terminal / serial monitor output here to confirm..."
-                      rows={4}
-                      className="w-full rounded-lg border border-zinc-850 bg-zinc-950/60 p-2.5 text-xs text-zinc-200 placeholder-zinc-650 outline-none focus:border-emerald-500 transition-colors resize-none"
-                    />
-                  </div>
+                {/* Serial Output validation input */}
+                <div className="space-y-2">
+                  <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide block select-none">Capture Serial Output</label>
+                  <textarea
+                    value={serialInput}
+                    onChange={(e) => setSerialInput(e.target.value)}
+                    placeholder="Paste UART terminal / serial monitor outputs here to confirm..."
+                    rows={4}
+                    className="w-full rounded border border-[#3c3c3c] bg-black p-2 text-[10px] text-zinc-200 placeholder-zinc-700 outline-none focus:border-[#007acc] transition-colors resize-none"
+                  />
+                </div>
 
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">Verification Notes</label>
-                    <input
-                      type="text"
-                      value={notes}
-                      onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Optional notes or details..."
-                      className="w-full rounded-lg border border-zinc-850 bg-zinc-950/60 px-2.5 py-2 text-xs text-zinc-200 placeholder-zinc-650 outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide block select-none">Verification Notes</label>
+                  <input
+                    type="text"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    placeholder="Optional developer comments..."
+                    className="w-full rounded border border-[#3c3c3c] bg-black px-2.5 py-1.5 text-[10px] text-zinc-200 placeholder-zinc-700 outline-none focus:border-[#007acc] transition-colors"
+                  />
+                </div>
 
-                  <div className="space-y-2 pt-2">
-                    <button
-                      onClick={handleConfirm}
-                      className="w-full rounded-lg bg-emerald-500 px-4 py-2.5 text-xs font-bold text-zinc-950 hover:bg-emerald-400 transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <CheckCircle2 className="h-4 w-4" /> Confirm & Complete Step
-                    </button>
-                    
-                    <button
-                      onClick={handleSkip}
-                      className="w-full rounded-lg border border-zinc-800 bg-zinc-900/60 px-4 py-2 text-xs font-semibold text-zinc-400 hover:border-zinc-700 hover:text-zinc-200 transition-all"
-                    >
-                      Bypass & Unlock Step
-                    </button>
-                  </div>
+                <div className="space-y-2 pt-2 select-none">
+                  <button
+                    onClick={handleConfirm}
+                    className="w-full rounded bg-[#007acc] px-4 py-2 text-[10px] font-bold text-white hover:bg-[#0062a3] transition-all flex items-center justify-center gap-1.5"
+                  >
+                    <CheckCircle2 className="h-3.5 w-3.5 text-white" /> Confirm & Complete Step
+                  </button>
+                  
+                  <button
+                    onClick={handleSkip}
+                    className="w-full rounded border border-[#3c3c3c] bg-[#333333] px-4 py-1.5 text-[10px] font-semibold text-zinc-300 hover:bg-[#444444] transition-all"
+                  >
+                    Bypass & Unlock Step
+                  </button>
                 </div>
               </div>
             </aside>
+
           </div>
         ) : (
           <div className="flex-1 flex items-center justify-center text-zinc-500">
-            Select a milestone to begin firmware compilation.
+            Select a milestone to load firmware workspace.
           </div>
         )}
       </div>
 
-      {/* REPORT ISSUE MODAL */}
+      {/* VSCode-style Status Bar (Bottom) */}
+      <footer className="h-6 shrink-0 bg-[#007acc] text-white flex items-center justify-between px-3 text-[10px] z-20 select-none">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+            <span>Step Curriculum Active</span>
+          </div>
+          <span>Board: Arduino MCU</span>
+          <span>Status: Verified</span>
+        </div>
+        <div className="flex items-center gap-4">
+          <span>Language: Arduino C++</span>
+          <span>Spaces: 2</span>
+          <span>UTF-8</span>
+        </div>
+      </footer>
+
+      {/* REPORT CONNECTION ISSUE MODAL */}
       {showIssueModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-5 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
+          <div className="w-full max-w-md rounded border border-[#3c3c3c] bg-[#1e1e1e] p-5 space-y-4">
             <div>
-              <h3 className="text-sm font-bold text-zinc-100">Report Hardware Connection Problem</h3>
-              <p className="text-xs text-zinc-500 mt-1">Specify which component is failing and describe the symptoms.</p>
+              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Report Hardware Connection Problem</h3>
+              <p className="text-[10px] text-zinc-500 mt-1">Specify which component is failing and describe the symptoms.</p>
             </div>
 
-            <div className="space-y-3 text-xs">
+            <div className="space-y-3 text-[10px]">
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Component Key</label>
+                <label className="text-zinc-400 font-semibold uppercase text-[9px]">Component Key</label>
                 <input
                   type="text"
                   placeholder="e.g. DHT11 or LED1"
                   value={issueComponent}
                   onChange={(e) => setIssueComponent(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-950 px-3 py-2 text-zinc-100 outline-none focus:border-purple-500"
+                  className="w-full rounded border border-[#3c3c3c] bg-black px-3 py-2 text-zinc-100 outline-none focus:border-[#007acc]"
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold">Issue Description</label>
+                <label className="text-zinc-400 font-semibold uppercase text-[9px]">Issue Description</label>
                 <textarea
                   placeholder="Describe the wiring issue, pin mixup, or hardware problem..."
                   rows={4}
                   value={issueDescription}
                   onChange={(e) => setIssueDescription(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-800 bg-zinc-950 p-3 text-zinc-100 outline-none focus:border-purple-500 resize-none"
+                  className="w-full rounded border border-[#3c3c3c] bg-black p-3 text-zinc-100 outline-none focus:border-[#007acc] resize-none"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 text-xs">
+            <div className="flex justify-end gap-2 text-[10px]">
               <button
                 onClick={() => setShowIssueModal(false)}
-                className="rounded-lg bg-zinc-800 px-3.5 py-2 font-semibold hover:bg-zinc-700 transition-colors"
+                className="rounded bg-[#333333] hover:bg-[#444444] px-3.5 py-1.5 font-semibold text-zinc-300 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleReportIssue}
                 disabled={reportingIssue || !issueComponent || !issueDescription.trim()}
-                className="rounded-lg bg-purple-600 px-4 py-2 font-bold hover:bg-purple-500 transition-colors disabled:bg-zinc-850 disabled:text-zinc-600"
+                className="rounded bg-[#007acc] px-4 py-1.5 font-bold text-white hover:bg-[#0062a3] transition-colors disabled:bg-[#333333] disabled:text-zinc-600"
               >
                 Report Issue
               </button>
@@ -620,6 +681,7 @@ export default function BuildNewPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
