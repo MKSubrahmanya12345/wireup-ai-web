@@ -149,9 +149,9 @@ export async function octopartSearch(query: string, limit: number): Promise<IFor
   }
 }
 
-/**
- * searchLibrary - Hybrid search that queries MongoDB first, then falls back to Octopart if needed.
- */
+
+
+// ??$$$ newer code
 export async function searchLibrary(options: ISearchLibraryOptions): Promise<IFormattedPart[]> {
   const { query, limit = 5, strategy = "auto" } = options;
 
@@ -163,31 +163,88 @@ export async function searchLibrary(options: ISearchLibraryOptions): Promise<IFo
   // 1. Check local curated parts (MongoDB)
   if (strategy === "auto" || strategy === "local_only") {
     try {
-      console.log(`[LibraryService] Querying MongoDB local text search for: "${query}"`);
-      const mongoParts = await Part.find(
-        { $text: { $search: query } },
-        { score: { $meta: "textScore" } }
-      )
-        .sort({ score: { $meta: "textScore" } })
-        .limit(limit * 2) // Fetch a bit more to allow deduplication / selection
-        .lean();
+      console.log(`[LibraryService] Smart local search for: "${query}"`);
+      const words = query.split(/\s+/).filter(w => w.trim().length > 0);
+      const regexConditions = words.map(word => {
+        const escaped = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&");
+        return {
+          $or: [
+            { name: { $regex: escaped, $options: "i" } },
+            { mpn: { $regex: escaped, $options: "i" } },
+            { description: { $regex: escaped, $options: "i" } }
+          ]
+        };
+      });
 
-      localResults = mongoParts.map((p: any) => ({
-        id: p.mpn,
-        name: p.name,
-        mpn: p.mpn,
-        manufacturer: p.manufacturer,
-        description: p.description,
-        imageUrl: p.imageUrl,
-        datasheetUrl: p.datasheetUrl,
-        specs: p.specs,
-        available: p.available,
-        price: p.price,
-        wokwiPartType: p.wokwiPartType,
-        isCurated: true
-      }));
+      // Fetch all local parts and rank them in-memory to ensure zero cut-offs
+      const mongoParts = await Part.find({}).lean();
 
-      console.log(`[LibraryService] Local search returned ${localResults.length} matches.`);
+      const queryLower = query.toLowerCase();
+      const queryWords = queryLower.split(/\s+/).filter(w => w.length > 1);
+
+      // Strong keyword constraints to prevent random mismatches (e.g. SD query returning NRF24)
+      const strongNouns = [
+        { keys: ["sd", "microsd", "card", "storage"], matches: ["sd", "microsd", "card", "storage"] },
+        { keys: ["speaker", "audio", "amplifier", "jack", "sound", "dac", "codec", "headphone", "pam8403", "max98357a", "pcm5102a", "dfplayer"], matches: ["speaker", "audio", "amplifier", "jack", "sound", "dac", "codec", "headphone", "buzzer", "music", "volume", "pam8403", "max98357a", "pcm5102a", "dfplayer"] },
+        { keys: ["bluetooth", "wifi", "wireless", "nrf24", "hc-05"], matches: ["bluetooth", "wifi", "wireless", "nrf24", "radio", "esp32", "communication", "hc-05"] },
+        { keys: ["led", "display", "screen", "oled", "lcd", "ili9341", "ssd1306"], matches: ["led", "display", "screen", "oled", "lcd", "ili9341", "ssd1306", "light"] },
+        { keys: ["button", "switch", "tactile"], matches: ["button", "switch", "tactile", "key"] },
+        { keys: ["charger", "battery", "lipo", "tp4056"], matches: ["charger", "battery", "lipo", "tp4056", "power", "cell"] }
+      ];
+
+      localResults = mongoParts.map((p: any) => {
+        const nameLower = (p.name || "").toLowerCase();
+        const mpnLower = (p.mpn || "").toLowerCase();
+        const descLower = (p.description || "").toLowerCase();
+
+        let score = 0;
+
+        // Exact substring match on name/mpn
+        if (nameLower.includes(queryLower) || mpnLower.includes(queryLower)) {
+          score += 100;
+        }
+
+        // Individual word matches
+        for (const word of queryWords) {
+          if (nameLower.includes(word)) score += 20;
+          if (mpnLower.includes(word)) score += 30;
+          if (descLower.includes(word)) score += 5;
+        }
+
+        // Apply strict noun filters
+        for (const rule of strongNouns) {
+          const queryHasKey = rule.keys.some(k => queryWords.includes(k) || queryLower.includes(k));
+          if (queryHasKey) {
+            const partHasMatch = rule.matches.some(m => nameLower.includes(m) || mpnLower.includes(m) || descLower.includes(m));
+            if (!partHasMatch) {
+              score -= 150; // Heavily penalize mismatch
+            }
+          }
+        }
+
+        return {
+          part: {
+            id: p.mpn,
+            name: p.name,
+            mpn: p.mpn,
+            manufacturer: p.manufacturer,
+            description: p.description,
+            imageUrl: p.imageUrl,
+            datasheetUrl: p.datasheetUrl,
+            specs: p.specs,
+            available: p.available,
+            price: p.price,
+            wokwiPartType: p.wokwiPartType,
+            isCurated: true
+          },
+          score
+        };
+      })
+        .filter(item => item.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .map(item => item.part);
+
+      console.log(`[LibraryService] Smart local search matched and ranked ${localResults.length} parts.`);
     } catch (err: any) {
       console.error("[LibraryService] Local MongoDB search failed:", err.message || err);
     }

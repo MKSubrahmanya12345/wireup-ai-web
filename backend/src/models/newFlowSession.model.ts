@@ -9,35 +9,7 @@ export interface IQaHistory {
   timestamp: Date;
 }
 
-// export interface IProjectContext {
-//   corePurpose: string;
-//   mcu: string;
-//   subsystems: string[];
-//   constraints: string[];
-//   powerSource: string;
-//   connectivity: string;
-//   openQuestions: string[];
-// }
-// ??$$$ newer code
-export interface IProjectSubsystems {
-  inputs: string[];
-  outputs: string[];
-  communication: string[];
-  storage: string[];
-  power: string[];
-}
-
-export interface IProjectContext {
-  corePurpose: string;
-  mcu: string;
-  subsystems: IProjectSubsystems;
-  formFactor?: string;
-  powerSource: string;
-  connectivity: string[];
-  estimatedBudget?: string;
-  constraints: string[];
-  openQuestions: string[];
-}
+// context is now a free-form Mixed object; requirementsDoc (Markdown PRD) is the primary source of truth from Agent 1
 
 // ??$$$
 // export interface IAgentLog {
@@ -128,27 +100,26 @@ export interface INewFlowSession extends Document {
   owner: Types.ObjectId;
   selectedModel: string;
   idea: string;
-  // ??$$$ newer code
+  requirementsDoc: string;
   bomMeta?: IArtifactMeta;
   wiringMeta?: IArtifactMeta;
   sketchMeta?: IArtifactMeta;
   qaHistory: IQaHistory[];
-  context: IProjectContext;
+  context: any;
   phase1Complete: boolean;
   agentLog: IAgentLog[];
   bom: INewFlowBomItem[];
   wiring: INewFlowWiring[];
   milestones: INewFlowMilestone[];
-  // ??$$$ newer code
   diagram?: any;
   phase2Complete: boolean;
   projectId: Types.ObjectId | null;
   createdAt: Date;
-  // ??$$$ newer code
   finalSketch?: string;
   pipelineStages?: any;
-  pipelineFailures?: any[];
   // ??$$$ newer code
+  blueprint?: any;
+  pipelineFailures?: any[];
   derivedDependencies?: any;
 }
 
@@ -159,27 +130,7 @@ const qaHistorySchema = new Schema<IQaHistory>({
   timestamp: { type: Date, default: Date.now }
 }, { _id: false });
 
-// const projectContextSchema = new Schema<IProjectContext>({
-//   corePurpose: { type: String, default: "" },
-//   mcu: { type: String, default: "" },
-//   subsystems: [{ type: String }],
-//   constraints: [{ type: String }],
-//   powerSource: { type: String, default: "" },
-//   connectivity: { type: String, default: "" },
-//   openQuestions: [{ type: String }]
-// }, { _id: false });
-// ??$$$ newer code
-const projectContextSchema = new Schema<IProjectContext>({
-  corePurpose: { type: String, default: "" },
-  mcu: { type: String, default: "" },
-  subsystems: { type: Schema.Types.Mixed, default: () => ({ inputs: [], outputs: [], communication: [], storage: [], power: [] }) },
-  formFactor: { type: String, default: "" },
-  powerSource: { type: String, default: "" },
-  connectivity: { type: Schema.Types.Mixed, default: () => [] },
-  estimatedBudget: { type: String, default: "" },
-  constraints: [{ type: String }],
-  openQuestions: [{ type: String }]
-}, { _id: false });
+// context is schema-free; requirementsDoc is the primary Agent 1 output (Markdown PRD)
 
 // ??$$$
 // const agentLogSchema = new Schema<IAgentLog>({
@@ -292,28 +243,27 @@ const artifactMetaSchema = new Schema<IArtifactMeta>(
 
 const newFlowSessionSchema = new Schema<INewFlowSession>({
   owner: { type: Schema.Types.ObjectId, ref: "User", required: true },
-  // ??$$$ newer code
   bomMeta: { type: artifactMetaSchema, default: () => ({}) },
   wiringMeta: { type: artifactMetaSchema, default: () => ({}) },
   sketchMeta: { type: artifactMetaSchema, default: () => ({}) },
-  selectedModel: { type: String, default: "meta-llama/llama-4-scout-17b-16e-instruct" },
+  selectedModel: { type: String, default: "qwen/qwen3-32b" },
   idea: { type: String, required: true },
+  requirementsDoc: { type: String, default: "" },
   qaHistory: { type: [qaHistorySchema], default: [] },
-  context: { type: projectContextSchema, default: () => ({}) },
+  context: { type: Schema.Types.Mixed, default: () => ({}) },
   phase1Complete: { type: Boolean, default: false },
   agentLog: { type: [agentLogSchema], default: [] },
   bom: { type: [bomItemSchema], default: [] },
   wiring: { type: [wiringSchema], default: [] },
   milestones: { type: [milestoneSchema], default: [] },
-  // ??$$$ newer code
   diagram: { type: Schema.Types.Mixed, default: () => ({}) },
   phase2Complete: { type: Boolean, default: false },
   projectId: { type: Schema.Types.ObjectId, ref: "Project", default: null },
   createdAt: { type: Date, default: Date.now },
-  // ??$$$ newer code
   finalSketch: { type: String, default: "" },
   pipelineStages: { type: Schema.Types.Mixed, default: () => ({}) },
   // ??$$$ newer code
+  blueprint: { type: Schema.Types.Mixed, default: null },
   derivedDependencies: { type: Schema.Types.Mixed, default: () => ({}) },
   pipelineFailures: { type: [Schema.Types.Mixed], default: [] }
 });

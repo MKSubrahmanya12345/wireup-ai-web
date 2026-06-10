@@ -1,5 +1,9 @@
 // ??$$$
+// ??$$$ old code
+// import NewFlowSession from "../../models/newFlowSession.model";
+// ??$$$ newer code
 import NewFlowSession from "../../models/newFlowSession.model";
+import Project from "../../models/project.model";
 import { parseJsonRecursively } from "../shared/jsonRepair";
 // ??$$$ newer code
 import Part from "../../models/part.model";
@@ -47,10 +51,19 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
       const price = typeof item.price === "number" ? item.price : 0;
       const interfaces = Array.isArray(item.interfaces) ? item.interfaces : [];
       const pinConnections = Array.isArray(item.pinConnections)
-        ? item.pinConnections.map((pc: any) => ({
-          pin: pc.pin || "",
-          connectsTo: pc.connectsTo || ""
-        }))
+        ? item.pinConnections
+          .map((pc: any) => {
+            // ??$$$ Defensive coercion: LLM sometimes emits strings instead of {pin, connectsTo}
+            if (typeof pc === "string") {
+              const parts = pc.split(/->|→|:|=>/).map((s: string) => s.trim());
+              return { pin: parts[0] || pc.trim(), connectsTo: parts[1] || "" };
+            }
+            if (pc && typeof pc === "object") {
+              return { pin: pc.pin || "", connectsTo: pc.connectsTo || "" };
+            }
+            return { pin: "", connectsTo: "" };
+          })
+          .filter((pc: any) => pc.pin && pc.connectsTo)
         : [];
 
       let componentType = "module";
@@ -174,7 +187,9 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
       }
     }
 
-    const rawList = Array.isArray(milestoneList) ? milestoneList : [milestoneList];
+        const rawList = Array.isArray(milestoneList) ? milestoneList : [milestoneList];
+    // ??$$$ old code
+    /*
     const normalizedMilestones = rawList
       .filter((m: any) => m && typeof m === "object")
       .map((m: any, idx: number) => {
@@ -187,6 +202,52 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
           partsInvolved: Array.isArray(m.partsInvolved) ? m.partsInvolved : (Array.isArray(m.componentsInvolved) ? m.componentsInvolved : []),
           wiringInstructions: m.wiringInstructions || "",
           code: m.code || "",
+          explanation: m.explanation || "",
+          expectedOutput: m.expectedOutput || m.expectedSerialOutput || "",
+          passCondition: m.passCondition || "",
+          commonProblems: Array.isArray(m.commonProblems) ? m.commonProblems : [],
+          simulatable: typeof m.simulatable === "boolean" ? m.simulatable : true,
+          requiredLibraries: Array.isArray(m.requiredLibraries) ? m.requiredLibraries : []
+        };
+      });
+    */
+
+    // ??$$$ newer code
+    const normalizedMilestones = rawList
+      .filter((m: any) => m && typeof m === "object")
+      .map((m: any, idx: number) => {
+        let code = m.code || "";
+        const PLACEHOLDER_PATTERNS = [
+          /milestone\s+\d+\s+code\s+from\s+generate/i,
+          /code\s+from\s+generate/i,
+          /placeholder/i,
+          /\[code here\]/i,
+          /insert code/i,
+        ];
+        const isPlaceholder = code.trim().length < 50 || PLACEHOLDER_PATTERNS.some(p => p.test(code));
+        if (isPlaceholder) {
+          const existing = session.milestones.find((em: any) =>
+            em.id === m.id ||
+            em.order === m.order ||
+            (m.title && em.title.toLowerCase().trim() === m.title.toLowerCase().trim())
+          );
+          if (existing && existing.code && existing.code.trim().length >= 50) {
+            code = existing.code;
+            console.warn(`[Persistence] Rejected placeholder code for milestone "${m.title || m.order}", keeping existing code.`);
+          } else {
+            code = "";
+          }
+        }
+
+        return {
+          id: m.id || `milestone_${m.order || idx + 1 || Date.now()}`,
+          order: typeof m.order === "number" ? m.order : (idx + 1),
+          title: m.title || "Untitled Milestone",
+          objective: m.objective || "",
+          subsystem: m.subsystem || "General",
+          partsInvolved: Array.isArray(m.partsInvolved) ? m.partsInvolved : (Array.isArray(m.componentsInvolved) ? m.componentsInvolved : []),
+          wiringInstructions: m.wiringInstructions || "",
+          code,
           explanation: m.explanation || "",
           expectedOutput: m.expectedOutput || m.expectedSerialOutput || "",
           passCondition: m.passCondition || "",
@@ -281,10 +342,111 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
     }
   }
 
+  // ??$$$ newer code — sync progress to Project document if linked
+  if (session.projectId) {
+    await syncSessionToProject(session);
+  }
+
   return {
     saved: true,
     type,
     sessionId,
     timestamp: new Date().toISOString()
   };
+}
+
+// ??$$$ newer code — Sync session to Project document
+async function syncSessionToProject(session: any) {
+  if (!session.projectId) return;
+  try {
+    const project = await Project.findById(session.projectId);
+    if (!project) return;
+
+    // Map BOM
+    project.bom = await Promise.all((session.bom || []).map(async (b: any) => {
+      let glbUrl = "";
+      let componentType = b.type || "module";
+      try {
+        const partDoc = await Part.findOne({ mpn: b.mpn }).lean() as any;
+        if (partDoc) {
+          if (partDoc.isCurated && partDoc.glbUrl) {
+            glbUrl = partDoc.glbUrl;
+          }
+          if (partDoc.componentType) {
+            componentType = partDoc.componentType;
+          }
+        }
+      } catch (e) { /* non-blocking */ }
+
+      return {
+        key: b.key,
+        wokwiPartType: b.partId,
+        displayName: b.displayName,
+        qty: b.qty,
+        purpose: b.purpose,
+        price: b.price || 0,
+        storeUrl: "",
+        mpn: b.mpn || "",
+        partId: b.partId || "",
+        pinConnections: b.pinConnections || [],
+        glbUrl,
+        pins: [],
+        type: componentType
+      };
+    }));
+
+    // Map wiring
+    project.wiring = session.wiring || [];
+
+    // Map milestones
+    project.milestones = (session.milestones || []).map((m: any, idx: number) => ({
+      id: m.id,
+      order: m.order || (idx + 1),
+      title: m.title,
+      objective: m.objective,
+      componentsInvolved: m.partsInvolved,
+      wiringInstructions: m.wiringInstructions,
+      code: m.code,
+      explanation: m.explanation,
+      test: {
+        expectedSerialOutput: m.expectedOutput,
+        passCondition: m.passCondition,
+        commonProblems: m.commonProblems
+      },
+      status: idx === 0 ? ("ready" as const) : ("locked" as const),
+      userConfirmed: false,
+      userNotes: "",
+      compiledHex: "",
+      compilationErrors: [],
+      serialOutput: "",
+      completedAt: null,
+      simulatable: m.simulatable,
+      dependsOn: idx === 0 ? [] : [session.milestones[idx - 1].id],
+      debugMessages: [],
+      requiredLibraries: m.requiredLibraries || []
+    }));
+
+    if (project.milestones.length > 0) {
+      project.milestonesGenerated = true;
+      project.activeMilestoneId = project.milestones[0].id;
+    }
+
+    // Map diagram
+    project.diagram = session.diagram || session.wiring;
+
+    // Map other state
+    project.derivedDependencies = session.derivedDependencies || {};
+    project.bomMeta = session.bomMeta;
+    project.wiringMeta = session.wiringMeta;
+    project.sketchMeta = session.sketchMeta;
+
+    if (session.context?.mcu) {
+      project.meta.board = session.context.mcu;
+    }
+
+    await project.save();
+    console.log(`[Persistence] Successfully synchronized session progress to project: ${project._id}`);
+  } catch (err) {
+    console.error(`[Persistence] Failed to sync session to project:`, err);
+  }
 }

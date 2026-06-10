@@ -10,12 +10,12 @@ export class GeminiAdapter implements LLMAdapter {
   }
 
   async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
-    const genAI = new GoogleGenerativeAI(this.apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt,
-      tools: [{ functionDeclarations: GEMINI_AGENT2_TOOLS.functionDeclarations }] as any
-    });
+    const keys = Array.from(new Set([
+      this.apiKey,
+      process.env.GEMINI_API_KEY_1,
+      process.env.GEMINI_API_KEY_2,
+      process.env.GEMINI_API_KEY
+    ].filter(Boolean) as string[]));
 
     const contents = messages.map(m => {
       if (m.role === "function") {
@@ -48,19 +48,37 @@ export class GeminiAdapter implements LLMAdapter {
       return { role, parts };
     });
 
-    const result = await model.generateContent({ contents });
-    const response = result.response;
+    let lastError: any = null;
+    for (let i = 0; i < keys.length; i++) {
+      const activeKey = keys[i];
+      try {
+        const genAI = new GoogleGenerativeAI(activeKey);
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction: systemPrompt,
+          tools: [{ functionDeclarations: GEMINI_AGENT2_TOOLS.functionDeclarations }] as any
+        });
 
-    return {
-      text: () => response.text() || "",
-      functionCalls: () => {
-        const calls = response.functionCalls();
-        if (!calls) return [];
-        return calls.map(c => ({
-          name: c.name,
-          args: c.args
-        }));
+        const result = await model.generateContent({ contents });
+        const response = result.response;
+
+        return {
+          text: () => response.text() || "",
+          functionCalls: () => {
+            const calls = response.functionCalls();
+            if (!calls) return [];
+            return calls.map(c => ({
+              name: c.name,
+              args: c.args
+            }));
+          }
+        };
+      } catch (err: any) {
+        console.warn(`[GeminiAdapter] Attempt ${i + 1} with key prefix ${activeKey.substring(0, 6)} failed:`, err.message || err);
+        lastError = err;
       }
-    };
+    }
+
+    throw lastError || new Error("GeminiAdapter: All API keys exhausted");
   }
 }

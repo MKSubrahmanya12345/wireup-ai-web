@@ -4,6 +4,8 @@ import { executeCheckCompatibility, executeValidatePinAssignment, executeEstimat
 import { executeGetWokwiPartType, executeCheckSimulationSupport, executeGenerateDiagramJson } from "./diagram.tool";
 import { executeGenerateMilestone } from "./milestone.tool";
 import { executeSaveProgress, executeGenerateFinalSketch } from "./save.tool";
+// ??$$$ newer code
+import { executeSelectCompute } from "./mcu.tool";
 
 export async function executeTool(
   name: string,
@@ -37,6 +39,9 @@ export async function executeTool(
       return executeSaveProgress(args, sessionId);
     case "generate_final_sketch":
       return executeGenerateFinalSketch(args, sessionId);
+    // ??$$$ newer code
+    case "select_compute":
+      return executeSelectCompute(args);
     default:
       return { error: `Unknown tool: ${name}` };
   }

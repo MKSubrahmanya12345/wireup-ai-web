@@ -20,9 +20,7 @@ export const GEMINI_AGENT2_TOOLS = {
           },
           category: {
             type: SchemaType.STRING,
-            description: "Category filter",
-            // ??$$$ newer code - added passive, actuator, connector to prevent Groq schema validation crashes
-            enum: ["MCU", "sensor", "motor", "ESC", "display", "power", "communication", "passive", "actuator", "connector"]
+            description: "Category filter (e.g. MCU, sensor, audio, passive)"
           }
         },
         required: ["query"]
@@ -420,6 +418,46 @@ export const GEMINI_AGENT2_TOOLS = {
           }
         },
         required: ["objective", "mcu", "allMilestones"]
+      }
+    },
+    // ??$$$ newer code
+    {
+      name: "select_compute",
+      description: "Match the project's system blueprint compute requirements against the curated MCU catalog to find the optimal microcontroller. Returns recommendation, candidates, and reasons for rejected boards.",
+      parameters: {
+        type: SchemaType.OBJECT,
+        properties: {
+          computeRequirements: {
+            type: SchemaType.OBJECT,
+            description: "The computeRequirements block from the system blueprint",
+            properties: {
+              estPinCount: { type: SchemaType.NUMBER },
+              peripherals: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  i2c: { type: SchemaType.NUMBER },
+                  spi: { type: SchemaType.NUMBER },
+                  uart: { type: SchemaType.NUMBER },
+                  pwm: { type: SchemaType.NUMBER },
+                  adc: { type: SchemaType.NUMBER }
+                }
+              },
+              connectivity: {
+                type: SchemaType.OBJECT,
+                properties: {
+                  wifi: { type: SchemaType.BOOLEAN },
+                  bluetooth: { type: SchemaType.BOOLEAN }
+                }
+              },
+              minFlashKB: { type: SchemaType.NUMBER },
+              minRamKB: { type: SchemaType.NUMBER },
+              voltage: { type: SchemaType.STRING },
+              realtime: { type: SchemaType.BOOLEAN }
+            },
+            required: ["estPinCount", "peripherals", "connectivity"]
+          }
+        },
+        required: ["computeRequirements"]
       }
     }
   ]

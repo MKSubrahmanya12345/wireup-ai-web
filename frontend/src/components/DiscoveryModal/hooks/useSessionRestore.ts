@@ -17,6 +17,8 @@ interface UseSessionRestoreProps {
   setQuestion: (v: string) => void;
   setOptions: (v: string[]) => void;
   setContext: (v: any) => void;
+  setRequirementsDoc: (v: string) => void;
+  setQaHistory: (v: any[]) => void;
 
   setBom: (v: any[]) => void;
   setWiring: (v: any[]) => void;
@@ -30,6 +32,8 @@ interface UseSessionRestoreProps {
   setIsCompleted: (v: boolean) => void;
   setCompletedProjectId: (v: string | null) => void;
   setFinalSketch: (v: string) => void;
+  // ??$$$ newer code
+  setBlueprint: (v: any) => void;
 }
 
 export const useSessionRestore = ({
@@ -45,6 +49,8 @@ export const useSessionRestore = ({
   setQuestion,
   setOptions,
   setContext,
+  setRequirementsDoc,
+  setQaHistory,
 
   setBom,
   setWiring,
@@ -57,7 +63,9 @@ export const useSessionRestore = ({
 
   setIsCompleted,
   setCompletedProjectId,
-  setFinalSketch
+  setFinalSketch,
+  // ??$$$ newer code
+  setBlueprint
 }: UseSessionRestoreProps) => {
   useEffect(() => {
     const startSession = async () => {
@@ -73,10 +81,16 @@ export const useSessionRestore = ({
           setQuestion(res.data.question || "");
           setOptions(res.data.options || []);
           setContext(res.data.context || {});
+          setRequirementsDoc(res.data.requirementsDoc || "");
+          setQaHistory(res.data.qaHistory || []);
           setBom(res.data.bom || []);
           setWiring(res.data.wiring || []);
           setMilestones(res.data.milestones || []);
           setLogs(res.data.agentLog || []);
+          // ??$$$ newer code
+          if (res.data.blueprint) {
+            setBlueprint(res.data.blueprint);
+          }
           setStarted(true);
 
           if (res.data.phase2Complete) {
@@ -128,10 +142,16 @@ export const useSessionRestore = ({
               setQuestion(res.data.question || "");
               setOptions(res.data.options || []);
               setContext(res.data.context || {});
+              setRequirementsDoc(res.data.requirementsDoc || "");
+              setQaHistory(res.data.qaHistory || []);
               setBom(res.data.bom || []);
               setWiring(res.data.wiring || []);
               setMilestones(res.data.milestones || []);
               setLogs(res.data.agentLog || []);
+              // ??$$$ newer code
+              if (res.data.blueprint) {
+                setBlueprint(res.data.blueprint);
+              }
 
               if (res.data.finalSketch) {
                 setFinalSketch(res.data.finalSketch);
@@ -185,5 +205,29 @@ export const useSessionRestore = ({
     };
 
     startSession();
-  }, [projectId]);
+  }, [
+    projectId,
+    initialIdea,
+    initialPhase,
+    onClose,
+    setLoading,
+    setSessionId,
+    setQuestion,
+    setOptions,
+    setContext,
+    setRequirementsDoc,
+    setQaHistory,
+    setBom,
+    setWiring,
+    setMilestones,
+    setLogs,
+    setStarted,
+    setPhase,
+    setShouldAutoFormulate,
+    setIsCompleted,
+    setCompletedProjectId,
+    setFinalSketch,
+    // ??$$$ newer code
+    setBlueprint
+  ]);
 };

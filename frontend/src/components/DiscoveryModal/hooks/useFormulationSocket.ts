@@ -26,6 +26,9 @@ interface UseFormulationSocketProps {
 
   setModel: (value: string) => void;
 
+  // ??$$$ newer code
+  setBlueprint: (value: any) => void;
+
   socketRef: RefObject<Socket | null>;
 
   getSocketUrl: () => string;
@@ -52,6 +55,9 @@ export const useFormulationSocket = ({
 
   setModel,
 
+  // ??$$$ newer code
+  setBlueprint,
+
   socketRef,
 
   getSocketUrl
@@ -71,6 +77,11 @@ export const useFormulationSocket = ({
 
     socket.on("agent2:log", (logItem: any) => {
       setLogs(prev => [...prev, logItem]);
+    });
+
+    // ??$$$ newer code
+    socket.on("agent2:blueprint", (data: any) => {
+      if (data.blueprint) setBlueprint(data.blueprint);
     });
 
     socket.on("agent2:bom_update", (data: any) => {
@@ -230,6 +241,9 @@ export const useFormulationSocket = ({
     setCompletedProjectId,
 
     setModel,
+
+    // ??$$$ newer code
+    setBlueprint,
 
     socketRef,
 

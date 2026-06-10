@@ -8,6 +8,8 @@ import { executeTool } from "./tools/index";
 import { saveSessionProgress } from "./formulation.persistence";
 import { SYSTEM_PROMPT, buildInitialPrompt } from "./formulation.prompts";
 import { resolveAllPins } from "../../services/pinResolver.service";
+// ??$$$ newer code
+import { runArchitect } from "../architect";
 import rotationService from "../../services/keyRotation.service";
 import {
   LLMAdapter,
@@ -150,15 +152,45 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     type: "context_received",
     text: isResume ? "AI Resumed Project Formulation Context." : "AI Received Project Formulation Context.",
     input: {
-      corePurpose: session.context.corePurpose,
-      mcu: session.context.mcu,
-      subsystems: session.context.subsystems,
-      constraints: session.context.constraints,
-      powerSource: session.context.powerSource,
-      connectivity: session.context.connectivity,
-      openQuestions: session.context.openQuestions
+      requirementsDoc: session.requirementsDoc || session.idea
     }
   });
+
+  // Architect step: generate blueprint once, before formulation begins.
+  // ??$$$ newer code
+  if (!session.blueprint || Object.keys(session.blueprint || {}).length === 0) {
+    try {
+      const docForArchitect = session.requirementsDoc && session.requirementsDoc.trim().length > 0
+        ? session.requirementsDoc
+        : (session.idea || "");
+      const blueprint = await runArchitect(docForArchitect);
+      // ??$$$ old code
+      /*
+      const freshForBp = await NewFlowSession.findById(sessionId);
+      if (freshForBp) {
+        freshForBp.blueprint = blueprint;
+        await freshForBp.save();
+        session.blueprint = blueprint;
+      }
+      */
+      // ??$$$ newer code
+      await NewFlowSession.updateOne({ _id: sessionId }, { $set: { blueprint } });
+      session.blueprint = blueprint;
+      await logAndEmit({
+        type: "context_received",
+        text: "Architect produced the system blueprint.",
+        output: blueprint
+      });
+      if (io) {
+        io.to(sessionId).emit("agent2:blueprint", { blueprint });
+      }
+    } catch (err: any) {
+      await logAndEmit({
+        type: "error",
+        text: `Architect step failed: ${err.message || err}`
+      });
+    }
+  }
 
   const systemPrompt = SYSTEM_PROMPT;
   const initialPrompt = buildInitialPrompt(session, isResume);
@@ -175,8 +207,8 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   if (isRescue) {
     const groqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_FALLBACK;
     if (groqKey) {
-      adapter = new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqKey);
-      console.log(`[Agent2] Mode: API Rescue. Primary: Groq (meta-llama/llama-4-scout-17b-16e-instruct).`);
+      adapter = new GroqAdapter("qwen/qwen3-32b", groqKey);
+      console.log(`[Agent2] Mode: API Rescue. Primary: Groq (qwen/qwen3-32b).`);
     } else if (process.env.CEREBRAS_API_KEY) {
       adapter = new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b");
       console.log(`[Agent2] Mode: API Rescue. Primary: Cerebras (gpt-oss-120b).`);
@@ -193,7 +225,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   } else if (isHybridMode) {
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) throw new Error("GROQ_API_KEY is missing for hybrid mode");
-    const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "meta-llama/llama-4-scout-17b-16e-instruct";
+    const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "qwen/qwen3-32b";
     adapter = new GroqAdapter(primaryGroqModel, groqKey);
     console.log(`[Agent2] Mode: Hybrid. Primary: Groq (${primaryGroqModel}). Chain: Groq KEY -> Groq FALLBACK -> Cerebras -> OllamaAdapter MiniMax-M3`);
   } else if (modelName.toLowerCase().includes("gemini")) {
@@ -206,7 +238,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     const actualModel = modelName.includes("zai-glm") ? "zai-glm-4.7" : "gpt-oss-120b";
     adapter = new CerebrasAdapter(cerebrasKey, actualModel);
   } else {
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    let actualModel = "qwen/qwen3-32b";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
     }
@@ -220,6 +252,8 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
   while (turns < maxTurns) {
     turns++;
+    // ??$$$ newer code - prevent API rate limits by pacing turns
+    await new Promise(resolve => setTimeout(resolve, 3000));
     console.log(`[Agent2 Debugger] Starting turn ${turns}...`);
     console.log(`[Agent2 Debugger] Current message history length: ${messages.length}`);
 
@@ -254,13 +288,13 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
         fallbackAdapters = [];
         if (groqKey) {
-          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqKey));
+          fallbackAdapters.push(new GroqAdapter("qwen/qwen3-32b", groqKey));
         }
         if (groqFallback && groqFallback !== groqKey) {
-          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqFallback));
+          fallbackAdapters.push(new GroqAdapter("qwen/qwen3-32b", groqFallback));
         }
         if (groqKey3 && groqKey3 !== groqFallback && groqKey3 !== groqKey) {
-          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", groqKey3));
+          fallbackAdapters.push(new GroqAdapter("qwen/qwen3-32b", groqKey3));
         }
         if (cerebrasKey) {
           fallbackAdapters.push(new CerebrasAdapter(cerebrasKey, "gpt-oss-120b"));
@@ -276,7 +310,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         const groqKey = process.env.GROQ_API_KEY;
         const groqFallback = process.env.GROQ_API_FALLBACK;
         const cerebrasKey = process.env.CEREBRAS_API_KEY;
-        const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "meta-llama/llama-4-scout-17b-16e-instruct";
+        const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "qwen/qwen3-32b";
 
         fallbackAdapters = [adapter];
         if (groqFallback && groqFallback !== groqKey) {
@@ -294,7 +328,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         }
         const hasGroqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY_3;
         if (hasGroqKey && !fallbackAdapters.some(a => a.constructor.name === "GroqAdapter")) {
-          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct"));
+          fallbackAdapters.push(new GroqAdapter("qwen/qwen3-32b"));
         }
         if (process.env.CEREBRAS_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "CerebrasAdapter")) {
           fallbackAdapters.push(new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b"));
@@ -324,7 +358,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
             if (providerName === "CerebrasAdapter") {
               newModelValue = (currentTryAdapter as any).model || "gpt-oss-120b";
             } else if (providerName === "GroqAdapter") {
-              newModelValue = (currentTryAdapter as any).model || "meta-llama/llama-4-scout-17b-16e-instruct";
+              newModelValue = (currentTryAdapter as any).model || "qwen/qwen3-32b";
             }
 
             if (io) {
@@ -579,36 +613,48 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     }
 
     console.log("[Agent2 Debugger] Formulating Project document creation...");
-    const newProject = new Project({
-      owner: session.owner,
-      description: session.idea,
-      isAgentic: true,
-      stageStatus: {
+
+    // ??$$$ newer code — Check if project already exists, and update it. Else create new one.
+    let projectDoc = null;
+    if (session!.projectId) {
+      projectDoc = await Project.findById(session!.projectId);
+    }
+
+    if (projectDoc) {
+      console.log(`[Agent2 Debugger] Found existing project document: ${session!.projectId}. Updating instead of creating.`);
+      
+      projectDoc.description = session!.idea;
+      projectDoc.stageStatus = {
         ideation: "done",
         components: "done",
         build: "ready",
-        simulation: "locked",
+        simulation: "ready",
         assembly: "locked",
         shopping: "locked"
-      },
-      ideation: {
-        messages: session.qaHistory.map(q => ([
+      };
+
+      projectDoc.ideation = {
+        messages: session!.qaHistory.map(q => ([
           { role: "model" as const, content: q.question, timestamp: q.timestamp },
           { role: "user" as const, content: q.answer, timestamp: q.timestamp }
         ])).flat(),
-        brief: session.context.corePurpose,
-        objective: session.context.corePurpose,
-        compute: session.context.mcu,
+        brief: session!.requirementsDoc || session!.idea,
+        objective: session!.requirementsDoc || session!.idea,
+        compute: session!.context?.mcu || "",
         phases: {},
-        constraints: session.context.constraints.join("\n"),
-        open: session.context.openQuestions.join("\n"),
+        constraints: Array.isArray(session!.context?.constraints) ? session!.context.constraints.join("\n") : "",
+        open: Array.isArray(session!.context?.openQuestions) ? session!.context.openQuestions.join("\n") : "",
+        thinking: "",
+        toolTrace: "",
+        readinessReason: "",
         readyForComponents: true,
         readyAt: new Date(),
         validatorApproved: true,
         validatorFeedback: "Approved by Agent 2 formulation.",
         validationAttempts: 1
-      },
-      bom: await Promise.all(session.bom.map(async b => {
+      };
+
+      projectDoc.bom = await Promise.all(session!.bom.map(async b => {
         let glbUrl = "";
         let componentType = b.type || "module";
         try {
@@ -638,8 +684,9 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
           pins: [],
           type: componentType
         };
-      })),
-      milestones: session.milestones.map((m, idx) => ({
+      }));
+
+      projectDoc.milestones = session!.milestones.map((m, idx) => ({
         id: m.id,
         order: m.order || (idx + 1),
         title: m.title,
@@ -663,22 +710,157 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         simulatable: m.simulatable,
         dependsOn: idx === 0 ? [] : [session!.milestones[idx - 1].id],
         debugMessages: [],
-        requiredLibraries: m.requiredLibraries || []
-      })),
+        requiredLibraries: m.requiredLibraries
+          ? m.requiredLibraries.map((lib: any) => ({
+              name: lib.name || "",
+              version: lib.version || undefined,
+              type: lib.type || "library_manager",
+              installCommand: lib.installCommand || undefined
+            }))
+          : []
+      }));
 
-      milestonesGenerated: true,
-      activeMilestoneId: session!.milestones[0]?.id || "",
-      diagram: session!.diagram || session!.wiring,
-      wiring: session!.wiring || [],
-      sketch: session.finalSketch || "",
-      derivedDependencies: session.derivedDependencies || []
-    });
+      projectDoc.milestonesGenerated = true;
+      projectDoc.activeMilestoneId = session!.milestones[0]?.id || "";
+      projectDoc.diagram = session!.diagram || session!.wiring;
+      projectDoc.wiring = session!.wiring || [];
+      projectDoc.sketch = session!.finalSketch || "";
+      projectDoc.derivedDependencies = session!.derivedDependencies || [];
 
-    await newProject.save();
-    projectId = newProject._id;
-    console.log(`[Agent2 Debugger] Created project document successfully: ${projectId}`);
+      // Ensure versioning states are synchronized
+      projectDoc.bomMeta = session!.bomMeta;
+      projectDoc.wiringMeta = session!.wiringMeta;
+      projectDoc.sketchMeta = session!.sketchMeta;
+      projectDoc.meta = {
+        stage: "build",
+        isAgentic: true,
+        board: session!.context?.mcu || null,
+        componentCount: session!.bom ? session!.bom.length : 0,
+        detectedAt: new Date()
+      };
+
+      await projectDoc.save();
+      projectId = projectDoc._id;
+      console.log(`[Agent2 Debugger] Updated existing project document successfully: ${projectId}`);
+    } else {
+      console.log("[Agent2 Debugger] Creating new Project document...");
+      const newProject = new Project({
+        owner: session!.owner,
+        description: session!.idea,
+        stageStatus: {
+          ideation: "done",
+          components: "done",
+          build: "ready",
+          simulation: "ready",
+          assembly: "locked",
+          shopping: "locked"
+        },
+        ideation: {
+          messages: session!.qaHistory.map(q => ([
+            { role: "model" as const, content: q.question, timestamp: q.timestamp },
+            { role: "user" as const, content: q.answer, timestamp: q.timestamp }
+          ])).flat(),
+          brief: session!.requirementsDoc || session!.idea,
+          objective: session!.requirementsDoc || session!.idea,
+          compute: session!.context?.mcu || "",
+          phases: {},
+          constraints: Array.isArray(session!.context?.constraints) ? session!.context.constraints.join("\n") : "",
+          open: Array.isArray(session!.context?.openQuestions) ? session!.context.openQuestions.join("\n") : "",
+          thinking: "",
+          toolTrace: "",
+          readinessReason: "",
+          readyForComponents: true,
+          readyAt: new Date(),
+          validatorApproved: true,
+          validatorFeedback: "Approved by Agent 2 formulation.",
+          validationAttempts: 1
+        },
+        bom: await Promise.all(session!.bom.map(async b => {
+          let glbUrl = "";
+          let componentType = b.type || "module";
+          try {
+            const partDoc = await Part.findOne({ mpn: b.mpn }).lean() as any;
+            if (partDoc) {
+              if (partDoc.isCurated && partDoc.glbUrl) {
+                glbUrl = partDoc.glbUrl;
+              }
+              if (partDoc.componentType) {
+                componentType = partDoc.componentType;
+              }
+            }
+          } catch (e) { /* non-blocking */ }
+
+          return {
+            key: b.key,
+            wokwiPartType: b.partId,
+            displayName: b.displayName,
+            qty: b.qty,
+            purpose: b.purpose,
+            price: b.price || 0,
+            storeUrl: "",
+            mpn: b.mpn || "",
+            partId: b.partId || "",
+            pinConnections: b.pinConnections || [],
+            glbUrl,
+            pins: [],
+            type: componentType
+          };
+        })),
+        milestones: session!.milestones.map((m, idx) => ({
+          id: m.id,
+          order: m.order || (idx + 1),
+          title: m.title,
+          objective: m.objective,
+          componentsInvolved: m.partsInvolved,
+          wiringInstructions: m.wiringInstructions,
+          code: m.code,
+          explanation: m.explanation,
+          test: {
+            expectedSerialOutput: m.expectedOutput,
+            passCondition: m.passCondition,
+            commonProblems: m.commonProblems
+          },
+          status: idx === 0 ? ("ready" as const) : ("locked" as const),
+          userConfirmed: false,
+          userNotes: "",
+          compiledHex: "",
+          compilationErrors: [],
+          serialOutput: "",
+          completedAt: null,
+          simulatable: m.simulatable,
+          dependsOn: idx === 0 ? [] : [session!.milestones[idx - 1].id],
+          debugMessages: [],
+          requiredLibraries: m.requiredLibraries
+            ? m.requiredLibraries.map((lib: any) => ({
+                name: lib.name || "",
+                version: lib.version || undefined,
+                type: lib.type || "library_manager",
+                installCommand: lib.installCommand || undefined
+              }))
+            : []
+        })),
+
+        milestonesGenerated: true,
+        activeMilestoneId: session!.milestones[0]?.id || "",
+        diagram: session!.diagram || session!.wiring,
+        wiring: session!.wiring || [],
+        sketch: session!.finalSketch || "",
+        derivedDependencies: session!.derivedDependencies || [],
+        meta: {
+          stage: "build",
+          isAgentic: true,
+          board: session!.context?.mcu || null,
+          componentCount: session!.bom ? session!.bom.length : 0,
+          detectedAt: new Date()
+        }
+      });
+
+      await newProject.save();
+      projectId = newProject._id;
+      console.log(`[Agent2 Debugger] Created project document successfully: ${projectId}`);
+    }
   } catch (err: any) {
-    console.error("[Agent2 Debugger] Failed to create project document from session:", err);
+    console.error("[Agent2 Debugger] Failed to create or update project document from session:", err);
   }
 
   const freshSession = await NewFlowSession.findById(sessionId);
@@ -697,6 +879,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
       fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session!.milestones || [], null, 2), "utf8");
       fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session!.diagram || {}, null, 2), "utf8");
       fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session!.context || {}, null, 2), "utf8");
+      fs.writeFileSync(path.join(exportDir, "requirements.md"), session!.requirementsDoc || "", "utf8");
 
       const sketchCode = session!.finalSketch || (
         [...(session!.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))

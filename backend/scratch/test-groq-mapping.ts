@@ -8,7 +8,7 @@ import { GROQ_AGENT2_TOOLS } from "../src/services/agent2tools.declarations";
 
 async function run() {
   const client = await rotationService.getClient();
-  const modelName = "meta-llama/llama-4-scout-17b-16e-instruct";
+  const modelName = "qwen/qwen3-32b";
 
   const systemPrompt = "You are a hardware assistant. You must call get_part_details next.";
 

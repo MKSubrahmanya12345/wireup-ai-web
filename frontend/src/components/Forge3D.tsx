@@ -1080,7 +1080,7 @@ export default function Forge3D({ bom = [] }) {
                 >
                   <option value="llama-3.3-70b-versatile">Llama 3.3 70B Versatile (Fast & Smart)</option>
                   <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant (Ultra-fast)</option>
-                  <option value="meta-llama/llama-4-scout-17b-16e-instruct">Mixtral 8x7B (Solid reasoning)</option>
+                  <option value="qwen/qwen3-32b">Mixtral 8x7B (Solid reasoning)</option>
                 </select>
               </div>
             </div>

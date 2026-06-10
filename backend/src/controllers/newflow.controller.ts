@@ -8,7 +8,11 @@ import fs from "fs";
 import path from "path";
 import Groq from "groq-sdk"; // ??$$$
 import rotationService from "../services/keyRotation.service";
+// ??$$$ old code
+// import NewFlowSession from "../models/newFlowSession.model";
+// ??$$$ newer code
 import NewFlowSession from "../models/newFlowSession.model";
+import Project from "../models/project.model";
 import { runAgent2 } from "../services/newflow.agent";
 
 const safeId = (value: any, fallback: string) => {
@@ -340,44 +344,21 @@ const mappedWiring = wiring
   };
 };
 
-export const AGENT1_SYSTEM_PROMPT = `You are a senior hardware engineer scoping an electronics project for a hardware formulation pipeline.
+export const AGENT1_SYSTEM_PROMPT = `You are a product discovery agent. Your goal is to guide the user to extract their initial project requirements and compile them into a detailed plain-text Markdown Project Requirements Document (PRD).
 
-Your ONLY goal: extract the minimum context needed to select the right components, wiring, and enclosure. Nothing else.
+Ask the user ONE question at a time to discover their project ideas, requirements, constraints, environment, and user interactions.
+Only ask questions a non-engineer/end-user can answer.
+Never ask technical questions about microcontrollers, protocols, interfaces, pin numbers, or specific ICs — those will be handled by the backend formulation agent. Focus exclusively on the behavioral features, purpose, target audience, budget, power environment (battery vs wall plug), and physical form.
 
-Before asking any question, ask yourself: "Does the answer to this question change which physical part gets selected?" If yes, ask it. If no, infer it or skip it entirely. Never ask about software, firmware logic, UI design, or protocols that do not affect the BOM.
+After each answer, assess if you have enough information to write the requirements document. If not, generate the next question and provide 3 suggested options (Option A, Option B, Option C) that cover common answers, plus letting the user type their own choice.
+Once you have enough context (usually after 4-6 questions), set done to true, set question to "", and write a comprehensive, high-quality Markdown Project Requirements Document in requirementsDoc. The PRD must specify the project purpose, key features, target physical behavior, and user flow in clear, normal text.
 
-Stop asking when you know enough to pick every major component. Infer aggressively from the prompt — never ask what you can already infer.
-
-Rules:
-- Ask the highest-impact unknown first
-- Never ask about something already answered or inferable
-- Options must be real hardware-level choices an engineer would make
-- 2 to 4 options max, but always allow custom text
-
-- Always ask at least 2 questions minimum, even if context seems complete. Budget and enclosure type are never inferrable with certainty — always confirm these.
-
-Respond ONLY with this JSON, no markdown, no backticks:
+Reply ONLY with this JSON structure, no markdown wrap, no backticks:
 {
-  "question": "Next hardware-relevant question, or empty string if done",
+  "question": "next question to ask or empty string if done",
   "options": ["Option A", "Option B", "Option C"],
   "done": false,
-  "context": {
-    "corePurpose": "",
-    "mcu": "",
-    "subsystems": {
-      "inputs": [],
-      "outputs": [],
-      "communication": [],
-      "storage": [],
-      "power": []
-    },
-    "formFactor": "",
-    "powerSource": "",
-    "connectivity": [],
-    "estimatedBudget": "",
-    "constraints": [],
-    "openQuestions": []
-  }
+  "requirementsDoc": "full markdown PRD text here when done is true, otherwise empty"
 }`;
 
 // ??$$$ newer code - Helper to call LLM for Discovery Agent with robust failover
@@ -394,7 +375,7 @@ async function executeDiscoveryCall(modelName: string, promptText: string): Prom
   }
 
   let lastError: any = null;
-  const actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+  const actualModel = "qwen/qwen3-32b";
 
   for (const apiKey of keys) {
     try {
@@ -427,17 +408,41 @@ async function callDiscovery(modelName: string, promptText: string): Promise<any
   return await executeDiscoveryCall(modelName, promptText);
 }
 
+// ??$$$ newer code - Helper to ensure session & project ownership is synchronized with logged-in user
+async function ensureSessionOwnership(session: any, req: any) {
+  const userId = req.user?._id;
+  if (userId && session && session.owner?.toString() !== userId.toString()) {
+    console.log(`[Ownership] Transferring session ${session._id} ownership from ${session.owner} to user ${userId}`);
+    session.owner = userId;
+    await session.save();
+
+    if (session.projectId) {
+      try {
+        const project = await Project.findById(session.projectId);
+        if (project) {
+          console.log(`[Ownership] Transferring project ${project._id} ownership from ${project.owner} to user ${userId}`);
+          project.owner = userId;
+          await project.save();
+        }
+      } catch (err) {
+        console.error("[Ownership] Failed to update project owner:", err);
+      }
+    }
+  }
+}
+
 // 1. POST /api/new-flow/start
 export const startSession = async (req: Request, res: Response) => {
   try {
-    const { idea, model = "meta-llama/llama-4-scout-17b-16e-instruct" } = req.body;
+    const { idea, model = "qwen/qwen3-32b" } = req.body;
     if (!idea) {
       return res.status(400).json({ error: "Original project idea is required." });
     }
 
     const userId = (req as any).user?._id;
 
-    // Create session
+    // ??$$$ old code
+    /*
     const session = new NewFlowSession({
       owner: userId,
       selectedModel: model,
@@ -448,25 +453,72 @@ export const startSession = async (req: Request, res: Response) => {
     });
 
     await session.save();
+    */
+    // ??$$$ newer code
+    const project = new Project({
+      owner: userId,
+      description: idea,
+      meta: {
+        stage: "ideation",
+        isAgentic: true
+      },
+      stageStatus: {
+        /* old code
+        ideation: "in_progress",
+        */
+        // ??$$$ newer code
+        ideation: "ready",
+        components: "locked",
+        build: "locked",
+        simulation: "locked",
+        assembly: "locked",
+        shopping: "locked"
+      },
+      ideation: {
+        messages: [],
+        brief: idea,
+        objective: idea,
+        compute: "",
+        phases: {},
+        constraints: "",
+        open: "",
+        readyForComponents: false,
+        validatorApproved: false,
+        validationAttempts: 0
+      }
+    });
+
+    await project.save();
+
+    const session = new NewFlowSession({
+      owner: userId,
+      selectedModel: model,
+      idea,
+      qaHistory: [],
+      phase1Complete: false,
+      phase2Complete: false,
+      projectId: project._id
+    });
+
+    await session.save();
 
     // Call Discovery Agent for first question
     const promptText = `Original Project Idea: ${idea}\nNo previous Q&A history. Get the first question.`;
     const response = await callDiscovery(model, promptText);
 
-    // Save initial context and first question/options to state
-    session.context = response.context || {};
+    // Save initial requirements doc and first question/options to state
+    session.requirementsDoc = response.requirementsDoc || "";
     session.phase1Complete = !!response.done;
     if (session.phase1Complete) {
-      session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+      session.selectedModel = "ollama/minimax-m3:cloud";
     }
 
-    // ??$$$ newer code
     session.pipelineStages = {
       ideation: {
         status: response.done ? "done" : "running",
-        inputs: { idea, model, constraints: response.context?.constraints || [] },
-        process: ["Requirement extraction", "Subsystem identification", "MCU selection evaluation"],
-        outputs: { context: response.context, nextQuestion: response.question },
+        inputs: { idea, model },
+        process: ["Requirement extraction", "Subsystem identification"],
+        outputs: { requirementsDoc: response.requirementsDoc, nextQuestion: response.question },
         consumers: ["Formulation Agent", "BOM Generator"]
       }
     };
@@ -478,7 +530,9 @@ export const startSession = async (req: Request, res: Response) => {
       question: response.question,
       options: response.options || [],
       done: !!response.done,
-      context: session.context
+      requirementsDoc: session.requirementsDoc,
+      qaHistory: session.qaHistory || [],
+      context: session.context || {}
     });
   } catch (err: any) {
     console.error("startSession failed:", err);
@@ -498,6 +552,8 @@ export const answerQuestion = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
     }
+    // ??$$$ newer code
+    await ensureSessionOwnership(session, req);
 
     // Save previous Q&A to history
     session.qaHistory.push({
@@ -514,25 +570,24 @@ export const answerQuestion = async (req: Request, res: Response) => {
     session.qaHistory.forEach((item, index) => {
       promptText += `${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
     });
-    promptText += `\nGenerate the next question based on history, or finalize if done.`;
+    promptText += `\nGenerate the next question based on history, or finalize and output the full Markdown requirementsDoc if done.`;
 
     const response = await callDiscovery(session.selectedModel, promptText);
 
     // Update session state
-    session.context = response.context || session.context;
+    session.requirementsDoc = response.requirementsDoc || session.requirementsDoc || "";
     session.phase1Complete = !!response.done;
     if (session.phase1Complete) {
-      session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+      session.selectedModel = "ollama/minimax-m3:cloud";
     }
 
-    // ??$$$ newer code
     session.pipelineStages = {
       ...session.pipelineStages,
       ideation: {
         status: response.done ? "done" : "running",
         inputs: { idea: session.idea, qaHistory: session.qaHistory },
-        process: ["Requirement extraction", "Subsystem identification", "MCU selection evaluation"],
-        outputs: { context: session.context, nextQuestion: response.question },
+        process: ["Requirement extraction", "Subsystem identification"],
+        outputs: { requirementsDoc: session.requirementsDoc, nextQuestion: response.question },
         consumers: ["Formulation Agent", "BOM Generator"]
       }
     };
@@ -540,12 +595,37 @@ export const answerQuestion = async (req: Request, res: Response) => {
 
     await session.save();
 
+    // ??$$$ newer code — Sync Q&A and PRD to Project document in real-time
+    if (session.projectId) {
+      try {
+        const project = await Project.findById(session.projectId);
+        if (project) {
+          project.ideation.messages = session.qaHistory.map(q => ([
+            { role: "model" as const, content: q.question, timestamp: q.timestamp },
+            { role: "user" as const, content: q.answer, timestamp: q.timestamp }
+          ])).flat();
+          project.ideation.brief = session.requirementsDoc || session.idea;
+          project.ideation.objective = session.requirementsDoc || session.idea;
+          project.ideation.readyForComponents = session.phase1Complete;
+          if (session.phase1Complete) {
+            project.stageStatus.ideation = "done";
+            project.stageStatus.components = "ready";
+          }
+          await project.save();
+        }
+      } catch (err) {
+        console.error("Failed to sync project in answerQuestion:", err);
+      }
+    }
+
     return res.json({
       sessionId: session._id,
       question: response.question,
       options: response.options || [],
       done: session.phase1Complete,
-      context: session.context
+      requirementsDoc: session.requirementsDoc,
+      qaHistory: session.qaHistory || [],
+      context: session.context || {}
     });
   } catch (err: any) {
     console.error("answerQuestion failed:", err);
@@ -565,41 +645,54 @@ export const proceedSession = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
     }
+    // ??$$$ newer code
+    await ensureSessionOwnership(session, req);
 
-    // ??$$$ old code
-    /*
-    session.phase1Complete = true;
-    await session.save();
-
-    return res.json({
-      success: true,
-      context: session.context
-    });
-    */
-
-    // ??$$$ newer code — compile final context from Q&A history on proceed/skip
     let promptText = `Original Project Idea: ${session.idea}\n\nQ&A History:\n`;
     session.qaHistory.forEach((item, index) => {
       promptText += `${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
     });
-    promptText += `\nThe user has decided to skip further questions. Please extract and populate the final context object as best as possible from the idea and the Q&A history answered so far. Set "done" to true.`;
+    promptText += `\nThe user has decided to skip further questions. Please compile and output the final Project Requirements Document (Markdown PRD) in requirementsDoc based on the idea and history so far. Set "done" to true.`;
 
     try {
       const response = await callDiscovery(session.selectedModel, promptText);
-      if (response && response.context) {
-        session.context = response.context;
+      if (response && response.requirementsDoc) {
+        session.requirementsDoc = response.requirementsDoc;
       }
     } catch (e) {
       console.error("[proceedSession] Failed to run final discovery extraction:", e);
     }
 
     session.phase1Complete = true;
-    session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+    session.selectedModel = "ollama/minimax-m3:cloud";
     await session.save();
+
+    // ??$$$ newer code — Sync skip/proceed state and PRD to Project document in real-time
+    if (session.projectId) {
+      try {
+        const project = await Project.findById(session.projectId);
+        if (project) {
+          project.ideation.messages = session.qaHistory.map(q => ([
+            { role: "model" as const, content: q.question, timestamp: q.timestamp },
+            { role: "user" as const, content: q.answer, timestamp: q.timestamp }
+          ])).flat();
+          project.ideation.brief = session.requirementsDoc || session.idea;
+          project.ideation.objective = session.requirementsDoc || session.idea;
+          project.ideation.readyForComponents = true;
+          project.stageStatus.ideation = "done";
+          project.stageStatus.components = "ready";
+          await project.save();
+        }
+      } catch (err) {
+        console.error("Failed to sync project in proceedSession:", err);
+      }
+    }
 
     return res.json({
       success: true,
-      context: session.context
+      requirementsDoc: session.requirementsDoc,
+      qaHistory: session.qaHistory || [],
+      context: session.context || {}
     });
   } catch (err: any) {
     console.error("proceedSession failed:", err);
@@ -635,12 +728,40 @@ export const formulateSession = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
     }
+    // ??$$$ newer code
+    await ensureSessionOwnership(session, req);
 
     session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
     await session.save();
 
+    // ??$$$ newer code — Sync components generation state to Project
+    if (session.projectId) {
+      try {
+        const project = await Project.findById(session.projectId);
+        if (project) {
+          project.stageStatus.components = "generating";
+          await project.save();
+        }
+      } catch (err) {
+        console.error("Failed to sync project in formulateSession:", err);
+      }
+    }
+
+    // ??$$$ newer code — detect existing progress and resume from where it stopped
+    const hasProgress = !!(
+      (session.bom && session.bom.length > 0) ||
+      (session.wiring && session.wiring.length > 0) ||
+      (session.milestones && session.milestones.length > 0)
+    );
+
     // Run Agent 2 formulation loop in the background
+    /* old code
     runAgent2(sessionId, "ollama/minimax-m3:cloud").catch(err => {
+      console.error("[Agent2 Background Execution Error]:", err);
+    });
+    */
+    // ??$$$ newer code
+    runAgent2(sessionId, "ollama/minimax-m3:cloud", hasProgress).catch(err => {
       console.error("[Agent2 Background Execution Error]:", err);
     });
 
@@ -658,7 +779,7 @@ export const formulateSession = async (req: Request, res: Response) => {
 // 6. POST /api/new-flow/restart
 export const restartSession = async (req: Request, res: Response) => {
   try {
-    const { sessionId, context, model } = req.body; // ??$$$ newer code
+    const { sessionId, context, requirementsDoc, model } = req.body;
     if (!sessionId) {
       return res.status(400).json({ error: "SessionId is required." });
     }
@@ -667,48 +788,72 @@ export const restartSession = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
     }
-
     // ??$$$ newer code
-    session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+    await ensureSessionOwnership(session, req);
 
-    // Save context to database if provided
+    if (!context) {
+      // Clear Q&A and restart discovery from the beginning
+      session.qaHistory = [];
+      session.requirementsDoc = "";
+      session.phase1Complete = false;
+      session.phase2Complete = false;
+      session.agentLog = [];
+      session.bom = [];
+      session.wiring = [];
+      session.milestones = [];
+      session.diagram = {};
+      session.context = {};
+
+      const promptText = `Original Project Idea: ${session.idea}\nNo previous Q&A history. Get the first question.`;
+      const response = await callDiscovery(session.selectedModel, promptText);
+
+      session.requirementsDoc = response.requirementsDoc || "";
+      session.phase1Complete = !!response.done;
+      if (session.phase1Complete) {
+        session.selectedModel = "ollama/minimax-m3:cloud";
+      }
+
+      await session.save();
+
+      return res.json({
+        sessionId: session._id,
+        question: response.question,
+        options: response.options || [],
+        done: !!response.done,
+        requirementsDoc: session.requirementsDoc,
+        qaHistory: session.qaHistory || [],
+        context: session.context || {}
+      });
+    }
+
+    session.selectedModel = "ollama/minimax-m3:cloud";
+
+    if (requirementsDoc) {
+      session.requirementsDoc = requirementsDoc;
+    }
+
+    session.context = {
+      corePurpose: context.corePurpose || "",
+      mcu: context.mcu || "",
+      subsystems: {
+        inputs: context.subsystems?.inputs || [],
+        outputs: context.subsystems?.outputs || [],
+        communication: context.subsystems?.communication || [],
+        storage: context.subsystems?.storage || [],
+        power: context.subsystems?.power || []
+      },
+      formFactor: context.formFactor || "",
+      powerSource: context.powerSource || "",
+      connectivity: Array.isArray(context.connectivity)
+        ? context.connectivity
+        : (context.connectivity ? [context.connectivity] : []),
+      estimatedBudget: context.estimatedBudget || "",
+      constraints: Array.isArray(context.constraints) ? context.constraints : [],
+      openQuestions: Array.isArray(context.openQuestions) ? context.openQuestions : []
+    };
+
     // ??$$$ old code
     /*
-    if (context) {
-      session.context = {
-        corePurpose: context.corePurpose || "",
-        mcu: context.mcu || "",
-        subsystems: Array.isArray(context.subsystems) ? context.subsystems : [],
-        constraints: Array.isArray(context.constraints) ? context.constraints : [],
-        powerSource: context.powerSource || "",
-        connectivity: context.connectivity || "",
-        openQuestions: Array.isArray(context.openQuestions) ? context.openQuestions : []
-      };
-    }
-    */
-    // ??$$$ newer code
-    if (context) {
-      session.context = {
-        corePurpose: context.corePurpose || "",
-        mcu: context.mcu || "",
-        subsystems: {
-          inputs: context.subsystems?.inputs || [],
-          outputs: context.subsystems?.outputs || [],
-          communication: context.subsystems?.communication || [],
-          storage: context.subsystems?.storage || [],
-          power: context.subsystems?.power || []
-        },
-        formFactor: context.formFactor || "",
-        powerSource: context.powerSource || "",
-        connectivity: Array.isArray(context.connectivity)
-          ? context.connectivity
-          : (context.connectivity ? [context.connectivity] : []),
-        estimatedBudget: context.estimatedBudget || "",
-        constraints: Array.isArray(context.constraints) ? context.constraints : [],
-        openQuestions: Array.isArray(context.openQuestions) ? context.openQuestions : []
-      };
-    }
-
     // Reset formulation progress fields
     session.agentLog = [];
     session.bom = [];
@@ -718,6 +863,35 @@ export const restartSession = async (req: Request, res: Response) => {
     session.projectId = null;
 
     await session.save();
+    */
+
+    // ??$$$ newer code
+    session.agentLog = [];
+    session.bom = [];
+    session.wiring = [];
+    session.milestones = [];
+    session.phase2Complete = false;
+
+    await session.save();
+
+    if (session.projectId) {
+      try {
+        const project = await Project.findById(session.projectId);
+        if (project) {
+          project.bom = [];
+          project.wiring = [];
+          project.milestones = [];
+          project.diagram = {};
+          project.stageStatus.components = "generating";
+          project.stageStatus.build = "locked";
+          project.stageStatus.simulation = "locked";
+          await project.save();
+          console.log(`[newflow.controller.ts] Reset project ${project._id} on session restart`);
+        }
+      } catch (err) {
+        console.error("Failed to reset project on session restart:", err);
+      }
+    }
 
     // Trigger fresh Agent 2 loop
     runAgent2(sessionId, "ollama/minimax-m3:cloud").catch(err => {
@@ -753,8 +927,9 @@ export const getSessionByProject = async (req: Request, res: Response) => {
       // Create a new session linked to this project
       session = new NewFlowSession({
         owner: userId,
-        selectedModel: "meta-llama/llama-4-scout-17b-16e-instruct",
+        selectedModel: "qwen/qwen3-32b",
         idea: project.description,
+        requirementsDoc: (project as any).ideation.objective || project.description || "",
         qaHistory: [],
         phase1Complete: true,
         phase2Complete: false,
@@ -815,9 +990,12 @@ export const exportLocalSession = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
     }
+    // ??$$$ newer code
+    await ensureSessionOwnership(session, req);
 
-    // Define export path on E: drive
-    const exportDir = `E:\\wireup_formulation_exports\\session_${sessionId}`;
+    // Define export path — respects FORMULATION_EXPORTS_DIR env var (same as playground.route.ts)
+    const exportsBaseDir = process.env.FORMULATION_EXPORTS_DIR || "E:\\wireup_formulation_exports";
+    const exportDir = path.join(exportsBaseDir, `session_${sessionId}`);
 
     // Ensure directory exists
     if (!fs.existsSync(exportDir)) {
@@ -838,6 +1016,7 @@ export const exportLocalSession = async (req: Request, res: Response) => {
     fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "requirements.md"), session.requirementsDoc || "", "utf8");
 
     // ??$$$ old code
     /*
@@ -910,6 +1089,8 @@ export const resumeSession = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
     }
+    // ??$$$ newer code
+    await ensureSessionOwnership(session, req);
 
     /* old code
     // Reset session errors and set status back to active
@@ -950,9 +1131,11 @@ export const rescueSession = async (req: Request, res: Response) => {
     if (!session) {
       return res.status(404).json({ error: "Session not found." });
     }
+    // ??$$$ newer code
+    await ensureSessionOwnership(session, req);
 
     // Trigger runAgent2 in the background with isResume = true AND isRescue = true
-    const model = session.selectedModel || "meta-llama/llama-4-scout-17b-16e-instruct";
+    const model = session.selectedModel || "qwen/qwen3-32b";
     runAgent2(sessionId, model, true, true).catch(err => {
       console.error("[NewFlowController] Background runAgent2 rescue failed:", err);
     });

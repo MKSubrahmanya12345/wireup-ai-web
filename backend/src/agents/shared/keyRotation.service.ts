@@ -23,6 +23,10 @@ class KeyRotationService {
       keys.push(process.env.GROQ_API_KEY);
     }
 
+    if (process.env.GROQ_API_FALLBACK) {
+      keys.push(process.env.GROQ_API_FALLBACK);
+    }
+
     // Additional keys: GROQ_API_KEY_2 up to 33
     for (let i = 2; i <= 33; i++) {
       const key = process.env[`GROQ_API_KEY_${i}`];

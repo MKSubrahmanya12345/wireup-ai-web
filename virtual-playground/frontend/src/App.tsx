@@ -32,6 +32,8 @@ import {
   Settings
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+// ??$$$ newer code - BehaviorPlayground import
+import { BehaviorPlayground } from './components/behavior/BehaviorPlayground';
 
 
 
@@ -298,6 +300,12 @@ function App() {
     setTab('playground');
     addLog('[SYSTEM] Loaded Virtual Arduino Circuit Demo', 'system');
   };
+
+  // ??$$$ newer code - Intercept Behavior mode parameters
+  const mode = searchParams.get('mode');
+  if (mode === 'behavior') {
+    return <BehaviorPlayground sessionId={sessionId} projectId={projectId} />;
+  }
 
   if (sessionId && currentTab === 'landing') {
     return (

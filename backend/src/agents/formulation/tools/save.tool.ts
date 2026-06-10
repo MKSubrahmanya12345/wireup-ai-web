@@ -13,7 +13,22 @@ export async function executeSaveProgress(args: any, sessionId: string) {
   const targetId = args.sessionId || sessionId;
 
   try {
+    // ??$$$ old code
+    /*
     const project = await Project.findById(targetId);
+    if (!project) {
+      return { saved: false, error: "Project not found" };
+    }
+    */
+
+    // ??$$$ newer code
+    let project = await Project.findById(targetId);
+    if (!project) {
+      const session = await NewFlowSession.findById(targetId);
+      if (session && session.projectId) {
+        project = await Project.findById(session.projectId);
+      }
+    }
     if (!project) {
       return { saved: false, error: "Project not found" };
     }

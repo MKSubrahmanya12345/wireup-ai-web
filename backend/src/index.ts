@@ -187,7 +187,7 @@ app.post(
     try {
       const {
         prompt,
-        model = "meta-llama/llama-4-scout-17b-16e-instruct",
+        model = "qwen/qwen3-32b",
         apiKey,
         existingObjects = [],
       } = req.body;

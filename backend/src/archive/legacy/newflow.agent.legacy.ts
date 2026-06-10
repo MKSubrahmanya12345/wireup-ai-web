@@ -25,395 +25,10 @@ import {
   OllamaAdapter,
   checkOllama,
   getOllamaModel
-} from "../agents/shared/adapters";
+} from "../../agents/shared/adapters";
 // ??$$$ newer code
 import { parseJsonRecursively } from "../agents/shared/jsonRepair";
 
-// ??$$$ old code
-/*
-export interface LLMResponse {
-  text(): string;
-  functionCalls(): { name: string; args: any }[];
-}
-
-export interface LLMAdapter {
-  chat(systemPrompt: string, messages: any[]): Promise<LLMResponse>;
-}
-
-// Gemini Adapter implementation
-export class GeminiAdapter implements LLMAdapter {
-  private apiKey: string;
-  constructor(apiKey: string) {
-    this.apiKey = apiKey;
-  }
-
-  async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
-    const genAI = new GoogleGenerativeAI(this.apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt,
-      tools: [{ functionDeclarations: GEMINI_AGENT2_TOOLS.functionDeclarations }] as any
-    });
-
-    // Map messages into Gemini SDK format
-    // Roles in Gemini must alternate user and model, plus function roles
-    const contents = messages.map(m => {
-      if (m.role === "function") {
-        return {
-          role: "function",
-          parts: [{
-            functionResponse: {
-              name: m.name,
-              response: m.content
-            }
-          }]
-        };
-      }
-
-      const role = m.role === "assistant" || m.role === "model" ? "model" : "user";
-      const parts: any[] = [];
-      if (m.content) {
-        parts.push({ text: m.content });
-      }
-      if (m.functionCalls) {
-        m.functionCalls.forEach((fc: any) => {
-          parts.push({
-            functionCall: {
-              name: fc.name,
-              args: fc.args
-            }
-          });
-        });
-      }
-      return { role, parts };
-    });
-
-    const result = await model.generateContent({ contents });
-    const response = result.response;
-
-    return {
-      text: () => response.text() || "",
-      functionCalls: () => {
-        const calls = response.functionCalls();
-        if (!calls) return [];
-        return calls.map(c => ({
-          name: c.name,
-          args: c.args
-        }));
-      }
-    };
-  }
-}
-
-// Groq Adapter implementation
-export class GroqAdapter implements LLMAdapter {
-  private modelName: string;
-  private directApiKey?: string; // ??$$$ newer code - optional direct key, bypasses rotation service
-  constructor(modelName: string, directApiKey?: string) {
-    this.modelName = modelName;
-    this.directApiKey = directApiKey;
-  }
-
-  async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
-    // ??$$$ newer code - use direct key if provided (for hybrid chain), else use rotation service
-    let client: any;
-    if (this.directApiKey) {
-      const Groq = require("groq-sdk");
-      client = new Groq.default({ apiKey: this.directApiKey });
-    } else {
-      client = await rotationService.getClient();
-    }
-
-    // Map messages into Groq format
-    const groqMessages = [
-      { role: "system", content: systemPrompt },
-      ...messages.map(m => {
-        if (m.role === "function") {
-          return {
-            role: "tool",
-            tool_call_id: m.tool_call_id || `call_${m.name}`,
-            name: m.name,
-            content: typeof m.content === "string" ? m.content : JSON.stringify(m.content)
-          };
-        }
-
-        const role = m.role === "model" || m.role === "assistant" ? "assistant" : "user";
-        const msgObj: any = {
-          role,
-          content: m.content || ""
-        };
-
-        if (m.functionCalls && m.functionCalls.length > 0) {
-          msgObj.tool_calls = m.functionCalls.map((fc: any) => ({
-            id: fc.id || `call_${fc.name}`,
-            type: "function",
-            function: {
-              name: fc.name,
-              arguments: JSON.stringify(fc.args)
-            }
-          }));
-        }
-
-        return msgObj;
-      })
-    ];
-
-    const completion = await client.chat.completions.create({
-      model: this.modelName,
-      messages: groqMessages as any,
-      tools: GROQ_AGENT2_TOOLS as any,
-      tool_choice: "auto",
-      temperature: 0.2
-    });
-
-    const choice = completion.choices[0];
-    const message = choice.message;
-
-    return {
-      text: () => message.content || "",
-      functionCalls: () => {
-        if (!message.tool_calls) return [];
-        return message.tool_calls.map((tc: any) => {
-
-          let parsedArgs = {};
-          try {
-            parsedArgs = JSON.parse(tc.function.arguments);
-          } catch (e) {
-            console.error("Failed to parse tool call args:", tc.function.arguments);
-          }
-          return {
-            id: tc.id,
-            name: tc.function.name,
-            args: parsedArgs
-          };
-        });
-      }
-    };
-  }
-}
-
-// ??$$$ newer code - Cerebras Adapter implementation
-export class CerebrasAdapter implements LLMAdapter {
-  private apiKey: string;
-  private modelName: string;
-  constructor(apiKey: string, modelName: string) {
-    this.apiKey = apiKey;
-    this.modelName = modelName;
-  }
-
-  async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
-    const response = await fetch("https://api.cerebras.ai/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + this.apiKey
-      },
-      body: JSON.stringify({
-        model: this.modelName,
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...messages.map(m => {
-            if (m.role === "function") {
-              return {
-                role: "tool",
-                tool_call_id: m.tool_call_id || ("call_" + m.name),
-                name: m.name,
-                content: typeof m.content === "string" ? m.content : JSON.stringify(m.content)
-              };
-            }
-
-            const role = m.role === "model" || m.role === "assistant" ? "assistant" : "user";
-            const msgObj: any = {
-              role,
-              content: m.content || ""
-            };
-
-            if (m.functionCalls && m.functionCalls.length > 0) {
-              msgObj.tool_calls = m.functionCalls.map((fc: any) => ({
-                id: fc.id || ("call_" + fc.name),
-                type: "function",
-                function: {
-                  name: fc.name,
-                  arguments: JSON.stringify(fc.args)
-                }
-              }));
-            }
-
-            return msgObj;
-          })
-        ],
-        tools: GROQ_AGENT2_TOOLS as any,
-        tool_choice: "auto",
-        temperature: 0.2
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error("Cerebras API call failed: " + response.statusText + " - " + errText);
-    }
-
-    const data: any = await response.json();
-    const choice = data.choices[0];
-    const message = choice.message;
-
-    return {
-      text: () => message.content || "",
-      functionCalls: () => {
-        if (!message.tool_calls) return [];
-        return message.tool_calls.map((tc: any) => {
-          let parsedArgs = {};
-          try {
-            parsedArgs = JSON.parse(tc.function.arguments);
-          } catch (e) {
-            console.error("Failed to parse tool call args:", tc.function.arguments);
-          }
-          return {
-            id: tc.id,
-            name: tc.function.name,
-            args: parsedArgs
-          };
-        });
-      }
-    };
-  }
-}
-
-// ??$$$ newer code - Ollama Adapter implementation for local orchestration
-export class OllamaAdapter implements LLMAdapter {
-  private model: string;
-  private baseUrl: string;
-
-  constructor(model = "qwen2.5:3b", baseUrl = "http://localhost:11434") {
-    this.model = model;
-    this.baseUrl = baseUrl;
-  }
-
-  async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
-    const tools = GROQ_AGENT2_TOOLS;
-    
-    // Format messages for Ollama OpenAI-compatible chat completions API
-    const ollamaMessages = [
-      { role: "system", content: systemPrompt },
-      ...messages.map(m => {
-        if (m.role === "function") {
-          return {
-            role: "tool",
-            tool_call_id: m.tool_call_id || ("call_" + m.name),
-            name: m.name,
-            content: typeof m.content === "string" ? m.content : JSON.stringify(m.content)
-          };
-        }
-
-        const role = m.role === "model" || m.role === "assistant" ? "assistant" : "user";
-        const msgObj: any = {
-          role,
-          content: m.content || ""
-        };
-
-        if (m.functionCalls && m.functionCalls.length > 0) {
-          msgObj.tool_calls = m.functionCalls.map((fc: any) => ({
-            id: fc.id || ("call_" + fc.name),
-            type: "function",
-            function: {
-              name: fc.name,
-              arguments: JSON.stringify(fc.args)
-            }
-          }));
-        }
-
-        return msgObj;
-      })
-    ];
-
-    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: this.model,
-        messages: ollamaMessages,
-        tools: tools.length > 0 ? tools : undefined,
-        tool_choice: tools.length > 0 ? "auto" : undefined,
-        temperature: 0.2,
-        options: { num_ctx: 8192 }
-      })
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      throw new Error(`Ollama failed: ${response.statusText} - ${errText}`);
-    }
-
-    const data: any = await response.json();
-    const message = data.choices[0]?.message;
-
-    return {
-      text: () => message?.content || "",
-      functionCalls: () => {
-        if (!message?.tool_calls) return [];
-        return message.tool_calls.map((tc: any) => {
-          let parsedArgs = {};
-          try {
-            parsedArgs = typeof tc.function.arguments === "string"
-              ? JSON.parse(tc.function.arguments)
-              : tc.function.arguments;
-          } catch (e) {
-            console.error("Failed to parse Ollama tool call args:", tc.function.arguments);
-          }
-          return {
-            id: tc.id,
-            name: tc.function.name,
-            args: parsedArgs
-          };
-        });
-      }
-    };
-  }
-}
-
-// ??$$$ newer code - Check if local Ollama is active
-async function checkOllama(baseUrl = "http://localhost:11434"): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    return res.ok;
-  } catch {
-    return false;
-  }
-}
-
-// ??$$$ newer code - Get the first preferred model pulled in Ollama
-async function getOllamaModel(baseUrl = "http://localhost:11434"): Promise<string | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2000);
-    const res = await fetch(`${baseUrl}/api/tags`, { signal: controller.signal });
-    clearTimeout(timeoutId);
-    if (!res.ok) return null;
-    const data: any = await res.json();
-    if (data.models && data.models.length > 0) {
-      const preferred = ["qwen2.5:3b", "qwen2.5:7b", "llama3.2:3b", "mistral:7b"];
-      for (const pref of preferred) {
-        if (data.models.some((m: any) => m.name.toLowerCase().includes(pref))) {
-          return pref;
-        }
-      }
-      return data.models[0].name;
-    }
-    return "qwen2.5:3b";
-  } catch {
-    return null;
-  }
-}
-*/
-
-// ??$$$ newer code
-
-// ??$$$ newer code
-// ??$$$ old code
-/*
 function parseJsonRecursively(val: any): any {
   if (typeof val === "string") {
     try {
@@ -449,59 +64,7 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
 
   const io = (global as any).io;
 
-  /* old code
-  if (type === "bom") {
-    session.bom = Array.isArray(parsedData) ? parsedData : [...(session.bom || []), parsedData];
-    await session.save();
-    if (io) {
-      io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
-    }
-  } else if (type === "wiring") {
-    // Save wiring list
-    session.wiring = Array.isArray(parsedData.connections) ? parsedData.connections : parsedData;
-    // Map pin connections to BOM items
-    session.bom.forEach((bomItem) => {
-      const matchingConns = (session.wiring || []).filter((c: any) => c.to.startsWith(bomItem.key));
-      bomItem.pinConnections = matchingConns.map((c: any) => ({
-        pin: c.to.split(".")[1] || "",
-        connectsTo: c.from
-      }));
-    });
-    session.markModified("bom");
-    await session.save();
-    if (io) {
-      io.to(sessionId).emit("agent2:wiring_update", { wiring: session.wiring });
-      io.to(sessionId).emit("agent2:bom_update", { bom: session.bom });
-    }
-  } else if (type === "milestone") {
-    const list = Array.isArray(parsedData) ? parsedData : [parsedData];
-    list.forEach(m => {
-      // Avoid duplication
-      const existingIdx = session.milestones.findIndex(em => em.id === m.id);
-      if (existingIdx > -1) {
-        session.milestones[existingIdx] = m;
-      } else {
-        session.milestones.push(m);
-      }
-    });
-    // Set status of first milestone to ready
-    if (session.milestones.length > 0) {
-      session.milestones.sort((a, b) => a.order - b.order);
-    }
-    await session.save();
-    if (io) {
-      io.to(sessionId).emit("agent2:milestone_update", { milestones: session.milestones });
-    }
-  } else if (type === "diagram") {
-    // We don't have a diagram.json field directly in NewFlowSession, but we can save it as milestones or keep metadata
-    // For simplicity, we just save to project diagram or log it
-    // When converting to Project, we will map this.
-    // Let's store the diagram json as a field on session or in milestones. Let's just log it or add support
-    if (io) {
-      io.to(sessionId).emit("agent2:diagram_update", { diagram: parsedData.diagramJson || parsedData });
-    }
-  }
-  */
+
 
   // ??$$$ newer code — Robust saveSessionProgress with shape normalizations and MCU key consistency mapping
   if (type === "bom") {
@@ -592,7 +155,7 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
     session.wiring = normalizedWiring;
 
     // Map pin connections to BOM items
-    session.bom.forEach((bomItem) => {
+    session.bom.forEach((bomItem: { key: any; pinConnections: any; }) => {
       const matchingConns = (session.wiring || []).filter((c: any) => c.to.startsWith(bomItem.key));
       bomItem.pinConnections = matchingConns.map((c: any) => ({
         pin: c.to.split(".")[1] || "",
@@ -647,7 +210,7 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
 
     // ??$$$ newer code — match existing milestones by order, id, or case-insensitive title to prevent duplicates and keep indexes aligned
     normalizedMilestones.forEach(m => {
-      const existingIdx = session.milestones.findIndex(em =>
+      const existingIdx = session.milestones.findIndex((em: { id: any; order: any; title: string; }) =>
         em.id === m.id ||
         em.order === m.order ||
         em.title.toLowerCase().trim() === m.title.toLowerCase().trim()
@@ -660,7 +223,7 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
     });
 
     if (session.milestones.length > 0) {
-      session.milestones.sort((a, b) => a.order - b.order);
+      session.milestones.sort((a: { order: number; }, b: { order: number; }) => a.order - b.order);
     }
     session.markModified("milestones"); // ??$$$ newer code
     await session.save();
@@ -712,9 +275,7 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
   };
 }
 
-// Main autonomous loop for Formulation Agent (Agent 2)
-// ??$$$
-/*
+
 export async function runAgent2(sessionId: string, modelName: string) {
   const session = await NewFlowSession.findById(sessionId);
   if (!session) {
@@ -776,7 +337,7 @@ Subsystems: ${session.context.subsystems.join(", ")}
 Constraints: ${session.context.constraints.join(", ")}
 Power Source: ${session.context.powerSource}
 Connectivity: ${session.context.connectivity}
-Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${h.answer}`).join(" | ")}`;
+Open Questions Resolved: ${session.qaHistory.map((h: { question: any; answer: any; }) => `Q: ${h.question} -> A: ${h.answer}`).join(" | ")}`;
 
   const messages: any[] = [
     { role: "user", content: `Please formulate this project: \n${contextStr}` }
@@ -790,9 +351,9 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     adapter = new GeminiAdapter(geminiKey);
   } else {
     // Map Llama and Qwen models
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    let actualModel = "qwen/qwen3-32b";
     if (modelName.toLowerCase().includes("qwen")) {
-      actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+      actualModel = "qwen/qwen3-32b";
     }
     adapter = new GroqAdapter(actualModel);
   }
@@ -803,7 +364,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
   while (turns < maxTurns) {
     turns++;
     console.log(`[Agent2] Starting turn ${turns}...`);
-    
+
     try {
       const response = await adapter.chat(systemPrompt, messages);
       const text = response.text();
@@ -909,7 +470,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         shopping: "locked"
       },
       ideation: {
-        messages: session.qaHistory.map(q => ([
+        messages: session.qaHistory.map((q: { question: any; timestamp: any; answer: any; }) => ([
           { role: "model" as const, content: q.question, timestamp: q.timestamp },
           { role: "user" as const, content: q.answer, timestamp: q.timestamp }
         ])).flat(),
@@ -925,7 +486,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         validatorFeedback: "Approved by Agent 2 formulation.",
         validationAttempts: 1
       },
-      bom: session.bom.map(b => ({
+      bom: session.bom.map((b: { key: any; partId: any; displayName: any; qty: any; purpose: any; price: any; mpn: any; pinConnections: any; }) => ({
         key: b.key,
         wokwiPartType: b.partId,
         displayName: b.displayName,
@@ -937,7 +498,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         partId: b.partId || "",
         pinConnections: b.pinConnections || []
       })),
-      milestones: session.milestones.map((m, idx) => ({
+      milestones: session.milestones.map((m: { id: any; order: any; title: any; objective: any; partsInvolved: any; wiringInstructions: any; code: any; explanation: any; expectedOutput: any; passCondition: any; commonProblems: any; simulatable: any; requiredLibraries: any; }, idx: number) => ({
         id: m.id,
         order: m.order || (idx + 1),
         title: m.title,
@@ -959,7 +520,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         serialOutput: "",
         completedAt: null,
         simulatable: m.simulatable,
-        dependsOn: idx === 0 ? [] : [session.milestones[idx-1].id],
+        dependsOn: idx === 0 ? [] : [session.milestones[idx - 1].id],
         debugMessages: [],
         requiredLibraries: m.requiredLibraries || []
       })),
@@ -977,7 +538,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
   session.projectId = projectId;
   session.phase2Complete = true;
   await session.save();
-  
+
   if (io) {
     io.to(sessionId).emit("agent2:complete", { success: true, projectId });
   }
@@ -1040,7 +601,7 @@ function sanitizeMessageHistory(messages: any[]): any[] {
 
   for (let i = 0; i < processed.length; i++) {
     const msg = processed[i];
-    
+
     if (msg.role === "assistant" || msg.role === "model") {
       if (msg.functionCalls && msg.functionCalls.length > 0) {
         pendingToolCalls = [];
@@ -1189,13 +750,8 @@ Subsystems: ${session.context.subsystems.join(", ")}
 Constraints: ${session.context.constraints.join(", ")}
 Power Source: ${session.context.powerSource}
 Connectivity: ${session.context.connectivity}
-Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${h.answer}`).join(" | ")}`;
+Open Questions Resolved: ${session.qaHistory.map((h: { question: any; answer: any; }) => `Q: ${h.question} -> A: ${h.answer}`).join(" | ")}`;
 
-  /* old code
-  const messages: any[] = [
-    { role: "user", content: `Please formulate this project: \n${contextStr}` }
-  ];
-  */
   // ??$$$ newer code — Resume-aware prompt construction
   let initialPrompt = `Please formulate this project: \n${contextStr}`;
   if (isResume) {
@@ -1233,29 +789,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     { role: "user", content: initialPrompt }
   ];
 
-  // ??$$$ old code
-  // // Instantiate adapter
-  // let adapter: LLMAdapter;
-  // if (modelName.toLowerCase().includes("gemini")) {
-  //   const geminiKey = process.env.GEMINI_API_KEY;
-  //   if (!geminiKey) throw new Error("GEMINI_API_KEY is missing");
-  //   adapter = new GeminiAdapter(geminiKey);
-  // } else {
-  //   /* old code
-  //   // Map Llama and Qwen models
-  //   let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-  //   if (modelName.toLowerCase().includes("qwen")) {
-  //     actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-  //   }
-  //   adapter = new GroqAdapter(actualModel);
-  //   */
-  //   // ??$$$ Map Llama and Qwen models correctly to production string
-  //   let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
-  //   if (modelName.toLowerCase().includes("qwen")) {
-  //     actualModel = "qwen/qwen3-32b";
-  //   }
-  //   adapter = new GroqAdapter(actualModel);
-  // }
+
   // ??$$$ newer code - Instantiate adapter (including Cerebras, Ollama, and hybrid chain support)
   let adapter: LLMAdapter;
   // ??$$$ newer code - track mode flags for per-turn chain building
@@ -1273,7 +807,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     // Hybrid — start with the chosen primary cloud provider
     const groqKey = process.env.GROQ_API_KEY;
     if (!groqKey) throw new Error("GROQ_API_KEY is missing for hybrid mode");
-    const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "meta-llama/llama-4-scout-17b-16e-instruct";
+    const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "qwen/qwen3-32b";
     adapter = new GroqAdapter(primaryGroqModel, groqKey);
     console.log(`[Agent2] Mode: Hybrid. Primary: Groq (${primaryGroqModel}). Chain: Groq KEY -> Groq FALLBACK -> Cerebras -> OllamaAdapter MiniMax-M3`);
   } else if (modelName.toLowerCase().includes("gemini")) {
@@ -1287,7 +821,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     adapter = new CerebrasAdapter(cerebrasKey, actualModel);
   } else {
     // Map Llama and Qwen models correctly to production string
-    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    let actualModel = "qwen/qwen3-32b";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
     }
@@ -1322,40 +856,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
     }
 
     try {
-      // ??$$$ old code
-      // // ??$$$ newer code — Exponential backoff retry wrapper with Gemini fallback
-      // let response: LLMResponse | null = null;
-      // let lastError: any = null;
-      // const delays = [0, 2000, 5000];
-      // 
-      // const sanitizedMessages = sanitizeMessageHistory(messages);
-      // 
-      // for (let attempt = 1; attempt <= 4; attempt++) {
-      //   try {
-      //     if (attempt > 1) {
-      //       const delay = delays[attempt - 2] || 0;
-      //       console.log(`[Agent2 Retry] Rate limit or error. Attempt ${attempt} after ${delay}ms...`);
-      //       await new Promise(resolve => setTimeout(resolve, delay));
-      //     }
-      // 
-      //     if (attempt === 4 && !modelName.toLowerCase().includes("gemini")) {
-      //       console.log(`[Agent2 Retry] Attempt 4: Groq failed. Falling back to Gemini 2.5 Flash...`);
-      //       const geminiKey = process.env.GEMINI_API_KEY;
-      //       if (geminiKey) {
-      //         const fallbackAdapter = new GeminiAdapter(geminiKey);
-      //         response = await fallbackAdapter.chat(systemPrompt, sanitizedMessages);
-      //       } else {
-      //         throw new Error("GEMINI_API_KEY is missing for fallback");
-      //       }
-      //     } else {
-      //       response = await adapter.chat(systemPrompt, sanitizedMessages);
-      //     }
-      //     break; // Success!
-      //   } catch (err: any) {
-      //     console.error(`[Agent2 Retry] Attempt ${attempt} failed:`, err.message || err);
-      //     lastError = err;
-      //   }
-      // }
+
       // ??$$$ newer code - Dynamic rotation / failover retry logic across all available providers
       let response: LLMResponse | null = null;
       let lastError: any = null;
@@ -1375,7 +876,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         const groqKey = process.env.GROQ_API_KEY;
         const groqFallback = process.env.GROQ_API_FALLBACK;
         const cerebrasKey = process.env.CEREBRAS_API_KEY;
-        const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "meta-llama/llama-4-scout-17b-16e-instruct";
+        const primaryGroqModel = hybridPrimaryModel.includes("qwen") ? "qwen/qwen3-32b" : "qwen/qwen3-32b";
 
         fallbackAdapters = [adapter]; // primary = GroqAdapter(GROQ_API_KEY) set above
         if (groqFallback && groqFallback !== groqKey) {
@@ -1395,7 +896,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         }
         const hasGroqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY_3;
         if (hasGroqKey && !fallbackAdapters.some(a => a.constructor.name === "GroqAdapter")) {
-          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct"));
+          fallbackAdapters.push(new GroqAdapter("qwen/qwen3-32b"));
         }
         if (process.env.CEREBRAS_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "CerebrasAdapter")) {
           fallbackAdapters.push(new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b"));
@@ -1407,7 +908,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
       for (let i = 0; i < fallbackAdapters.length; i++) {
         const currentTryAdapter = fallbackAdapters[i];
         const providerName = currentTryAdapter.constructor.name;
-        
+
         try {
           console.log(`[Agent2 Failover] Turn ${turns}: Attempting with ${providerName}...`);
           if (i > 0) {
@@ -1419,20 +920,20 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
           }
 
           response = await currentTryAdapter.chat(systemPrompt, sanitizedMessages);
-          
+
           // Successful response! Make it the sticky primary adapter
           if (currentTryAdapter !== adapter) {
             console.log(`[Agent2 Failover] Successfully failed over. Promoting ${providerName} to primary.`);
             adapter = currentTryAdapter;
-            
+
             // ??$$$ newer code - Notify frontend about the model/agent change
             let newModelValue = "gemini-2.5-flash";
             if (providerName === "CerebrasAdapter") {
               newModelValue = (currentTryAdapter as any).model || "gpt-oss-120b";
             } else if (providerName === "GroqAdapter") {
-              newModelValue = (currentTryAdapter as any).model || "meta-llama/llama-4-scout-17b-16e-instruct";
+              newModelValue = (currentTryAdapter as any).model || "qwen/qwen3-32b";
             }
-            
+
             if (io) {
               console.log(`[Agent2 Failover] Emitting model changed event to frontend: ${newModelValue}`);
               io.to(sessionId).emit("agent2:model_changed", {
@@ -1528,13 +1029,12 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
             messages.push({ role: "assistant", content: text || "Continuing..." });
             messages.push({
               role: "user",
-              content: `Code generation is incomplete. The following milestones still need code generated via generate_milestone:\n${
-                milestonesWithoutCode.map((m: any) => `- Milestone ${m.order}: "${m.title}" (subsystem: ${m.subsystem})`).join("\n")
-              }\nPlease call generate_milestone for each of these now, in order.`
+              content: `Code generation is incomplete. The following milestones still need code generated via generate_milestone:\n${milestonesWithoutCode.map((m: any) => `- Milestone ${m.order}: "${m.title}" (subsystem: ${m.subsystem})`).join("\n")
+                }\nPlease call generate_milestone for each of these now, in order.`
             });
             continue;
           }
-          
+
           /* old code
           const hasFinalSketch = updatedSession?.finalSketch && updatedSession.finalSketch.trim().length > 0;
           if (!hasFinalSketch) {
@@ -1753,7 +1253,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         shopping: "locked"
       },
       ideation: {
-        messages: session.qaHistory.map(q => ([
+        messages: session.qaHistory.map((q: { question: any; timestamp: any; answer: any; }) => ([
           { role: "model" as const, content: q.question, timestamp: q.timestamp },
           { role: "user" as const, content: q.answer, timestamp: q.timestamp }
         ])).flat(),
@@ -1770,7 +1270,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         validationAttempts: 1
       },
       // ??$$$ NEW FLOW — populate glbUrl from curated Part documents
-      bom: await Promise.all(session.bom.map(async b => {
+      bom: await Promise.all(session.bom.map(async (b: { mpn: any; key: any; partId: any; displayName: any; qty: any; purpose: any; price: any; pinConnections: any; }) => {
         // Look up Part to get glbUrl if isCurated
         let glbUrl = "";
         try {
@@ -1795,7 +1295,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
           pins: []
         };
       })),
-      milestones: session.milestones.map((m, idx) => ({
+      milestones: session.milestones.map((m: { id: any; order: any; title: any; objective: any; partsInvolved: any; wiringInstructions: any; code: any; explanation: any; expectedOutput: any; passCondition: any; commonProblems: any; simulatable: any; requiredLibraries: any; }, idx: number) => ({
         id: m.id,
         order: m.order || (idx + 1),
         title: m.title,
@@ -1859,24 +1359,10 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
       fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session!.diagram || {}, null, 2), "utf8");
       fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session!.context || {}, null, 2), "utf8");
 
-      // ??$$$ old code
-      /*
-      const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(a?.order || 0) - Number(b?.order || 0));
-      const firstCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
-      const sketchCode = firstCodeMilestone?.code
-        || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
-      */
-      // ??$$$ old code
-      /*
-      const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
-      const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
-      const sketchCode = latestCodeMilestone?.code
-        || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
-      */
       // ??$$$ newer code
       const sketchCode = session!.finalSketch || (
         [...(session!.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))
-        .find((m: any) => String(m?.code || "").trim().length > 0)?.code
+          .find((m: any) => String(m?.code || "").trim().length > 0)?.code
       ) || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
       fs.writeFileSync(path.join(exportDir, "sketch.ino"), sketchCode, "utf8");
 
@@ -1885,7 +1371,7 @@ Open Questions Resolved: ${session.qaHistory.map(h => `Q: ${h.question} -> A: ${
         code: sketchCode,
         filename: "sketch.ino"
       }, null, 2), "utf8");
-      
+
       console.log(`[Agent2 Debugger] Automatically exported formulation files to ${exportDir}`);
     } catch (err: any) {
       console.error("[Agent2 Debugger] Automatic file export failed:", err);

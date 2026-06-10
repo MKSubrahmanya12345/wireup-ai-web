@@ -9,6 +9,7 @@ import {
   PlayCircle,
   LayoutDashboard,
   Copy,
+  Sparkles,
 } from "lucide-react";
 import { ProgressTracker } from "../panels/ProgressTracker";
 import { AgentConsole } from "../panels/AgentConsole";
@@ -52,6 +53,13 @@ interface FormulationPhaseProps {
   handleResume: () => void;
   handleRescue: () => void;
   resolveConflict: (choice: string) => void;
+  // ??$$$ newer code - Behavior Sim handler
+  handleGoToBehaviorSim: () => void;
+  // ??$$$ newer code
+  blueprint: any;
+  requirementsDoc: string;
+  setShowContextModal: (show: boolean) => void;
+  sessionId: string | null;
 }
 
 export const FormulationPhase: React.FC<FormulationPhaseProps> = ({
@@ -84,6 +92,13 @@ export const FormulationPhase: React.FC<FormulationPhaseProps> = ({
   handleResume,
   handleRescue,
   resolveConflict,
+  // ??$$$ newer code - Behavior Sim handler
+  handleGoToBehaviorSim,
+  // ??$$$ newer code
+  blueprint,
+  requirementsDoc,
+  setShowContextModal,
+  sessionId,
 }) => {
   return (
     /* PHASE 2: AUTOMATED FORMULATION LOOP */
@@ -181,6 +196,20 @@ export const FormulationPhase: React.FC<FormulationPhaseProps> = ({
               Restart Build
             </button>
 
+            {/* ??$$$ newer code */}
+            <button
+              onClick={() => setShowContextModal(true)}
+              className={`flex items-center gap-1.5 rounded-xl border px-3.5 py-2 text-xs font-semibold transition-all ${
+                dark
+                  ? "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:bg-white/[0.06]"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50"
+              }`}
+            >
+              <Cpu className="h-3.5 w-3.5 text-indigo-400" />
+              View Shared Context
+            </button>
+
+            {/* ??$$$ old code
             {isCompleted && (
               <button
                 onClick={handleGoToSimulator}
@@ -189,6 +218,27 @@ export const FormulationPhase: React.FC<FormulationPhaseProps> = ({
                 <PlayCircle className="h-3.5 w-3.5" />
                 Launch Playground
               </button>
+            )}
+            */}
+
+            {/* ??$$$ newer code */}
+            {sessionId && (
+              <>
+                <button
+                  onClick={handleGoToSimulator}
+                  className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-indigo-500/25 hover:bg-indigo-700 transition-all animate-fade-in"
+                >
+                  <PlayCircle className="h-3.5 w-3.5" />
+                  Launch Playground
+                </button>
+                <button
+                  onClick={handleGoToBehaviorSim}
+                  className="flex items-center gap-1.5 rounded-xl bg-violet-600 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-violet-500/25 hover:bg-violet-700 transition-all animate-fade-in"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Behavior Sim
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -235,6 +285,14 @@ export const FormulationPhase: React.FC<FormulationPhaseProps> = ({
                     >
                       <PlayCircle className="h-3.5 w-3.5" />
                       Open Virtual Playground
+                    </button>
+                    {/* ??$$$ newer code - Behavior Sim button */}
+                    <button
+                      onClick={handleGoToBehaviorSim}
+                      className="flex items-center gap-1.5 rounded-lg bg-violet-600 hover:bg-violet-500 px-4 py-1.5 text-xs font-bold text-white transition-all"
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      Behavior Sim
                     </button>
                   </div>
                 </div>

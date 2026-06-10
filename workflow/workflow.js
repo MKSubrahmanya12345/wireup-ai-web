@@ -90,7 +90,7 @@ const PROVIDERS = [
   {
     name: "Groq",
     apiKeyEnv: "GROQ_API_KEY",
-    model: "meta-llama/llama-4-scout-17b-16e-instruct",
+    model: "qwen/qwen3-32b",
     async call(prompt, apiKey) {
       const url = "https://api.groq.com/openai/v1/chat/completions";
       const response = await fetch(url, {
@@ -100,7 +100,7 @@ const PROVIDERS = [
           "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "meta-llama/llama-4-scout-17b-16e-instruct",
+          model: "qwen/qwen3-32b",
           messages: [{ role: "user", content: prompt }]
         })
       });

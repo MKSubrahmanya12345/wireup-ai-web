@@ -17,6 +17,8 @@ interface UseDiscoverySessionProps {
   setMilestones: (value: any[]) => void;
   setLogs: (value: any[]) => void;
   setFinalSketch: (value: string) => void;
+  // ??$$$ newer code
+  setBlueprint: (value: any) => void;
 }
 
 export const useDiscoverySession = ({
@@ -32,7 +34,9 @@ export const useDiscoverySession = ({
   setWiring,
   setMilestones,
   setLogs,
-  setFinalSketch
+  setFinalSketch,
+  // ??$$$ newer code
+  setBlueprint
 }: UseDiscoverySessionProps) => {
   useEffect(() => {
     if (!sessionId || isCompleted || phase !== 2) {
@@ -73,10 +77,20 @@ export const useDiscoverySession = ({
             setFinalSketch(res.data.finalSketch);
           }
 
+          // ??$$$ newer code
+          if (res.data.blueprint) {
+            setBlueprint(res.data.blueprint);
+          }
+
           clearInterval(interval);
         } else {
           if (res.data.finalSketch) {
             setFinalSketch(res.data.finalSketch);
+          }
+
+          // ??$$$ newer code
+          if (res.data.blueprint) {
+            setBlueprint(res.data.blueprint);
           }
 
           if (res.data.bom) {
@@ -119,6 +133,8 @@ export const useDiscoverySession = ({
     setWiring,
     setMilestones,
     setLogs,
-    setFinalSketch
+    setFinalSketch,
+    // ??$$$ newer code
+    setBlueprint
   ]);
 };

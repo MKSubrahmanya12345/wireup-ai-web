@@ -29,8 +29,8 @@ router.post("/new-flow/restart", protectRoute, restartSession);
 router.post("/new-flow/export-local", protectRoute, exportLocalSession);
 router.post("/new-flow/resume", protectRoute, resumeSession);
 router.post("/new-flow/rescue", protectRoute, rescueSession);
-router.get("/new-flow/virtual-project/:sessionId", protectRoute, getVirtualProjectData);
-router.get("/new-flow/session/:sessionId", protectRoute, getSession);
+router.get("/new-flow/virtual-project/:sessionId", getVirtualProjectData);
+router.get("/new-flow/session/:sessionId", getSession);
 router.get("/new-flow/project-session/:projectId", protectRoute, getSessionByProject);
 
 export default router;

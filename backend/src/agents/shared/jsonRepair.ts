@@ -29,11 +29,22 @@ export function stripJsonComments(value = ""): string {
 }
 
 export function normalizeJsonishText(value = ""): string {
+// ??$$$ old code
+  /*
   return String(value || "")
     .replace(/[“”]/g, "\"")
     .replace(/[‘’]/g, "'")
     .replace(/[â€œâ€ ]/g, "\"")
     .replace(/[â€˜â€™]/g, "'")
+    .trim();
+  */
+  // ??$$$ newer code
+  return String(value || "")
+    .replace(/[“”]/g, "\"")
+    .replace(/[‘’]/g, "'")
+    .replace(/â€œ/g, "\"")
+    .replace(/â€\u009d/g, "\"")
+    .replace(/â€/g, "\"")
     .trim();
 }
 

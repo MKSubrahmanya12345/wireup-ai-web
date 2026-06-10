@@ -34,9 +34,9 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const dark = theme === "dark";
   const virtualPlaygroundUrl = (import.meta.env.VITE_VIRTUAL_PLAYGROUND_URL || "http://localhost:5174").replace(/\/$/, "");
   // ??$$$ NEW FLOW
-  const [model, setModel] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
+  const [model, setModel] = useState("qwen/qwen3-32b");
   // ??$$$ newer code - hybrid primary provider selection
-  const [hybridPrimary, setHybridPrimary] = useState("meta-llama/llama-4-scout-17b-16e-instruct");
+  const [hybridPrimary, setHybridPrimary] = useState("qwen/qwen3-32b");
   const [phase, setPhase] = useState<1 | 2>(1);
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -51,6 +51,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState<string[]>([]);
   const [answerText, setAnswerText] = useState("");
+  const [requirementsDoc, setRequirementsDoc] = useState("");
+  const [qaHistory, setQaHistory] = useState<any[]>([]);
   const [context, setContext] = useState({
     corePurpose: "",
     mcu: "",
@@ -85,6 +87,10 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   const [workspaceTab, setWorkspaceTab] = useState<"visual" | "console">("visual");
   const [selectedLog, setSelectedLog] = useState<any>(null);
   const [finalSketch, setFinalSketch] = useState<string>("");
+
+  // ??$$$ newer code
+  const [blueprint, setBlueprint] = useState<any>(null);
+  const [showContextModal, setShowContextModal] = useState(false);
 
   const socketRef = useRef<Socket | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -210,6 +216,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     setQuestion,
     setOptions,
     setContext,
+    setRequirementsDoc,
+    setQaHistory,
 
     setBom,
     setWiring,
@@ -222,7 +230,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
     setIsCompleted,
     setCompletedProjectId,
-    setFinalSketch
+    setFinalSketch,
+    setBlueprint
   });
 
   // ??$$$ newer code — Handle starting a brand new session with selected model
@@ -240,6 +249,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       setQuestion(res.data.question);
       setOptions(res.data.options || []);
       setContext(res.data.context || {});
+      setRequirementsDoc(res.data.requirementsDoc || "");
+      setQaHistory(res.data.qaHistory || []);
       setStarted(true);
       setShouldAutoFormulate(true);
       if (res.data.done) {
@@ -265,6 +276,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       setQuestion(res.data.question || "");
       setOptions(res.data.options || []);
       setContext(res.data.context || {});
+      setRequirementsDoc(res.data.requirementsDoc || "");
+      setQaHistory(res.data.qaHistory || []);
 
       setPhase(1);
 
@@ -299,7 +312,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
 
     socketRef,
 
-    getSocketUrl
+    getSocketUrl,
+    setBlueprint
   });
 
   // ??$$$ newer code — Fallback polling for session completion (every 5 seconds)
@@ -316,7 +330,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     setWiring,
     setMilestones,
     setLogs,
-    setFinalSketch
+    setFinalSketch,
+    setBlueprint
   });
 
   // Submit Answer (Phase 1)
@@ -333,9 +348,11 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       setQuestion(res.data.question);
       setOptions(res.data.options || []);
       setContext(res.data.context || {});
+      setRequirementsDoc(res.data.requirementsDoc || "");
+      setQaHistory(res.data.qaHistory || []);
       setAnswerText("");
       if (res.data.done) {
-        setPhase(2);
+        setQuestion("");
       }
     } catch (err: any) {
       toast.error("Failed to send answer.");
@@ -363,14 +380,18 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           setQuestion(answerRes.data.question);
           setOptions(answerRes.data.options || []);
           setContext(answerRes.data.context || {});
+          setRequirementsDoc(answerRes.data.requirementsDoc || "");
+          setQaHistory(answerRes.data.qaHistory || []);
           setAnswerText("");
         } catch (e) {
           console.error("Failed to submit final typed answer before skipping:", e);
         }
       }
       const res = await axiosInstance.post("/new-flow/proceed", { sessionId });
-      if (res.data && res.data.context) {
-        setContext(res.data.context);
+      if (res.data) {
+        if (res.data.context) setContext(res.data.context);
+        if (res.data.requirementsDoc) setRequirementsDoc(res.data.requirementsDoc);
+        if (res.data.qaHistory) setQaHistory(res.data.qaHistory);
       }
       setPhase(2);
       setShouldAutoFormulate(true);
@@ -494,6 +515,16 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     window.location.href = `${virtualPlaygroundUrl}/?${params.toString()}`;
   };
 
+  // ??$$$ newer code - Launch Behavior simulation directly without local E: export
+  const handleGoToBehaviorSim = () => {
+    if (!sessionId) return;
+    const params = new URLSearchParams({ sessionId, mode: "behavior" });
+    if (completedProjectId) params.set("projectId", completedProjectId);
+    localStorage.removeItem("wireup_discovery_session_id");
+    onClose();
+    window.open(`${virtualPlaygroundUrl}/?${params.toString()}`, "_blank");
+  };
+
   // ??$$$ NEW FLOW
   const handleRestart = async () => {
     if (!sessionId || restarting) return;
@@ -598,7 +629,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
               >
                 /* old code
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
+                <option value="qwen/qwen3-32b">Groq Llama 4 Scout</option>
                 <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
                 <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
                 <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
@@ -611,7 +642,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
                 <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                 <option value="gpt-oss-120b">Cerebras gpt-oss-120b</option>
                 <option value="zai-glm-4.7">Cerebras zai-glm-4.7</option>
-                <option value="meta-llama/llama-4-scout-17b-16e-instruct">Groq Llama 4 Scout</option>
+                <option value="qwen/qwen3-32b">Groq Llama 4 Scout</option>
                 <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
                 <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
                 <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
@@ -666,6 +697,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             loading={loading}
             sessionId={sessionId}
             context={context}
+            requirementsDoc={requirementsDoc}
+            qaHistory={qaHistory}
             initialIdea={initialIdea}
             dark={dark}
             textHead={textHead}
@@ -707,15 +740,53 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             scrollContainerRef={scrollContainerRef}
             handleRestart={handleRestart}
             handleGoToSimulator={handleGoToSimulator}
+            // ??$$$ newer code - Behavior Sim handler
+            handleGoToBehaviorSim={handleGoToBehaviorSim}
             handleExportLocal={handleExportLocal}
             handleCopyAllData={handleCopyAllData}
             handleResume={handleResume}
             handleRescue={handleRescue}
             resolveConflict={resolveConflict}
+            // ??$$$ old code
+            /*
+            blueprint={blueprint}
+            requirementsDoc={requirementsDoc}
+            setShowContextModal={setShowContextModal}
+            */
+            // ??$$$ newer code
+            blueprint={blueprint}
+            requirementsDoc={requirementsDoc}
+            setShowContextModal={setShowContextModal}
+            sessionId={sessionId}
           />
 
         )}
       </div>
+      {/* ??$$$ newer code */}
+      {showContextModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-xs p-4" onClick={() => setShowContextModal(false)}>
+          <div className="relative flex flex-col w-full max-w-4xl h-[80vh] rounded-2xl border border-white/10 bg-[#0d0d12] p-6 shadow-2xl transition-all" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-4">
+              <h3 className="text-lg font-bold text-slate-100">Shared Context (Transparency)</h3>
+              <button onClick={() => setShowContextModal(false)} className="text-zinc-400 hover:text-zinc-100 text-xl">×</button>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-6 pr-2">
+              <div>
+                <h4 className="text-sm font-semibold text-slate-300 mb-2">Requirements Document (PRD)</h4>
+                <pre className="whitespace-pre-wrap rounded-xl border border-white/5 bg-white/[0.02] p-4 text-xs font-mono text-slate-300 select-text leading-relaxed">
+                  {requirementsDoc || "No PRD yet."}
+                </pre>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-slate-300 mb-2">System Blueprint (Architect)</h4>
+                <pre className="whitespace-pre-wrap rounded-xl border border-white/5 bg-white/[0.02] p-4 text-xs font-mono text-slate-300 select-text leading-relaxed">
+                  {blueprint ? JSON.stringify(blueprint, null, 2) : "Blueprint not generated yet."}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -9,10 +9,10 @@ import { GROQ_AGENT2_TOOLS } from "../src/services/agent2tools.declarations";
 async function run() {
   console.log("Initializing test...");
   const client = await rotationService.getClient();
-  const modelName = "meta-llama/llama-4-scout-17b-16e-instruct";
-  
+  const modelName = "qwen/qwen3-32b";
+
   console.log("Model:", modelName);
-  
+
   try {
     const completion = await client.chat.completions.create({
       model: modelName,
