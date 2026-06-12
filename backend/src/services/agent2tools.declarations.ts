@@ -356,10 +356,15 @@ export const GEMINI_AGENT2_TOOLS = {
           },
           data: {
             type: SchemaType.STRING,
-            description: "The data payload as a serialized JSON string (required)"
+            description: "The data payload as a serialized JSON string. Required for bom/wiring/diagram. For type=milestone, omit this and pass milestoneId instead."
+          },
+          // ??$$$ newer code - pass-by-reference milestone saving (token optimization)
+          milestoneId: {
+            type: SchemaType.STRING,
+            description: "For type=milestone ONLY: the id returned by generate_milestone. The server resolves the full milestone (including code) from this reference — never re-send the code."
           }
         },
-        required: ["type", "data"]
+        required: ["type"]
       }
     },
     // ??$$$ newer code

@@ -726,15 +726,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     try {
       await axiosInstance.put(`/project/${projectId}`, { files: updatedFiles }, { withCredentials: true });
-    } catch {
-      // optimistic update — silently fail
+    } catch (err) {
+      // ??$$$ newer code - keep the optimistic update but surface persistence failures
+      console.error(`[useProjectStore] updateFile("${fileName}") failed to persist to /project/${projectId}:`, err);
     }
   },
 
   // ??$$$ newer code
   addFile: async (projectId, file) => {
     const project = get().project;
-    if (!project) return;
+    // ??$$$ newer code - don't silently drop generated artifacts when the project hasn't loaded yet
+    if (!project) {
+      console.warn(`[useProjectStore] addFile("${file.name}") dropped — project not loaded yet (projectId: ${projectId}).`);
+      return;
+    }
 
     const files = project.files || [];
     const exists = files.find(f => f.name === file.name);
@@ -751,8 +756,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         files: updatedFiles,
         activeFile: file.name,
       }, { withCredentials: true });
-    } catch {
-      // silently fail
+    } catch (err) {
+      // ??$$$ newer code - surface persistence failures instead of swallowing them
+      console.error(`[useProjectStore] addFile("${file.name}") failed to persist to /project/${projectId}:`, err);
     }
   },
 
@@ -764,8 +770,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ project: updatedProj, currentProject: updatedProj });
     try {
       await axiosInstance.put(`/project/${projectId}`, { activeFile: fileName }, { withCredentials: true });
-    } catch {
-      // silently fail
+    } catch (err) {
+      // ??$$$ newer code - surface persistence failures instead of swallowing them
+      console.error(`[useProjectStore] setActiveFile("${fileName}") failed to persist:`, err);
     }
   },
 }));

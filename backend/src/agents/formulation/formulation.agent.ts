@@ -94,6 +94,24 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
     }
   }
 
+  // ??$$$ newer code - per-milestone pruning: identify milestones already persisted with code so their
+  // bulky generate_milestone outputs can be dropped immediately instead of waiting for the whole phase
+  const savedMilestoneKeys = new Set<string>();
+  (session?.milestones || []).forEach((m: any) => {
+    if (m.code && m.code.trim().length > 0) {
+      if (m.id) savedMilestoneKeys.add(String(m.id));
+      if (m.title) savedMilestoneKeys.add(String(m.title).toLowerCase().trim());
+      if (m.order !== undefined) savedMilestoneKeys.add(`order_${m.order}`);
+    }
+  });
+  const isMilestonePersisted = (payload: any): boolean => {
+    if (!payload || typeof payload !== "object") return false;
+    if (payload.id && savedMilestoneKeys.has(String(payload.id))) return true;
+    if (payload.title && savedMilestoneKeys.has(String(payload.title).toLowerCase().trim())) return true;
+    if (payload.order !== undefined && savedMilestoneKeys.has(`order_${payload.order}`)) return true;
+    return false;
+  };
+
   const pruned: any[] = [];
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
@@ -103,9 +121,16 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
       continue;
     }
 
+    // ??$$$ newer code - drop generate_milestone results once that milestone is saved with code
+    if (msg.role === "function" && msg.name === "generate_milestone" && isMilestonePersisted(msg.content)) {
+      continue;
+    }
+
     if (msg.role === "assistant" || msg.role === "model") {
       const newFc = (msg.functionCalls || []).filter((fc: any) => {
         if (toolsToPrune.has(fc.name)) return false;
+        // ??$$$ newer code - drop generate_milestone calls for milestones already saved with code
+        if (fc.name === "generate_milestone" && isMilestonePersisted(fc.args)) return false;
         if (fc.name === "save_progress" && fc.args?.type) {
           if (latestSaveIdx[fc.args.type] !== undefined && latestSaveIdx[fc.args.type] > i) {
             return false;
@@ -143,9 +168,14 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
       const lastRole = (lastMsg.role === "assistant" || lastMsg.role === "model") ? "model" : lastMsg.role;
       const currentRole = (currentMsg.role === "assistant" || currentMsg.role === "model") ? "model" : currentMsg.role;
 
-      if (lastRole === currentRole) {
-        // ??$$$ newer code - Merge instead of injecting synthetic messages
-        lastMsg.content = `${lastMsg.content || ""}\n${currentMsg.content || ""}`.trim();
+      // ??$$$ newer code - never merge function/tool messages: parallel tool calls emit consecutive
+      // function messages whose object content would corrupt into "[object Object]" and break
+      // tool_call_id pairing with the assistant message's tool_calls.
+      if (lastRole === currentRole && currentRole !== "function") {
+        // ??$$$ newer code - Merge instead of injecting synthetic messages (stringify non-string content defensively)
+        const lastStr = typeof lastMsg.content === "string" ? lastMsg.content : JSON.stringify(lastMsg.content ?? "");
+        const currStr = typeof currentMsg.content === "string" ? currentMsg.content : JSON.stringify(currentMsg.content ?? "");
+        lastMsg.content = `${lastStr}\n${currStr}`.trim();
         if (currentMsg.functionCalls && currentMsg.functionCalls.length > 0) {
           lastMsg.functionCalls = [
             ...(lastMsg.functionCalls || []),
@@ -369,16 +399,21 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   let turns = 0;
   const maxTurns = 30;
   let capacityRetryCount = 0;
+  // ??$$$ newer code - cap rate-limit retries so paused turns cannot spin forever
+  let rateLimitRetryCount = 0;
+  const maxRateLimitRetries = 10;
   let formulationSuccessful = false;
 
-  while (turns < maxTurns) {
+  // ??$$$ newer code - off-by-one fix: <= allows the full 30 working turns before the guard trips
+  while (turns <= maxTurns) {
     turns++;
     // ??$$$ newer code - pace turns faster (1s instead of 3s)
     await new Promise(resolve => setTimeout(resolve, 1000));
     console.log(`[Agent2 Debugger] Starting turn ${turns}...`);
     console.log(`[Agent2 Debugger] Current message history length: ${messages.length}`);
 
-    if (turns >= maxTurns) {
+    // ??$$$ newer code - off-by-one fix
+    if (turns > maxTurns) {
       console.error("[Agent2] Exceeded maximum turns limit.");
       await logAndEmit({
         type: "error",
@@ -870,6 +905,21 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
           try {
             await rotationService.handleRateLimit();
           } catch {}
+          // ??$$$ newer code - bound rate-limit retries
+          rateLimitRetryCount++;
+          if (rateLimitRetryCount > maxRateLimitRetries) {
+            await logAndEmit({
+              type: "error",
+              text: "Formulation aborted: exceeded the maximum number of rate-limit retries across providers."
+            });
+            if (io) {
+              io.to(sessionId).emit("agent2:error", {
+                message: "Exceeded maximum rate-limit retries across providers.",
+                retryable: true
+              });
+            }
+            break;
+          }
           turns--;
           continue;
         }
@@ -891,6 +941,21 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
         await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
 
+        // ??$$$ newer code - bound rate-limit retries
+        rateLimitRetryCount++;
+        if (rateLimitRetryCount > maxRateLimitRetries) {
+          await logAndEmit({
+            type: "error",
+            text: "Formulation aborted: exceeded the maximum number of rate-limit retries across providers."
+          });
+          if (io) {
+            io.to(sessionId).emit("agent2:error", {
+              message: "Exceeded maximum rate-limit retries across providers.",
+              retryable: true
+            });
+          }
+          break;
+        }
         turns--;
         continue;
       }

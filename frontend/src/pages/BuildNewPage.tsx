@@ -619,6 +619,8 @@ export default function BuildNewPage() {
           setPipelineDone(true);
           setPipeActive(false);
           setBotOpen(true);
+          // ??$$$ newer code - reload the project so the explorer reflects server-persisted generated files
+          if (id) loadProject(id);
           setStages(p => p.map(s => s.state !== "completed" && s.state !== "failed" ? { ...s, state: "completed" } : s));
           addLog("success", "[wireup] Hardware formulation complete!");
           toast.success("Hardware project formulated!");

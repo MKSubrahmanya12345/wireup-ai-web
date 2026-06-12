@@ -1,6 +1,7 @@
 // ??$$$
 import NewFlowSession from "../../../models/newFlowSession.model";
-import { parseIfString, unifiedLlmCall } from "./utils";
+// ??$$$ newer code - cacheMilestone enables pass-by-reference milestone saving
+import { parseIfString, unifiedLlmCall, cacheMilestone } from "./utils";
 
 export async function executeGenerateMilestone(args: any, sessionId?: string) {
   const title = args.title;
@@ -30,8 +31,9 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
         });
 
         if (existing && existing.code && existing.code.trim().length > 0) {
-          console.log(`[Agent2] Milestone '${title}' or order ${order} already exists with code. Returning cached milestone.`);
-          return {
+          console.log(`[Agent2] Milestone '${title}' or order ${order} already exists with code. Returning compact cached reference.`);
+          // ??$$$ newer code - cache the full milestone server-side and return only a compact reference (token optimization)
+          const cachedFull = {
             id: existing.id || `milestone_${order}_${Date.now()}`,
             order,
             title,
@@ -46,6 +48,15 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
             commonProblems: existing.commonProblems || [],
             simulatable: existing.simulatable,
             requiredLibraries: existing.requiredLibraries || []
+          };
+          cacheMilestone(sessionId, cachedFull);
+          return {
+            id: cachedFull.id,
+            order,
+            title,
+            alreadySaved: true,
+            codeGenerated: true,
+            note: "This milestone already exists with code and is saved. Proceed to the next milestone."
           };
         }
       }
@@ -156,7 +167,9 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
     }
     const order = typeof args.order === "number" ? args.order : dbMilestonesCount + 1;
 
-    return {
+    // ??$$$ newer code - cache the full milestone server-side and return only a compact reference to the LLM.
+    // The full code is persisted via save_progress(type="milestone", milestoneId=...) without re-sending it.
+    const fullMilestone = {
       id: `milestone_${order}_${Date.now()}`,
       order,
       title,
@@ -166,6 +179,22 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
       wiringInstructions: wiringSubset.map((w: any) => `${w.from} -> ${w.to} (${w.net})`).join(", "),
       ...parsed
     };
+    if (sessionId) {
+      cacheMilestone(sessionId, fullMilestone);
+      return {
+        id: fullMilestone.id,
+        order,
+        title,
+        objective,
+        subsystem,
+        partsInvolved,
+        codeGenerated: true,
+        simulatable: parsed.simulatable !== false,
+        requiredLibraries: parsed.requiredLibraries || [],
+        note: `Full code stored server-side. Save NOW with save_progress(type="milestone", milestoneId="${fullMilestone.id}") — do NOT re-send the code.`
+      };
+    }
+    return fullMilestone;
   } catch (err: any) {
     console.error("executeGenerateMilestone failed:", err);
     let dbMilestonesCount = 0;

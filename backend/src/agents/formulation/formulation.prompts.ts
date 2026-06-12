@@ -41,7 +41,7 @@ export const SYSTEM_PROMPT = `You are a hardware formulation orchestrator. Follo
 2. Follow strict sequential formulation phases: BOM Sourcing (save_progress type bom) -> Wiring Design (save_progress type wiring) -> Milestones (generate_milestone & save_progress milestone per step) -> Diagram Layout (save_progress type diagram) -> Final Integrated Sketch.
 3. The microcontroller must always use the BOM key 'mcu' (never 'brain') across BOM, wiring, and diagram.
 4. When calling save_progress(type="bom"), pass a flat JSON array of component objects where partId is the database _id returned by get_part_details.
-5. Immediately save each milestone returned by generate_milestone using save_progress(type="milestone") before calling generate_milestone for the next one.`;
+5. Immediately after each generate_milestone call, save it with save_progress(type="milestone", milestoneId="<id from the generate_milestone result>"). The server resolves the full milestone (including its code) from milestoneId — NEVER re-send the code field. Do this before calling generate_milestone for the next milestone.`;
 
 import { determineActivePhase } from "./formulation.persistence";
 
@@ -165,6 +165,11 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
     contextBlock = `Project Idea: ${session.idea || "No idea provided"}\n\nNote: Full requirements document was not generated. Please formulate based on the idea above.`;
   }
 
+  // ??$$$ newer code - truncate the requirements doc once the BOM is saved to cut per-turn prompt tokens
+  if (compact && session.bom && session.bom.length > 0 && contextBlock.length > 800) {
+    contextBlock = `${contextBlock.slice(0, 600)}\n\n[Full requirements document truncated — the BOM has already been derived from it]`;
+  }
+
   let blueprintBlock = "";
   if (session.blueprint && Object.keys(session.blueprint).length > 0) {
     blueprintBlock = compact
@@ -243,7 +248,7 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
 \n\n## CURRENT TASK: PHASE 3 (MILESTONE & CODE GENERATION)
 - Goal: Generate the ordered list of build milestones, complete with firm verification code for each milestone.
 - Call 'generate_milestone' to build code and test scripts for each stage.
-- CRITICAL: Save each milestone IMMEDIATELY using 'save_progress(type="milestone")' with the complete generated milestone object (including the code field) before calling generate_milestone for the next one.
+- CRITICAL: Save each milestone IMMEDIATELY using 'save_progress(type="milestone", milestoneId="<id from the generate_milestone result>")' BEFORE generating the next one. The server resolves the full milestone (including its code) from milestoneId — do NOT re-send the code field.
 - Do NOT generate diagram.json or final sketch yet.`;
   } else if (activePhase === "diagram") {
     taskInstruction = `

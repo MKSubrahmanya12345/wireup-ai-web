@@ -3,6 +3,8 @@
 import NewFlowSession from "../../models/newFlowSession.model";
 import Project from "../../models/project.model";
 import { parseJsonRecursively } from "../shared/jsonRepair";
+// ??$$$ newer code - pass-by-reference milestone cache (token optimization)
+import { getCachedMilestone } from "./tools/utils";
 // ??$$$ newer code
 import fs from "fs";
 import path from "path";
@@ -263,6 +265,23 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
         milestoneList = parsedData.steps;
       } else if (parsedData.milestone && typeof parsedData.milestone === "object") {
         milestoneList = [parsedData.milestone];
+      }
+    }
+
+    // ??$$$ newer code - resolve pass-by-reference milestoneId from the server-side cache (token optimization)
+    const milestoneRefId = fullArgs?.milestoneId || fullArgs?.milestone_id ||
+      (parsedData && typeof parsedData === "object" && !Array.isArray(parsedData)
+        ? (parsedData.milestoneId || parsedData.milestone_id)
+        : undefined);
+    if (milestoneRefId) {
+      const cached = getCachedMilestone(sessionId, String(milestoneRefId));
+      if (cached) {
+        milestoneList = [cached];
+      } else if (!milestoneList || (typeof milestoneList === "object" && !Array.isArray(milestoneList) && !milestoneList.code)) {
+        return {
+          saved: false,
+          error: `Milestone reference "${milestoneRefId}" was not found in the server cache. Re-run generate_milestone for this milestone, then call save_progress again with the returned milestoneId.`
+        };
       }
     }
 
