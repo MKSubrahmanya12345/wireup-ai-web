@@ -31,8 +31,9 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
         });
 
         if (existing && existing.code && existing.code.trim().length > 0) {
-          console.log(`[Agent2] Milestone '${title}' or order ${order} already exists with code. Returning cached milestone.`);
-          return {
+          console.log(`[Agent2] Milestone '${title}' or order ${order} already exists with code. Returning compact cached reference.`);
+          // ??$$$ newer code - cache the full milestone server-side and return only a compact reference (token optimization)
+          const cachedFull = {
             id: existing.id || `milestone_${order}_${Date.now()}`,
             order,
             title,
@@ -47,6 +48,15 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
             commonProblems: existing.commonProblems || [],
             simulatable: existing.simulatable,
             requiredLibraries: existing.requiredLibraries || []
+          };
+          cacheMilestone(sessionId, cachedFull);
+          return {
+            id: cachedFull.id,
+            order,
+            title,
+            alreadySaved: true,
+            codeGenerated: true,
+            note: "This milestone already exists with code and is saved. Proceed to the next milestone."
           };
         }
       }

@@ -94,12 +94,35 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
     }
   }
 
+  // ??$$$ newer code - per-milestone pruning: identify milestones already persisted with code so their
+  // bulky generate_milestone outputs can be dropped immediately instead of waiting for the whole phase
+  const savedMilestoneKeys = new Set<string>();
+  (session?.milestones || []).forEach((m: any) => {
+    if (m.code && m.code.trim().length > 0) {
+      if (m.id) savedMilestoneKeys.add(String(m.id));
+      if (m.title) savedMilestoneKeys.add(String(m.title).toLowerCase().trim());
+      if (m.order !== undefined) savedMilestoneKeys.add(`order_${m.order}`);
+    }
+  });
+  const isMilestonePersisted = (payload: any): boolean => {
+    if (!payload || typeof payload !== "object") return false;
+    if (payload.id && savedMilestoneKeys.has(String(payload.id))) return true;
+    if (payload.title && savedMilestoneKeys.has(String(payload.title).toLowerCase().trim())) return true;
+    if (payload.order !== undefined && savedMilestoneKeys.has(`order_${payload.order}`)) return true;
+    return false;
+  };
+
   const pruned: any[] = [];
   for (let i = 0; i < messages.length; i++) {
     const msg = messages[i];
 
     // Skip intermediate functions belonging to completed phases
     if (msg.role === "function" && msg.name && toolsToPrune.has(msg.name)) {
+      continue;
+    }
+
+    // ??$$$ newer code - drop generate_milestone results once that milestone is saved with code
+    if (msg.role === "function" && msg.name === "generate_milestone" && isMilestonePersisted(msg.content)) {
       continue;
     }
 

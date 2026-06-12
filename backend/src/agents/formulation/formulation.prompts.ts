@@ -243,7 +243,7 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
 \n\n## CURRENT TASK: PHASE 3 (MILESTONE & CODE GENERATION)
 - Goal: Generate the ordered list of build milestones, complete with firm verification code for each milestone.
 - Call 'generate_milestone' to build code and test scripts for each stage.
-- CRITICAL: Save each milestone IMMEDIATELY using 'save_progress(type="milestone")' with the complete generated milestone object (including the code field) before calling generate_milestone for the next one.
+- CRITICAL: Save each milestone IMMEDIATELY using 'save_progress(type="milestone", milestoneId="<id from the generate_milestone result>")' BEFORE generating the next one. The server resolves the full milestone (including its code) from milestoneId — do NOT re-send the code field.
 - Do NOT generate diagram.json or final sketch yet.`;
   } else if (activePhase === "diagram") {
     taskInstruction = `

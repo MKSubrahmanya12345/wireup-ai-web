@@ -735,7 +735,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   // ??$$$ newer code
   addFile: async (projectId, file) => {
     const project = get().project;
-    if (!project) return;
+    // ??$$$ newer code - don't silently drop generated artifacts when the project hasn't loaded yet
+    if (!project) {
+      console.warn(`[useProjectStore] addFile("${file.name}") dropped — project not loaded yet (projectId: ${projectId}).`);
+      return;
+    }
 
     const files = project.files || [];
     const exists = files.find(f => f.name === file.name);
