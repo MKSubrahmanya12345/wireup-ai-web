@@ -1,0 +1,524 @@
+"filename", "language", "JavaScript", "JSON", "JavaScript JSX", "Markdown", "PostCSS", "TypeScript", "JSON with Comments", "TypeScript JSX", "Python", "XML", "HTML", "Docker", "C++", "comment", "blank", "total"
+"e:\wireup.ai - new\.claude\settings.local.json", "JSON", 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16
+"e:\wireup.ai - new\INGESTION\backend\package-lock.json", "JSON", 0, 1432, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1433
+"e:\wireup.ai - new\INGESTION\backend\package.json", "JSON", 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 25
+"e:\wireup.ai - new\INGESTION\backend\scripts\scanAndExport.js", "JavaScript", 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 19
+"e:\wireup.ai - new\INGESTION\backend\src\app.js", "JavaScript", 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 27
+"e:\wireup.ai - new\INGESTION\backend\src\classifiers\familyClassifier.js", "JavaScript", 81, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 89
+"e:\wireup.ai - new\INGESTION\backend\src\config\db.js", "JavaScript", 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 9
+"e:\wireup.ai - new\INGESTION\backend\src\config\env.js", "JavaScript", 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 26
+"e:\wireup.ai - new\INGESTION\backend\src\controllers\ingestion.controller.js", "JavaScript", 121, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 16, 137
+"e:\wireup.ai - new\INGESTION\backend\src\discovery\kicad\kicadSymbolExtractor.js", "JavaScript", 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 73
+"e:\wireup.ai - new\INGESTION\backend\src\discovery\kicad\sexpr.js", "JavaScript", 89, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 99
+"e:\wireup.ai - new\INGESTION\backend\src\discovery\providerRegistry.js", "JavaScript", 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 25
+"e:\wireup.ai - new\INGESTION\backend\src\discovery\providers\base.js", "JavaScript", 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 10
+"e:\wireup.ai - new\INGESTION\backend\src\discovery\providers\emptyProviders.js", "JavaScript", 33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 39
+"e:\wireup.ai - new\INGESTION\backend\src\discovery\providers\kicadProvider.js", "JavaScript", 42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 48
+"e:\wireup.ai - new\INGESTION\backend\src\domain\families.js", "JavaScript", 106, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 109
+"e:\wireup.ai - new\INGESTION\backend\src\index.js", "JavaScript", 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 18
+"e:\wireup.ai - new\INGESTION\backend\src\middleware\errorHandler.js", "JavaScript", 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 20
+"e:\wireup.ai - new\INGESTION\backend\src\models\component.model.js", "JavaScript", 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 38
+"e:\wireup.ai - new\INGESTION\backend\src\models\componentVersion.model.js", "JavaScript", 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 20
+"e:\wireup.ai - new\INGESTION\backend\src\models\ingestionJob.model.js", "JavaScript", 14, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 18
+"e:\wireup.ai - new\INGESTION\backend\src\models\ingestionSetting.model.js", "JavaScript", 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 15
+"e:\wireup.ai - new\INGESTION\backend\src\models\registryCandidate.model.js", "JavaScript", 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 25
+"e:\wireup.ai - new\INGESTION\backend\src\models\registrySnapshot.model.js", "JavaScript", 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 20
+"e:\wireup.ai - new\INGESTION\backend\src\parsers\datasheetFetcher.js", "JavaScript", 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 14
+"e:\wireup.ai - new\INGESTION\backend\src\parsers\datasheetProcessor.js", "JavaScript", 38, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 45
+"e:\wireup.ai - new\INGESTION\backend\src\parsers\htmlParser.js", "JavaScript", 31, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 38
+"e:\wireup.ai - new\INGESTION\backend\src\parsers\pdfParser.js", "JavaScript", 12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 15
+"e:\wireup.ai - new\INGESTION\backend\src\parsers\pinExtractor.js", "JavaScript", 62, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 70
+"e:\wireup.ai - new\INGESTION\backend\src\providers\manualProvider.js", "JavaScript", 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 34
+"e:\wireup.ai - new\INGESTION\backend\src\providers\providerRegistry.js", "JavaScript", 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 11
+"e:\wireup.ai - new\INGESTION\backend\src\providers\types.js", "JavaScript", 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 10
+"e:\wireup.ai - new\INGESTION\backend\src\registry\defaults.js", "JavaScript", 29, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 32
+"e:\wireup.ai - new\INGESTION\backend\src\registry\registryBuilder.js", "JavaScript", 34, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 39
+"e:\wireup.ai - new\INGESTION\backend\src\repositories\component.repository.js", "JavaScript", 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 26
+"e:\wireup.ai - new\INGESTION\backend\src\repositories\componentVersion.repository.js", "JavaScript", 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 24
+"e:\wireup.ai - new\INGESTION\backend\src\repositories\ingestionJob.repository.js", "JavaScript", 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 19
+"e:\wireup.ai - new\INGESTION\backend\src\repositories\ingestionSetting.repository.js", "JavaScript", 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 15
+"e:\wireup.ai - new\INGESTION\backend\src\repositories\registryCandidate.repository.js", "JavaScript", 28, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 35
+"e:\wireup.ai - new\INGESTION\backend\src\repositories\registrySnapshot.repository.js", "JavaScript", 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 11
+"e:\wireup.ai - new\INGESTION\backend\src\routes\ingestion.routes.js", "JavaScript", 32, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 35
+"e:\wireup.ai - new\INGESTION\backend\src\schemas\componentSchemas.js", "JavaScript", 66, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 75
+"e:\wireup.ai - new\INGESTION\backend\src\services\candidateService.js", "JavaScript", 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 30
+"e:\wireup.ai - new\INGESTION\backend\src\services\discoveryScanService.js", "JavaScript", 88, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 101
+"e:\wireup.ai - new\INGESTION\backend\src\services\ingestionService.js", "JavaScript", 142, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 22, 164
+"e:\wireup.ai - new\INGESTION\backend\src\services\registryExportService.js", "JavaScript", 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 18
+"e:\wireup.ai - new\INGESTION\backend\src\services\registrySnapshotService.js", "JavaScript", 41, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 52
+"e:\wireup.ai - new\INGESTION\backend\src\services\settingsService.js", "JavaScript", 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 15
+"e:\wireup.ai - new\INGESTION\backend\src\utils\asyncHandler.js", "JavaScript", 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 7
+"e:\wireup.ai - new\INGESTION\backend\src\utils\hash.js", "JavaScript", 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 7
+"e:\wireup.ai - new\INGESTION\backend\src\utils\httpError.js", "JavaScript", 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 9
+"e:\wireup.ai - new\INGESTION\backend\src\utils\slugify.js", "JavaScript", 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 9
+"e:\wireup.ai - new\INGESTION\backend\src\utils\stableStringify.js", "JavaScript", 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 14
+"e:\wireup.ai - new\INGESTION\backend\src\validators\registryValidator.js", "JavaScript", 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 59
+"e:\wireup.ai - new\INGESTION\frontend\README.md", "Markdown", 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 17
+"e:\wireup.ai - new\INGESTION\frontend\eslint.config.js", "JavaScript", 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 22
+"e:\wireup.ai - new\INGESTION\frontend\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 1, 14
+"e:\wireup.ai - new\INGESTION\frontend\package-lock.json", "JSON", 0, 2819, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2820
+"e:\wireup.ai - new\INGESTION\frontend\package.json", "JSON", 0, 29, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 30
+"e:\wireup.ai - new\INGESTION\frontend\public\favicon.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1
+"e:\wireup.ai - new\INGESTION\frontend\public\icons.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 1, 25
+"e:\wireup.ai - new\INGESTION\frontend\src\App.css", "PostCSS", 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 36
+"e:\wireup.ai - new\INGESTION\frontend\src\App.jsx", "JavaScript JSX", 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 28
+"e:\wireup.ai - new\INGESTION\frontend\src\api\http.js", "JavaScript", 13, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 4, 17
+"e:\wireup.ai - new\INGESTION\frontend\src\api\ingestionApi.js", "JavaScript", 57, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 15, 72
+"e:\wireup.ai - new\INGESTION\frontend\src\assets\react.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1
+"e:\wireup.ai - new\INGESTION\frontend\src\assets\vite.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 2
+"e:\wireup.ai - new\INGESTION\frontend\src\domain\families.js", "JavaScript", 53, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 55
+"e:\wireup.ai - new\INGESTION\frontend\src\index.css", "PostCSS", 0, 0, 0, 0, 96, 0, 0, 0, 0, 0, 0, 0, 0, 0, 12, 108
+"e:\wireup.ai - new\INGESTION\frontend\src\main.jsx", "JavaScript JSX", 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 11
+"e:\wireup.ai - new\INGESTION\frontend\src\pages\AdminIngestionPage.css", "PostCSS", 0, 0, 0, 0, 145, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 173
+"e:\wireup.ai - new\INGESTION\frontend\src\pages\AdminIngestionPage.jsx", "JavaScript JSX", 0, 0, 602, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 46, 648
+"e:\wireup.ai - new\INGESTION\frontend\vite.config.js", "JavaScript", 17, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 20
+"e:\wireup.ai - new\INGESTION\makeme.md", "Markdown", 0, 0, 0, 261, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 584, 845
+"e:\wireup.ai - new\WireUp-hackathon-\DESIGN-claude (1).md", "Markdown", 0, 0, 0, 505, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 85, 590
+"e:\wireup.ai - new\WireUp-hackathon-\backend\data\componentRegistry.json", "JSON", 0, 560, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 560
+"e:\wireup.ai - new\WireUp-hackathon-\backend\package.json", "JSON", 0, 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 36
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\discovery.agent.ts", "TypeScript", 0, 0, 0, 0, 0, 406, 0, 0, 0, 0, 0, 0, 0, 3, 66, 475
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\discovery.prompts.ts", "TypeScript", 0, 0, 0, 0, 0, 574, 0, 0, 0, 0, 0, 0, 0, 1, 16, 591
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\discovery.utils.ts", "TypeScript", 0, 0, 0, 0, 0, 1329, 0, 0, 0, 0, 0, 0, 0, 2, 181, 1512
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\index.ts", "TypeScript", 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 1, 11
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\shared\adapters.ts", "TypeScript", 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 4
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\shared\jsonRepair.ts", "TypeScript", 0, 0, 0, 0, 0, 210, 0, 0, 0, 0, 0, 0, 0, 3, 42, 255
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\shared\keyRotation.service.ts", "TypeScript", 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 3, 20, 103
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\auth.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 153, 0, 0, 0, 0, 0, 0, 0, 1, 39, 193
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\chat.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 74, 0, 0, 0, 0, 0, 0, 0, 6, 14, 94
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\generate.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 329, 0, 0, 0, 0, 0, 0, 0, 14, 27, 370
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\googleAuth.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 11, 14, 89
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\newflow.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 663, 0, 0, 0, 0, 0, 0, 0, 135, 97, 895
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\project.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 5, 17, 102
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\questions.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 155, 0, 0, 0, 0, 0, 0, 0, 13, 16, 184
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\voice.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 107, 0, 0, 0, 0, 0, 0, 0, 3, 21, 131
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\index.ts", "TypeScript", 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 0, 0, 0, 7, 16, 94
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\db.ts", "TypeScript", 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 2, 16
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\llm.ts", "TypeScript", 0, 0, 0, 0, 0, 180, 0, 0, 0, 0, 0, 0, 0, 22, 26, 228
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\utils.ts", "TypeScript", 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 0, 5, 20
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\whisper.manager.ts", "TypeScript", 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 12, 21, 137
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\middleware\auth.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 1, 12, 65
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\models\project.model.ts", "TypeScript", 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 0, 4, 34
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\models\user.model.ts", "TypeScript", 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 1, 3, 32
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\auth.route.ts", "TypeScript", 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 2, 8, 32
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\chat.route.ts", "TypeScript", 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 2, 5, 14
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\generate.route.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 4, 11
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\newflow.route.ts", "TypeScript", 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 5, 4, 37
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\project.route.ts", "TypeScript", 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 4, 20
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\questions.route.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 3, 9
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\voice.route.ts", "TypeScript", 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2, 4, 15
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\services\voice.service.ts", "TypeScript", 0, 0, 0, 0, 0, 382, 0, 0, 0, 0, 0, 0, 0, 5, 59, 446
+"e:\wireup.ai - new\WireUp-hackathon-\backend\src\types\passport.d.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 2, 8
+"e:\wireup.ai - new\WireUp-hackathon-\backend\tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 23, 0, 0, 0, 0, 0, 0, 0, 1, 24
+"e:\wireup.ai - new\WireUp-hackathon-\design.md", "Markdown", 0, 0, 0, 315, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 69, 384
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 19, 0, 0, 0, 1, 20
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\package.json", "JSON", 0, 33, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 34
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\postcss.config.js", "JavaScript", 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 7
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\App.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 7, 13, 84
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\AIReasoningPanel\AIReasoningPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 669, 0, 0, 0, 0, 0, 67, 52, 788
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\CircuitDiagram\CircuitDiagram.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 543, 0, 0, 0, 0, 0, 62, 58, 663
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\DiscoveryModal.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 646, 0, 0, 0, 0, 0, 37, 87, 770
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\ConflictResolution.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\MilestoneCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 6, 83
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\ModelSelector.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 160, 0, 0, 0, 0, 0, 9, 15, 184
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\RateLimitTimer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useAutoScroll.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useDiscoverySession.ts", "TypeScript", 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 1, 23, 124
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useFormulationSocket.ts", "TypeScript", 0, 0, 0, 0, 0, 174, 0, 0, 0, 0, 0, 0, 0, 1, 63, 238
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useSessionRestore.ts", "TypeScript", 0, 0, 0, 0, 0, 149, 0, 0, 0, 0, 0, 0, 0, 1, 39, 189
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\AgentConsole.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 269, 0, 0, 0, 0, 0, 4, 14, 287
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\BomPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 93, 0, 0, 0, 0, 0, 2, 4, 99
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\HardwareAssembly.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 3, 5, 81
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\InspectorPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 6, 129
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\MilestonesPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 3, 28
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\ProgressTracker.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 119, 0, 0, 0, 0, 0, 0, 5, 124
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\WiringPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\phases\DiscoveryPhase.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 193, 0, 0, 0, 0, 0, 26, 14, 233
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\phases\FormulationPhase.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 443, 0, 0, 0, 0, 0, 18, 15, 476
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\conflict.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 1, 9, 54
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\decision.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 63, 0, 0, 0, 0, 0, 0, 0, 1, 16, 80
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\progress.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 1, 15, 76
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\stage.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 1, 10, 66
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\services\discoveryApi.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\services\formulationApi.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\services\simulatorApi.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\bom.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\log.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\milestone.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\session.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\utils\exportData.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\utils\sessionHydration.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\utils\socketEvents.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\ProjectQuestionnaire\ProjectQuestionnaire.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 244, 0, 0, 0, 0, 0, 17, 20, 281
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\hooks\useMicRecorder.ts", "TypeScript", 0, 0, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0, 0, 6, 14, 105
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\index.css", "PostCSS", 0, 0, 0, 0, 182, 0, 0, 0, 0, 0, 0, 0, 0, 46, 35, 263
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\lib\axios.ts", "TypeScript", 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 0, 2, 7
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\main.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 47, 0, 0, 0, 0, 0, 1, 4, 52
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\pages\AuthPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 174, 0, 0, 0, 0, 0, 6, 21, 201
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\pages\BuildNewPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 1067, 0, 0, 0, 0, 0, 82, 83, 1232
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\pages\HomePage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 980, 0, 0, 0, 0, 0, 67, 92, 1139
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\store\useAuthStore.ts", "TypeScript", 0, 0, 0, 0, 0, 118, 0, 0, 0, 0, 0, 0, 0, 1, 21, 140
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\store\useProjectStore.ts", "TypeScript", 0, 0, 0, 0, 0, 81, 0, 0, 0, 0, 0, 0, 0, 4, 16, 101
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\store\useThemeStore.ts", "TypeScript", 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 4, 20
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\src\vite-env.d.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 3, 10
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\tailwind.config.js", "JavaScript", 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 9
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 21, 0, 0, 0, 0, 0, 0, 0, 1, 22
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\tsconfig.node.json", "JSON", 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11
+"e:\wireup.ai - new\WireUp-hackathon-\frontend\vite.config.ts", "TypeScript", 0, 0, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 0, 2, 16
+"e:\wireup.ai - new\WireUp-hackathon-\package-lock.json", "JSON", 0, 4950, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4951
+"e:\wireup.ai - new\WireUp-hackathon-\package.json", "JSON", 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 17
+"e:\wireup.ai - new\WireUp-hackathon-\whisper-server\server.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 61, 0, 0, 0, 0, 16, 16, 93
+"e:\wireup.ai - new\arena.md", "Markdown", 0, 0, 0, 831, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 366, 1197
+"e:\wireup.ai - new\backend\Dockerfile", "Docker", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 25, 0, 12, 13, 50
+"e:\wireup.ai - new\backend\backfill_types.js", "JavaScript", 106, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5, 12, 123
+"e:\wireup.ai - new\backend\data\CRegistry.json", "JSON", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\backend\data\componentRegistry.json", "JSON", 0, 560, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 560
+"e:\wireup.ai - new\backend\inspect_db.js", "JavaScript", 35, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 7, 43
+"e:\wireup.ai - new\backend\inspect_project.js", "JavaScript", 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10
+"e:\wireup.ai - new\backend\nodemon.json", "JSON", 0, 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6
+"e:\wireup.ai - new\backend\package-lock.json", "JSON", 0, 2797, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2798
+"e:\wireup.ai - new\backend\package.json", "JSON", 0, 42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 42
+"e:\wireup.ai - new\backend\scratch\inspect-latest.ts", "TypeScript", 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 1, 9, 53
+"e:\wireup.ai - new\backend\scratch\inspect-messages.ts", "TypeScript", 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 1, 8, 34
+"e:\wireup.ai - new\backend\scratch\inspect-project.ts", "TypeScript", 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 1, 7, 30
+"e:\wireup.ai - new\backend\scratch\list_parts.js", "JavaScript", 15, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 16
+"e:\wireup.ai - new\backend\scratch\test-groq-mapping.ts", "TypeScript", 0, 0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 2, 14, 106
+"e:\wireup.ai - new\backend\scratch\test-groq-model.ts", "TypeScript", 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 1, 7, 37
+"e:\wireup.ai - new\backend\scratch\test-groq-tool.ts", "TypeScript", 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 1, 7, 37
+"e:\wireup.ai - new\backend\scratch\test-turn4.ts", "TypeScript", 0, 0, 0, 0, 0, 170, 0, 0, 0, 0, 0, 0, 0, 1, 9, 180
+"e:\wireup.ai - new\backend\scratch_inspect.js", "JavaScript", 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 26
+"e:\wireup.ai - new\backend\shared\types\SimulationBundle.ts", "TypeScript", 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 12, 19, 131
+"e:\wireup.ai - new\backend\src\agents\architect\architect.agent.ts", "TypeScript", 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 2, 6, 41
+"e:\wireup.ai - new\backend\src\agents\architect\architect.prompts.ts", "TypeScript", 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 2, 2, 20
+"e:\wireup.ai - new\backend\src\agents\architect\index.ts", "TypeScript", 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 4
+"e:\wireup.ai - new\backend\src\agents\architect\mcu.catalog.ts", "TypeScript", 0, 0, 0, 0, 0, 124, 0, 0, 0, 0, 0, 0, 0, 4, 3, 131
+"e:\wireup.ai - new\backend\src\agents\discovery\discovery.agent.ts", "TypeScript", 0, 0, 0, 0, 0, 406, 0, 0, 0, 0, 0, 0, 0, 3, 66, 475
+"e:\wireup.ai - new\backend\src\agents\discovery\discovery.prompts.ts", "TypeScript", 0, 0, 0, 0, 0, 574, 0, 0, 0, 0, 0, 0, 0, 1, 16, 591
+"e:\wireup.ai - new\backend\src\agents\discovery\discovery.utils.ts", "TypeScript", 0, 0, 0, 0, 0, 1329, 0, 0, 0, 0, 0, 0, 0, 2, 181, 1512
+"e:\wireup.ai - new\backend\src\agents\discovery\index.ts", "TypeScript", 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 1, 1, 11
+"e:\wireup.ai - new\backend\src\agents\formulation\formulation.agent.ts", "TypeScript", 0, 0, 0, 0, 0, 992, 0, 0, 0, 0, 0, 0, 0, 28, 102, 1122
+"e:\wireup.ai - new\backend\src\agents\formulation\formulation.persistence.ts", "TypeScript", 0, 0, 0, 0, 0, 548, 0, 0, 0, 0, 0, 0, 0, 30, 71, 649
+"e:\wireup.ai - new\backend\src\agents\formulation\formulation.prompts.ts", "TypeScript", 0, 0, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0, 0, 3, 15, 170
+"e:\wireup.ai - new\backend\src\agents\formulation\formulation.types.ts", "TypeScript", 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 1, 1, 7
+"e:\wireup.ai - new\backend\src\agents\formulation\index.ts", "TypeScript", 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 1, 5
+"e:\wireup.ai - new\backend\src\agents\formulation\scratch\test_fixes.js", "JavaScript", 91, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11, 21, 123
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\diagram.tool.ts", "TypeScript", 0, 0, 0, 0, 0, 162, 0, 0, 0, 0, 0, 0, 0, 1, 24, 187
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\index.ts", "TypeScript", 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 5, 6, 88
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\mcu.tool.ts", "TypeScript", 0, 0, 0, 0, 0, 104, 0, 0, 0, 0, 0, 0, 0, 7, 12, 123
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\milestone.tool.ts", "TypeScript", 0, 0, 0, 0, 0, 185, 0, 0, 0, 0, 0, 0, 0, 3, 13, 201
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\save.tool.ts", "TypeScript", 0, 0, 0, 0, 0, 153, 0, 0, 0, 0, 0, 0, 0, 7, 17, 177
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\search.tool.ts", "TypeScript", 0, 0, 0, 0, 0, 169, 0, 0, 0, 0, 0, 0, 0, 4, 19, 192
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\utils.ts", "TypeScript", 0, 0, 0, 0, 0, 168, 0, 0, 0, 0, 0, 0, 0, 2, 16, 186
+"e:\wireup.ai - new\backend\src\agents\formulation\tools\wiring.tool.ts", "TypeScript", 0, 0, 0, 0, 0, 535, 0, 0, 0, 0, 0, 0, 0, 5, 74, 614
+"e:\wireup.ai - new\backend\src\agents\shared\adapters.ts", "TypeScript", 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 1, 1, 4
+"e:\wireup.ai - new\backend\src\agents\shared\adapters\cerebras.ts", "TypeScript", 0, 0, 0, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 1, 9, 90
+"e:\wireup.ai - new\backend\src\agents\shared\adapters\gemini.ts", "TypeScript", 0, 0, 0, 0, 0, 92, 0, 0, 0, 0, 0, 0, 0, 5, 9, 106
+"e:\wireup.ai - new\backend\src\agents\shared\adapters\groq.ts", "TypeScript", 0, 0, 0, 0, 0, 82, 0, 0, 0, 0, 0, 0, 0, 2, 10, 94
+"e:\wireup.ai - new\backend\src\agents\shared\adapters\index.ts", "TypeScript", 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 1, 1, 6
+"e:\wireup.ai - new\backend\src\agents\shared\adapters\ollama.ts", "TypeScript", 0, 0, 0, 0, 0, 126, 0, 0, 0, 0, 0, 0, 0, 3, 15, 144
+"e:\wireup.ai - new\backend\src\agents\shared\jsonRepair.ts", "TypeScript", 0, 0, 0, 0, 0, 211, 0, 0, 0, 0, 0, 0, 0, 4, 42, 257
+"e:\wireup.ai - new\backend\src\agents\shared\keyRotation.service.ts", "TypeScript", 0, 0, 0, 0, 0, 83, 0, 0, 0, 0, 0, 0, 0, 3, 21, 107
+"e:\wireup.ai - new\backend\src\archive\api_freeze.json", "JSON", 0, 343, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 343
+"e:\wireup.ai - new\backend\src\archive\baseline_metrics.md", "Markdown", 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 32
+"e:\wireup.ai - new\backend\src\archive\dependency_report.md", "Markdown", 0, 0, 0, 173, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 32, 205
+"e:\wireup.ai - new\backend\src\archive\freeze_api.ts", "TypeScript", 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 1, 8, 73
+"e:\wireup.ai - new\backend\src\archive\legacy\agent2tools.service.legacy.ts", "TypeScript", 0, 0, 0, 0, 0, 1198, 0, 0, 0, 0, 0, 0, 0, 81, 142, 1421
+"e:\wireup.ai - new\backend\src\archive\legacy\ai.services.legacy.ts", "TypeScript", 0, 0, 0, 0, 0, 2218, 0, 0, 0, 0, 0, 0, 0, 299, 278, 2795
+"e:\wireup.ai - new\backend\src\archive\legacy\newflow.agent.legacy.ts", "TypeScript", 0, 0, 0, 0, 0, 1124, 0, 0, 0, 0, 0, 0, 0, 82, 132, 1338
+"e:\wireup.ai - new\backend\src\contracts\agent.contracts.ts", "TypeScript", 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 1, 2, 11
+"e:\wireup.ai - new\backend\src\contracts\index.ts", "TypeScript", 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 1, 5
+"e:\wireup.ai - new\backend\src\contracts\project.contracts.ts", "TypeScript", 0, 0, 0, 0, 0, 33, 0, 0, 0, 0, 0, 0, 0, 1, 3, 37
+"e:\wireup.ai - new\backend\src\contracts\tool.contracts.ts", "TypeScript", 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 1, 2, 16
+"e:\wireup.ai - new\backend\src\controllers\assembly.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 6, 18, 68
+"e:\wireup.ai - new\backend\src\controllers\auth.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 153, 0, 0, 0, 0, 0, 0, 0, 1, 39, 193
+"e:\wireup.ai - new\backend\src\controllers\build.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 873, 0, 0, 0, 0, 0, 0, 0, 78, 176, 1127
+"e:\wireup.ai - new\backend\src\controllers\components.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 334, 0, 0, 0, 0, 0, 0, 0, 45, 80, 459
+"e:\wireup.ai - new\backend\src\controllers\generate.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 376, 0, 0, 0, 0, 0, 0, 0, 9, 35, 420
+"e:\wireup.ai - new\backend\src\controllers\ideation.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 357, 0, 0, 0, 0, 0, 0, 0, 44, 61, 462
+"e:\wireup.ai - new\backend\src\controllers\library.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 7, 7, 44
+"e:\wireup.ai - new\backend\src\controllers\newflow.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 1161, 0, 0, 0, 0, 0, 0, 0, 73, 132, 1366
+"e:\wireup.ai - new\backend\src\controllers\pipeline.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 7, 5, 31
+"e:\wireup.ai - new\backend\src\controllers\project.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 360, 0, 0, 0, 0, 0, 0, 0, 45, 70, 475
+"e:\wireup.ai - new\backend\src\controllers\questions.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 155, 0, 0, 0, 0, 0, 0, 0, 13, 16, 184
+"e:\wireup.ai - new\backend\src\controllers\shopping.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 4, 8, 31
+"e:\wireup.ai - new\backend\src\controllers\voice.controller.ts", "TypeScript", 0, 0, 0, 0, 0, 107, 0, 0, 0, 0, 0, 0, 0, 5, 21, 133
+"e:\wireup.ai - new\backend\src\index.ts", "TypeScript", 0, 0, 0, 0, 0, 266, 0, 0, 0, 0, 0, 0, 0, 86, 58, 410
+"e:\wireup.ai - new\backend\src\lib\arduino-boards.ts", "TypeScript", 0, 0, 0, 0, 0, 111, 0, 0, 0, 0, 0, 0, 0, 3, 8, 122
+"e:\wireup.ai - new\backend\src\lib\binPacking.ts", "TypeScript", 0, 0, 0, 0, 0, 35, 0, 0, 0, 0, 0, 0, 0, 22, 11, 68
+"e:\wireup.ai - new\backend\src\lib\componentDimensions.ts", "TypeScript", 0, 0, 0, 0, 0, 410, 0, 0, 0, 0, 0, 0, 0, 19, 13, 442
+"e:\wireup.ai - new\backend\src\lib\db.ts", "TypeScript", 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 1, 5, 24
+"e:\wireup.ai - new\backend\src\lib\llm.ts", "TypeScript", 0, 0, 0, 0, 0, 305, 0, 0, 0, 0, 0, 0, 0, 9, 37, 351
+"e:\wireup.ai - new\backend\src\lib\svgLayout.ts", "TypeScript", 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 28, 21, 104
+"e:\wireup.ai - new\backend\src\lib\utils.ts", "TypeScript", 0, 0, 0, 0, 0, 22, 0, 0, 0, 0, 0, 0, 0, 1, 6, 29
+"e:\wireup.ai - new\backend\src\lib\wokwi-components.ts", "TypeScript", 0, 0, 0, 0, 0, 90, 0, 0, 0, 0, 0, 0, 0, 2, 18, 110
+"e:\wireup.ai - new\backend\src\lib\wokwi-context.ts", "TypeScript", 0, 0, 0, 0, 0, 122, 0, 0, 0, 0, 0, 0, 0, 2, 21, 145
+"e:\wireup.ai - new\backend\src\lib\wokwi.ts", "TypeScript", 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 0, 0, 2, 10, 44
+"e:\wireup.ai - new\backend\src\lib\wokwiDimensionKeyMap.ts", "TypeScript", 0, 0, 0, 0, 0, 59, 0, 0, 0, 0, 0, 0, 0, 19, 9, 87
+"e:\wireup.ai - new\backend\src\middleware\auth.middleware.ts", "TypeScript", 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 1, 12, 65
+"e:\wireup.ai - new\backend\src\models\newFlowSession.model.ts", "TypeScript", 0, 0, 0, 0, 0, 215, 0, 0, 0, 0, 0, 0, 0, 38, 23, 276
+"e:\wireup.ai - new\backend\src\models\part.model.ts", "TypeScript", 0, 0, 0, 0, 0, 188, 0, 0, 0, 0, 0, 0, 0, 17, 24, 229
+"e:\wireup.ai - new\backend\src\models\project.model.ts", "TypeScript", 0, 0, 0, 0, 0, 942, 0, 0, 0, 0, 0, 0, 0, 59, 156, 1157
+"e:\wireup.ai - new\backend\src\models\systemConfig.model.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 3, 10
+"e:\wireup.ai - new\backend\src\models\user.model.ts", "TypeScript", 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 3, 4, 49
+"e:\wireup.ai - new\backend\src\routes\assembly.route.ts", "TypeScript", 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 3, 4, 14
+"e:\wireup.ai - new\backend\src\routes\auth.route.ts", "TypeScript", 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 1, 6, 23
+"e:\wireup.ai - new\backend\src\routes\build.route.ts", "TypeScript", 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 6, 5, 53
+"e:\wireup.ai - new\backend\src\routes\compile.route.ts", "TypeScript", 0, 0, 0, 0, 0, 148, 0, 0, 0, 0, 0, 0, 0, 0, 36, 184
+"e:\wireup.ai - new\backend\src\routes\components.route.ts", "TypeScript", 0, 0, 0, 0, 0, 18, 0, 0, 0, 0, 0, 0, 0, 7, 8, 33
+"e:\wireup.ai - new\backend\src\routes\generate.route.ts", "TypeScript", 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 4, 5, 16
+"e:\wireup.ai - new\backend\src\routes\ideation.route.ts", "TypeScript", 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 2, 4, 14
+"e:\wireup.ai - new\backend\src\routes\library.route.ts", "TypeScript", 0, 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 3, 4, 14
+"e:\wireup.ai - new\backend\src\routes\newflow.route.ts", "TypeScript", 0, 0, 0, 0, 0, 28, 0, 0, 0, 0, 0, 0, 0, 7, 4, 39
+"e:\wireup.ai - new\backend\src\routes\part.route.ts", "TypeScript", 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 14, 11, 77
+"e:\wireup.ai - new\backend\src\routes\pipeline.route.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 3, 4, 13
+"e:\wireup.ai - new\backend\src\routes\playground.route.ts", "TypeScript", 0, 0, 0, 0, 0, 87, 0, 0, 0, 0, 0, 0, 0, 3, 8, 98
+"e:\wireup.ai - new\backend\src\routes\project.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 29, 0, 0, 0, 0, 0, 0, 0, 3, 11, 43
+"e:\wireup.ai - new\backend\src\routes\questions.route.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 1, 4, 11
+"e:\wireup.ai - new\backend\src\routes\shopping.route.ts", "TypeScript", 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 3, 4, 13
+"e:\wireup.ai - new\backend\src\routes\simulation.routes.ts", "TypeScript", 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0, 0, 5, 10, 54
+"e:\wireup.ai - new\backend\src\routes\voice.route.ts", "TypeScript", 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2, 4, 15
+"e:\wireup.ai - new\backend\src\scripts\check-appdata-local.js", "JavaScript", 46, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 51
+"e:\wireup.ai - new\backend\src\scripts\check-project-data.ts", "TypeScript", 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 1, 5, 30
+"e:\wireup.ai - new\backend\src\scripts\check-session.js", "JavaScript", 30, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 6, 37
+"e:\wireup.ai - new\backend\src\scripts\check-session.ts", "TypeScript", 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 1, 6, 33
+"e:\wireup.ai - new\backend\src\scripts\check-space.js", "JavaScript", 44, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4, 49
+"e:\wireup.ai - new\backend\src\scripts\check-space.ts", "TypeScript", 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 1, 4, 48
+"e:\wireup.ai - new\backend\src\scripts\convert-model.ts", "TypeScript", 0, 0, 0, 0, 0, 49, 0, 0, 0, 0, 0, 0, 0, 2, 7, 58
+"e:\wireup.ai - new\backend\src\scripts\migrate-ideation.ts", "TypeScript", 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 4, 13, 82
+"e:\wireup.ai - new\backend\src\scripts\reproduce-500.ts", "TypeScript", 0, 0, 0, 0, 0, 34, 0, 0, 0, 0, 0, 0, 0, 3, 7, 44
+"e:\wireup.ai - new\backend\src\scripts\seed-active-project.ts", "TypeScript", 0, 0, 0, 0, 0, 98, 0, 0, 0, 0, 0, 0, 0, 9, 15, 122
+"e:\wireup.ai - new\backend\src\scripts\seed-curated-parts.ts", "TypeScript", 0, 0, 0, 0, 0, 548, 0, 0, 0, 0, 0, 0, 0, 12, 13, 573
+"e:\wireup.ai - new\backend\src\scripts\test-agent2-tools.ts", "TypeScript", 0, 0, 0, 0, 0, 256, 0, 0, 0, 0, 0, 0, 0, 15, 23, 294
+"e:\wireup.ai - new\backend\src\scripts\test-chat-flow.ts", "TypeScript", 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 1, 6, 48
+"e:\wireup.ai - new\backend\src\scripts\test-ideation-endpoint.ts", "TypeScript", 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 1, 10, 54
+"e:\wireup.ai - new\backend\src\scripts\test-kicad-regex.ts", "TypeScript", 0, 0, 0, 0, 0, 47, 0, 0, 0, 0, 0, 0, 0, 6, 9, 62
+"e:\wireup.ai - new\backend\src\scripts\test-library-search.ts", "TypeScript", 0, 0, 0, 0, 0, 54, 0, 0, 0, 0, 0, 0, 0, 5, 7, 66
+"e:\wireup.ai - new\backend\src\scripts\test-live-thinking.ts", "TypeScript", 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 5, 15, 90
+"e:\wireup.ai - new\backend\src\scripts\test-project-by-id.ts", "TypeScript", 0, 0, 0, 0, 0, 41, 0, 0, 0, 0, 0, 0, 0, 2, 6, 49
+"e:\wireup.ai - new\backend\src\services\agent2tools.declarations.ts", "TypeScript", 0, 0, 0, 0, 0, 493, 0, 0, 0, 0, 0, 0, 0, 6, 12, 511
+"e:\wireup.ai - new\backend\src\services\agent2tools.service.ts", "TypeScript", 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 21, 2, 24
+"e:\wireup.ai - new\backend\src\services\ai.services.test.ts", "TypeScript", 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 3, 9, 112
+"e:\wireup.ai - new\backend\src\services\ai.services.ts", "TypeScript", 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 16, 6, 74
+"e:\wireup.ai - new\backend\src\services\assembly.service.ts", "TypeScript", 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 0, 0, 20, 15, 105
+"e:\wireup.ai - new\backend\src\services\blender.service.ts", "TypeScript", 0, 0, 0, 0, 0, 203, 0, 0, 0, 0, 0, 0, 0, 15, 19, 237
+"e:\wireup.ai - new\backend\src\services\compileQueue.service.ts", "TypeScript", 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 6, 15, 98
+"e:\wireup.ai - new\backend\src\services\component-definition.service.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\backend\src\services\easyeda.service.ts", "TypeScript", 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 16, 23, 167
+"e:\wireup.ai - new\backend\src\services\gemini.service.ts", "TypeScript", 0, 0, 0, 0, 0, 616, 0, 0, 0, 0, 0, 0, 0, 133, 22, 771
+"e:\wireup.ai - new\backend\src\services\keyRotation.service.ts", "TypeScript", 0, 0, 0, 0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 2, 1, 5
+"e:\wireup.ai - new\backend\src\services\kicad.service.ts", "TypeScript", 0, 0, 0, 0, 0, 259, 0, 0, 0, 0, 0, 0, 0, 18, 27, 304
+"e:\wireup.ai - new\backend\src\services\library.service.ts", "TypeScript", 0, 0, 0, 0, 0, 223, 0, 0, 0, 0, 0, 0, 0, 18, 35, 276
+"e:\wireup.ai - new\backend\src\services\model.service.ts", "TypeScript", 0, 0, 0, 0, 0, 122, 0, 0, 0, 0, 0, 0, 0, 20, 25, 167
+"e:\wireup.ai - new\backend\src\services\modelConversion.service.ts", "TypeScript", 0, 0, 0, 0, 0, 169, 0, 0, 0, 0, 0, 0, 0, 30, 24, 223
+"e:\wireup.ai - new\backend\src\services\newflow.agent.ts", "TypeScript", 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 3
+"e:\wireup.ai - new\backend\src\services\pin.service.ts", "TypeScript", 0, 0, 0, 0, 0, 93, 0, 0, 0, 0, 0, 0, 0, 16, 18, 127
+"e:\wireup.ai - new\backend\src\services\pinResolver.service.ts", "TypeScript", 0, 0, 0, 0, 0, 518, 0, 0, 0, 0, 0, 0, 0, 42, 70, 630
+"e:\wireup.ai - new\backend\src\services\pipeline.service.ts", "TypeScript", 0, 0, 0, 0, 0, 81, 0, 0, 0, 0, 0, 0, 0, 41, 22, 144
+"e:\wireup.ai - new\backend\src\services\registry-codegen.service.test.ts", "TypeScript", 0, 0, 0, 0, 0, 42, 0, 0, 0, 0, 0, 0, 0, 6, 10, 58
+"e:\wireup.ai - new\backend\src\services\registry-codegen.service.ts", "TypeScript", 0, 0, 0, 0, 0, 634, 0, 0, 0, 0, 0, 0, 0, 26, 103, 763
+"e:\wireup.ai - new\backend\src\services\registry.services.ts", "TypeScript", 0, 0, 0, 0, 0, 71, 0, 0, 0, 0, 0, 0, 0, 3, 14, 88
+"e:\wireup.ai - new\backend\src\services\shopping.service.ts", "TypeScript", 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 16, 11, 80
+"e:\wireup.ai - new\backend\src\services\snapeda.service.ts", "TypeScript", 0, 0, 0, 0, 0, 81, 0, 0, 0, 0, 0, 0, 0, 7, 7, 95
+"e:\wireup.ai - new\backend\src\services\validation.service.ts", "TypeScript", 0, 0, 0, 0, 0, 404, 0, 0, 0, 0, 0, 0, 0, 41, 59, 504
+"e:\wireup.ai - new\backend\src\services\voice.service.ts", "TypeScript", 0, 0, 0, 0, 0, 381, 0, 0, 0, 0, 0, 0, 0, 6, 60, 447
+"e:\wireup.ai - new\backend\src\services\wokwi-local.service.ts", "TypeScript", 0, 0, 0, 0, 0, 562, 0, 0, 0, 0, 0, 0, 0, 2, 105, 669
+"e:\wireup.ai - new\backend\src\services\wokwi-mcp-client.service.ts", "TypeScript", 0, 0, 0, 0, 0, 111, 0, 0, 0, 0, 0, 0, 0, 3, 25, 139
+"e:\wireup.ai - new\backend\src\services\wokwi-runner.service.ts", "TypeScript", 0, 0, 0, 0, 0, 263, 0, 0, 0, 0, 0, 0, 0, 2, 52, 317
+"e:\wireup.ai - new\backend\src\shared\types\SimulationBundle.ts", "TypeScript", 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 14, 24, 166
+"e:\wireup.ai - new\backend\src\simulation\SimulationCompiler.ts", "TypeScript", 0, 0, 0, 0, 0, 286, 0, 0, 0, 0, 0, 0, 0, 21, 35, 342
+"e:\wireup.ai - new\backend\src\simulation\analyzer\sketchAnalyzer.ts", "TypeScript", 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 4, 6, 53
+"e:\wireup.ai - new\backend\src\simulation\archetype\archetypeScorer.ts", "TypeScript", 0, 0, 0, 0, 0, 69, 0, 0, 0, 0, 0, 0, 0, 1, 6, 76
+"e:\wireup.ai - new\backend\src\simulation\mcu\mcuProfiles.ts", "TypeScript", 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 0, 0, 3, 5, 81
+"e:\wireup.ai - new\backend\src\simulation\peripherals\peripheralRegistry.ts", "TypeScript", 0, 0, 0, 0, 0, 58, 0, 0, 0, 0, 0, 0, 0, 10, 12, 80
+"e:\wireup.ai - new\backend\src\simulation\pins\pinResolver.ts", "TypeScript", 0, 0, 0, 0, 0, 52, 0, 0, 0, 0, 0, 0, 0, 5, 15, 72
+"e:\wireup.ai - new\backend\src\simulation\validation\wiringValidator.ts", "TypeScript", 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 0, 0, 4, 6, 87
+"e:\wireup.ai - new\backend\src\utils\boardLock.ts", "TypeScript", 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 14, 12, 81
+"e:\wireup.ai - new\backend\src\utils\bom.utils.ts", "TypeScript", 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 0, 2, 1, 28
+"e:\wireup.ai - new\backend\src\utils\parseAIResponse.ts", "TypeScript", 0, 0, 0, 0, 0, 76, 0, 0, 0, 0, 0, 0, 0, 26, 17, 119
+"e:\wireup.ai - new\backend\src\utils\validateDiagram.ts", "TypeScript", 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0, 0, 14, 12, 65
+"e:\wireup.ai - new\backend\src\utils\validateSketch.ts", "TypeScript", 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 0, 0, 12, 11, 49
+"e:\wireup.ai - new\backend\storage\models\csa37f72-wlcsp24.glb.json", "JSON", 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2
+"e:\wireup.ai - new\backend\tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 24
+"e:\wireup.ai - new\claude.md", "Markdown", 0, 0, 0, 3530, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 470, 4000
+"e:\wireup.ai - new\drone_1\esp32_firmware.ino", "C++", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 133, 30, 32, 195
+"e:\wireup.ai - new\drone_1\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1889, 0, 0, 16, 290, 2195
+"e:\wireup.ai - new\drone_1\server.py", "Python", 0, 0, 0, 0, 0, 0, 0, 0, 136, 0, 0, 0, 0, 25, 23, 184
+"e:\wireup.ai - new\drone_website_controller_1\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1071, 0, 0, 17, 159, 1247
+"e:\wireup.ai - new\file_churn.js", "JavaScript", 94, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 17, 19, 130
+"e:\wireup.ai - new\frontend\README.md", "Markdown", 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 14, 75
+"e:\wireup.ai - new\frontend\eslint.config.js", "JavaScript", 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 24
+"e:\wireup.ai - new\frontend\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 1, 14
+"e:\wireup.ai - new\frontend\package-lock.json", "JSON", 0, 4567, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 4568
+"e:\wireup.ai - new\frontend\package.json", "JSON", 0, 49, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 49
+"e:\wireup.ai - new\frontend\src\App.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 78, 0, 0, 0, 0, 0, 7, 15, 100
+"e:\wireup.ai - new\frontend\src\assets\react.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1
+"e:\wireup.ai - new\frontend\src\assets\vite.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 2
+"e:\wireup.ai - new\frontend\src\components\AIReasoningPanel\AIReasoningPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 712, 0, 0, 0, 0, 0, 55, 51, 818
+"e:\wireup.ai - new\frontend\src\components\ChatRichText.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 68, 0, 0, 0, 0, 0, 2, 15, 85
+"e:\wireup.ai - new\frontend\src\components\CircuitDiagram\CircuitDiagram.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 538, 0, 0, 0, 0, 0, 54, 56, 648
+"e:\wireup.ai - new\frontend\src\components\CreateProjectModal.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 118, 0, 0, 0, 0, 0, 2, 15, 135
+"e:\wireup.ai - new\frontend\src\components\DesignChat.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 175, 0, 0, 0, 0, 0, 2, 16, 193
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\DiscoveryModal.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 666, 0, 0, 0, 0, 0, 44, 83, 793
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\ConflictResolution.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\MilestoneCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 77, 0, 0, 0, 0, 0, 1, 6, 84
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\ModelSelector.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 170, 0, 0, 0, 0, 0, 10, 14, 194
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\RateLimitTimer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useAutoScroll.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useDiscoverySession.ts", "TypeScript", 0, 0, 0, 0, 0, 109, 0, 0, 0, 0, 0, 0, 0, 6, 25, 140
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useFormulationSocket.ts", "TypeScript", 0, 0, 0, 0, 0, 180, 0, 0, 0, 0, 0, 0, 0, 5, 67, 252
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useSessionRestore.ts", "TypeScript", 0, 0, 0, 0, 0, 188, 0, 0, 0, 0, 0, 0, 0, 6, 39, 233
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\AgentConsole.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 269, 0, 0, 0, 0, 0, 5, 14, 288
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\BomPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 93, 0, 0, 0, 0, 0, 2, 4, 99
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\HardwareAssembly.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 3, 5, 81
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\InspectorPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 0, 6, 129
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\MilestonesPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 0, 3, 28
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\ProgressTracker.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 119, 0, 0, 0, 0, 0, 0, 5, 124
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\ProjectChatPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 293, 0, 0, 0, 0, 0, 9, 20, 322
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\WiringPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\phases\DiscoveryPhase.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 422, 0, 0, 0, 0, 0, 23, 20, 465
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\phases\FormulationPhase.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 751, 0, 0, 0, 0, 0, 51, 72, 874
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\conflict.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 1, 9, 54
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\decision.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 63, 0, 0, 0, 0, 0, 0, 0, 1, 16, 80
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\progress.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 1, 15, 76
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\stage.selectors.ts", "TypeScript", 0, 0, 0, 0, 0, 55, 0, 0, 0, 0, 0, 0, 0, 1, 10, 66
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\services\discoveryApi.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\services\formulationApi.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\services\simulatorApi.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\bom.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\log.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\milestone.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\session.types.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\utils\exportData.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\utils\sessionHydration.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\frontend\src\components\DiscoveryModal\utils\socketEvents.ts", "TypeScript", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1
+"e:\wireup.ai - new\frontend\src\components\Forge3D.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 1018, 0, 0, 0, 0, 0, 17, 69, 1104
+"e:\wireup.ai - new\frontend\src\components\InteractiveNodeGraph.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 414, 0, 0, 0, 0, 0, 33, 52, 499
+"e:\wireup.ai - new\frontend\src\components\PipelineAuditTab.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 399, 0, 0, 0, 0, 0, 13, 30, 442
+"e:\wireup.ai - new\frontend\src\components\ProjectQuestionnaire\ProjectQuestionnaire.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 244, 0, 0, 0, 0, 0, 12, 19, 275
+"e:\wireup.ai - new\frontend\src\components\Simulator3D.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 543, 0, 0, 0, 0, 0, 35, 51, 629
+"e:\wireup.ai - new\frontend\src\components\ThreeViewport.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 550, 0, 0, 0, 0, 0, 83, 87, 720
+"e:\wireup.ai - new\frontend\src\components\WokwiProofLab.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 819, 0, 0, 0, 0, 0, 35, 84, 938
+"e:\wireup.ai - new\frontend\src\components\WokwiSimulator.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 720, 0, 0, 0, 0, 0, 15, 96, 831
+"e:\wireup.ai - new\frontend\src\components\shared\ErrorBoundary.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 160, 0, 0, 0, 0, 0, 4, 17, 181
+"e:\wireup.ai - new\frontend\src\components\shared\ProjectLayout.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 10, 12, 145
+"e:\wireup.ai - new\frontend\src\components\shared\StageNav.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 169, 0, 0, 0, 0, 0, 3, 21, 193
+"e:\wireup.ai - new\frontend\src\components\sim\Avr8jsRunner.ts", "TypeScript", 0, 0, 0, 0, 0, 163, 0, 0, 0, 0, 0, 0, 0, 7, 22, 192
+"e:\wireup.ai - new\frontend\src\components\sim\CodeEditor.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 25, 0, 0, 0, 0, 0, 2, 3, 30
+"e:\wireup.ai - new\frontend\src\components\sim\ComponentLibrary.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 81, 0, 0, 0, 0, 0, 13, 14, 108
+"e:\wireup.ai - new\frontend\src\components\sim\ComponentLibraryData.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 99, 0, 0, 0, 0, 0, 2, 3, 104
+"e:\wireup.ai - new\frontend\src\components\sim\DiagramViewer.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 139, 0, 0, 0, 0, 0, 11, 17, 167
+"e:\wireup.ai - new\frontend\src\components\sim\LibraryManager.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 153, 0, 0, 0, 0, 0, 12, 18, 183
+"e:\wireup.ai - new\frontend\src\components\sim\SerialMonitor.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 89, 0, 0, 0, 0, 0, 12, 12, 113
+"e:\wireup.ai - new\frontend\src\components\sim\SimCanvas.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 153, 0, 0, 0, 0, 0, 3, 19, 175
+"e:\wireup.ai - new\frontend\src\components\sim\SimulatorCard.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 2, 3, 14
+"e:\wireup.ai - new\frontend\src\components\sim\SimulatorWorkspace.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 345, 0, 0, 0, 0, 0, 13, 38, 396
+"e:\wireup.ai - new\frontend\src\components\sim\WireOverlay.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 70, 0, 0, 0, 0, 0, 5, 5, 80
+"e:\wireup.ai - new\frontend\src\components\sim\WirePreview.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 2, 3, 16
+"e:\wireup.ai - new\frontend\src\components\sim\diagramStorage.ts", "TypeScript", 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 4, 10, 67
+"e:\wireup.ai - new\frontend\src\components\sim\types.ts", "TypeScript", 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 2, 6
+"e:\wireup.ai - new\frontend\src\components\ui\PromptInputDynamicGrow.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 263, 0, 0, 0, 0, 0, 2, 22, 287
+"e:\wireup.ai - new\frontend\src\hooks\useCompiler.ts", "TypeScript", 0, 0, 0, 0, 0, 84, 0, 0, 0, 0, 0, 0, 0, 10, 12, 106
+"e:\wireup.ai - new\frontend\src\hooks\useIsMobile.ts", "TypeScript", 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 2, 5, 19
+"e:\wireup.ai - new\frontend\src\hooks\useMicRecorder.ts", "TypeScript", 0, 0, 0, 0, 0, 85, 0, 0, 0, 0, 0, 0, 0, 7, 14, 106
+"e:\wireup.ai - new\frontend\src\hooks\useVoiceGuidance.ts", "TypeScript", 0, 0, 0, 0, 0, 565, 0, 0, 0, 0, 0, 0, 0, 10, 110, 685
+"e:\wireup.ai - new\frontend\src\index.css", "PostCSS", 0, 0, 0, 0, 185, 0, 0, 0, 0, 0, 0, 0, 0, 35, 33, 253
+"e:\wireup.ai - new\frontend\src\lib\axios.ts", "TypeScript", 0, 0, 0, 0, 0, 15, 0, 0, 0, 0, 0, 0, 0, 2, 1, 18
+"e:\wireup.ai - new\frontend\src\lib\firebase.ts", "TypeScript", 0, 0, 0, 0, 0, 19, 0, 0, 0, 0, 0, 0, 0, 3, 5, 27
+"e:\wireup.ai - new\frontend\src\main.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0, 0, 0, 1, 4, 37
+"e:\wireup.ai - new\frontend\src\pages\AssemblyPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 417, 0, 0, 0, 0, 0, 249, 26, 692
+"e:\wireup.ai - new\frontend\src\pages\AuthPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 174, 0, 0, 0, 0, 0, 6, 21, 201
+"e:\wireup.ai - new\frontend\src\pages\BuildNewPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 1296, 0, 0, 0, 0, 0, 70, 110, 1476
+"e:\wireup.ai - new\frontend\src\pages\BuildPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 1256, 0, 0, 0, 0, 0, 49, 56, 1361
+"e:\wireup.ai - new\frontend\src\pages\ComponentsPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 713, 0, 0, 0, 0, 0, 29, 39, 781
+"e:\wireup.ai - new\frontend\src\pages\HeroPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 255, 0, 0, 0, 0, 0, 17, 29, 301
+"e:\wireup.ai - new\frontend\src\pages\HomePage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 982, 0, 0, 0, 0, 0, 5, 88, 1075
+"e:\wireup.ai - new\frontend\src\pages\IdeationPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 586, 0, 0, 0, 0, 0, 24, 30, 640
+"e:\wireup.ai - new\frontend\src\pages\ShoppingPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 282, 0, 0, 0, 0, 0, 13, 19, 314
+"e:\wireup.ai - new\frontend\src\pages\Simulator3DPage.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 624, 0, 0, 0, 0, 0, 29, 75, 728
+"e:\wireup.ai - new\frontend\src\store\useAuthStore.ts", "TypeScript", 0, 0, 0, 0, 0, 118, 0, 0, 0, 0, 0, 0, 0, 1, 21, 140
+"e:\wireup.ai - new\frontend\src\store\useProjectStore.ts", "TypeScript", 0, 0, 0, 0, 0, 628, 0, 0, 0, 0, 0, 0, 0, 69, 76, 773
+"e:\wireup.ai - new\frontend\src\store\useSimulatorStore.ts", "TypeScript", 0, 0, 0, 0, 0, 126, 0, 0, 0, 0, 0, 0, 0, 11, 25, 162
+"e:\wireup.ai - new\frontend\src\store\useThemeStore.ts", "TypeScript", 0, 0, 0, 0, 0, 13, 0, 0, 0, 0, 0, 0, 0, 1, 3, 17
+"e:\wireup.ai - new\frontend\src\styles\desktop.css", "PostCSS", 0, 0, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 2, 6, 28
+"e:\wireup.ai - new\frontend\src\styles\forge3d.css", "PostCSS", 0, 0, 0, 0, 384, 0, 0, 0, 0, 0, 0, 0, 0, 15, 58, 457
+"e:\wireup.ai - new\frontend\src\styles\mobile.css", "PostCSS", 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 0, 8, 14, 87
+"e:\wireup.ai - new\frontend\src\utils\physics.ts", "TypeScript", 0, 0, 0, 0, 0, 247, 0, 0, 0, 0, 0, 0, 0, 45, 62, 354
+"e:\wireup.ai - new\frontend\tsconfig.app.json", "JSON", 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 26
+"e:\wireup.ai - new\frontend\tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8
+"e:\wireup.ai - new\frontend\tsconfig.node.json", "JSON", 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 25
+"e:\wireup.ai - new\frontend\vite.config.ts", "TypeScript", 0, 0, 0, 0, 0, 39, 0, 0, 0, 0, 0, 0, 0, 1, 9, 49
+"e:\wireup.ai - new\gemini.md", "Markdown", 0, 0, 0, 3703, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 537, 4240
+"e:\wireup.ai - new\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 899, 0, 0, 0, 78, 977
+"e:\wireup.ai - new\package-lock.json", "JSON", 0, 843, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 844
+"e:\wireup.ai - new\package.json", "JSON", 0, 11, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 11
+"e:\wireup.ai - new\public\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 0, 0, 0, 97, 337
+"e:\wireup.ai - new\scratch\comment_legacy.js", "JavaScript", 23, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 7, 32
+"e:\wireup.ai - new\scratch\inspect.js", "JavaScript", 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 33
+"e:\wireup.ai - new\scratch\inspect_project.js", "JavaScript", 19, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 25
+"e:\wireup.ai - new\scratch\search.js", "JavaScript", 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 10
+"e:\wireup.ai - new\scripts\dev.cjs", "JavaScript", 56, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 18, 76
+"e:\wireup.ai - new\scripts\kill-ports.js", "JavaScript", 61, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 9, 73
+"e:\wireup.ai - new\server.js", "JavaScript", 36, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 43
+"e:\wireup.ai - new\shared\types\SimulationBundle.ts", "TypeScript", 0, 0, 0, 0, 0, 100, 0, 0, 0, 0, 0, 0, 0, 12, 19, 131
+"e:\wireup.ai - new\virtual-playground\backend\index.js", "JavaScript", 222, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6, 40, 268
+"e:\wireup.ai - new\virtual-playground\backend\package-lock.json", "JSON", 0, 1224, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1225
+"e:\wireup.ai - new\virtual-playground\backend\package.json", "JSON", 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 24
+"e:\wireup.ai - new\virtual-playground\frontend\README.md", "Markdown", 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 14, 75
+"e:\wireup.ai - new\virtual-playground\frontend\eslint.config.js", "JavaScript", 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2, 24
+"e:\wireup.ai - new\virtual-playground\frontend\index.html", "HTML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 13, 0, 0, 0, 1, 14
+"e:\wireup.ai - new\virtual-playground\frontend\package-lock.json", "JSON", 0, 3959, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 3960
+"e:\wireup.ai - new\virtual-playground\frontend\package.json", "JSON", 0, 47, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 48
+"e:\wireup.ai - new\virtual-playground\frontend\postcss.config.js", "JavaScript", 6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 9
+"e:\wireup.ai - new\virtual-playground\frontend\public\favicon.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1
+"e:\wireup.ai - new\virtual-playground\frontend\public\icons.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 1, 25
+"e:\wireup.ai - new\virtual-playground\frontend\src\App.css", "PostCSS", 0, 0, 0, 0, 7, 0, 0, 0, 0, 0, 0, 0, 0, 10, 3, 20
+"e:\wireup.ai - new\virtual-playground\frontend\src\App.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 464, 0, 0, 0, 0, 0, 31, 60, 555
+"e:\wireup.ai - new\virtual-playground\frontend\src\assets\react.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1
+"e:\wireup.ai - new\virtual-playground\frontend\src\assets\vite.svg", "XML", 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 2
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\behavior\BehaviorPlayground.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 1474, 0, 0, 0, 0, 0, 84, 128, 1686
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\editor\CodeEditor.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 98, 0, 0, 0, 0, 0, 6, 9, 113
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\BottomPanel.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 139, 0, 0, 0, 0, 0, 7, 12, 158
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\RightSidebar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 163, 0, 0, 0, 0, 0, 13, 19, 195
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\Sidebar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 123, 0, 0, 0, 0, 0, 6, 13, 142
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\Topbar.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 272, 0, 0, 0, 0, 0, 22, 23, 317
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Arduino.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 141, 0, 0, 0, 0, 0, 17, 19, 177
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Button.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 113, 0, 0, 0, 0, 0, 13, 14, 140
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\ErrorBoundary.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 26, 0, 0, 0, 0, 0, 1, 8, 35
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\LCD16x2.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 97, 0, 0, 0, 0, 0, 9, 10, 116
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\LED.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 108, 0, 0, 0, 0, 0, 13, 13, 134
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Resistor.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 10, 12, 95
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Scene.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 310, 0, 0, 0, 0, 0, 17, 38, 365
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\SchematicView.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 532, 0, 0, 0, 0, 0, 8, 78, 618
+"e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Wire.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 165, 0, 0, 0, 0, 0, 18, 27, 210
+"e:\wireup.ai - new\virtual-playground\frontend\src\data\project.ts", "TypeScript", 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 0, 2, 26
+"e:\wireup.ai - new\virtual-playground\frontend\src\index.css", "PostCSS", 0, 0, 0, 0, 82, 0, 0, 0, 0, 0, 0, 0, 0, 34, 13, 129
+"e:\wireup.ai - new\virtual-playground\frontend\src\main.tsx", "TypeScript JSX", 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 1, 2, 12
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\SimulationEngine.ts", "TypeScript", 0, 0, 0, 0, 0, 149, 0, 0, 0, 0, 0, 0, 0, 1, 33, 183
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\BehaviorConductor.ts", "TypeScript", 0, 0, 0, 0, 0, 259, 0, 0, 0, 0, 0, 0, 0, 19, 32, 310
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\GPIOBus.ts", "TypeScript", 0, 0, 0, 0, 0, 30, 0, 0, 0, 0, 0, 0, 0, 1, 7, 38
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\LogicEngine.ts", "TypeScript", 0, 0, 0, 0, 0, 65, 0, 0, 0, 0, 0, 0, 0, 5, 10, 80
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\SimState.ts", "TypeScript", 0, 0, 0, 0, 0, 11, 0, 0, 0, 0, 0, 0, 0, 1, 2, 14
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\SimulationManifest.ts", "TypeScript", 0, 0, 0, 0, 0, 98, 0, 0, 0, 0, 0, 0, 0, 9, 19, 126
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\AudioPeripheral.ts", "TypeScript", 0, 0, 0, 0, 0, 195, 0, 0, 0, 0, 0, 0, 0, 7, 35, 237
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\BatteryPeripheral.ts", "TypeScript", 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 2, 12, 58
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\BehaviorButtonPeripheral.ts", "TypeScript", 0, 0, 0, 0, 0, 60, 0, 0, 0, 0, 0, 0, 0, 2, 11, 73
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\OLEDPeripheral.ts", "TypeScript", 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 0, 12, 10, 86
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\VirtualFSPeripheral.ts", "TypeScript", 0, 0, 0, 0, 0, 45, 0, 0, 0, 0, 0, 0, 0, 1, 10, 56
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\compiler.ts", "TypeScript", 0, 0, 0, 0, 0, 43, 0, 0, 0, 0, 0, 0, 0, 1, 10, 54
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\cpu.worker.ts", "TypeScript", 0, 0, 0, 0, 0, 477, 0, 0, 0, 0, 0, 0, 0, 6, 100, 583
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\peripherals\ButtonPeripheral.ts", "TypeScript", 0, 0, 0, 0, 0, 73, 0, 0, 0, 0, 0, 0, 0, 0, 21, 94
+"e:\wireup.ai - new\virtual-playground\frontend\src\simulation\peripherals\LCDPeripheral.ts", "TypeScript", 0, 0, 0, 0, 0, 44, 0, 0, 0, 0, 0, 0, 0, 0, 12, 56
+"e:\wireup.ai - new\virtual-playground\frontend\src\store\useProjectStore.ts", "TypeScript", 0, 0, 0, 0, 0, 421, 0, 0, 0, 0, 0, 0, 0, 30, 76, 527
+"e:\wireup.ai - new\virtual-playground\frontend\src\types\project.ts", "TypeScript", 0, 0, 0, 0, 0, 53, 0, 0, 0, 0, 0, 0, 0, 2, 5, 60
+"e:\wireup.ai - new\virtual-playground\frontend\tailwind.config.js", "JavaScript", 25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 1, 29
+"e:\wireup.ai - new\virtual-playground\frontend\tsconfig.app.json", "JSON", 0, 22, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 26
+"e:\wireup.ai - new\virtual-playground\frontend\tsconfig.json", "JSON with Comments", 0, 0, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0, 8
+"e:\wireup.ai - new\virtual-playground\frontend\tsconfig.node.json", "JSON", 0, 21, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 2, 25
+"e:\wireup.ai - new\virtual-playground\frontend\vite.config.ts", "TypeScript", 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 2, 2, 13
+"e:\wireup.ai - new\virtual-playground\package.json", "JSON", 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10
+"e:\wireup.ai - new\virtual-playground\scripts\dev.cjs", "JavaScript", 42, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 14, 57
+"e:\wireup.ai - new\virtual-playground\shared\types\SimulationBundle.ts", "TypeScript", 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 14, 24, 166
+"e:\wireup.ai - new\workflow\package-lock.json", "JSON", 0, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 28
+"e:\wireup.ai - new\workflow\package.json", "JSON", 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 11
+"e:\wireup.ai - new\workflow\progress.json", "JSON", 0, 26, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 26
+"e:\wireup.ai - new\workflow\workflow.js", "JavaScript", 227, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 28, 35, 290
+"Total", "-", 3068, 24556, 636, 9471, 1196, 38764, 84, 28299, 197, 56, 4157, 25, 133, 4838, 12129, 127609

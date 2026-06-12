@@ -1,0 +1,11 @@
+{
+  "name": "wireup-ai",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "node scripts/dev.cjs",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev:backend": "npm --prefix backend run dev",
+    "kill": "node scripts/kill-ports.js"
+  }
+}

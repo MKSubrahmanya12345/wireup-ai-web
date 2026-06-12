@@ -1,0 +1,122 @@
+// ??$$$
+import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GEMINI_AGENT2_TOOLS } from "../../../services/agent2tools.declarations";
+import { LLMResponse, LLMAdapter } from "../../../contracts";
+
+export class GeminiAdapter implements LLMAdapter {
+  private apiKey: string;
+  constructor(apiKey: string) {
+    this.apiKey = apiKey;
+  }
+
+/* old code
+  async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
+*/
+  // ??$$$ newer code
+  async chat(systemPrompt: string, messages: any[], activeToolNames?: string[]): Promise<LLMResponse> {
+    const keys = Array.from(new Set([
+      this.apiKey,
+      process.env.GEMINI_API_KEY_1,
+      process.env.GEMINI_API_KEY_2,
+      process.env.GEMINI_API_KEY
+    ].filter(Boolean) as string[]));
+
+    const contents = messages.map(m => {
+      if (m.role === "function") {
+        // Gemini requires functionResponse.response to be a plain object (Struct),
+        // never a JSON string. The history-pruning step stores content as
+        // JSON.stringify({...}), so we must parse it back here if needed.
+        let responseObj = m.content;
+        // ??$$$ newer code - robust double-serialization and object wrapping handler
+        while (typeof responseObj === "string") {
+          try {
+            const parsed = JSON.parse(responseObj);
+            if (parsed === responseObj) {
+              responseObj = { result: responseObj };
+              break;
+            }
+            responseObj = parsed;
+          } catch {
+            responseObj = { result: responseObj };
+            break;
+          }
+        }
+        if (responseObj === null || typeof responseObj !== "object") {
+          responseObj = { result: responseObj };
+        }
+        return {
+          role: "function",
+          parts: [{
+            functionResponse: {
+              name: m.name,
+              response: responseObj
+            }
+          }]
+        };
+      }
+
+      const role = m.role === "assistant" || m.role === "model" ? "model" : "user";
+      const parts: any[] = [];
+      if (m.content) {
+        parts.push({ text: m.content });
+      }
+      if (m.functionCalls) {
+        m.functionCalls.forEach((fc: any) => {
+          parts.push({
+            functionCall: {
+              name: fc.name,
+              args: fc.args
+            }
+          });
+        });
+      }
+      return { role, parts };
+    });
+
+    // ??$$$ newer code
+    const activeDecls = activeToolNames
+      ? GEMINI_AGENT2_TOOLS.functionDeclarations.filter(t => activeToolNames.includes(t.name))
+      : GEMINI_AGENT2_TOOLS.functionDeclarations;
+
+    let lastError: any = null;
+    for (let i = 0; i < keys.length; i++) {
+      const activeKey = keys[i];
+      try {
+        const genAI = new GoogleGenerativeAI(activeKey);
+        /* old code
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction: systemPrompt,
+          tools: [{ functionDeclarations: GEMINI_AGENT2_TOOLS.functionDeclarations }] as any
+        });
+        */
+        // ??$$$ newer code
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction: systemPrompt,
+          tools: activeDecls.length > 0 ? [{ functionDeclarations: activeDecls }] as any : undefined
+        });
+
+        const result = await model.generateContent({ contents });
+        const response = result.response;
+
+        return {
+          text: () => response.text() || "",
+          functionCalls: () => {
+            const calls = response.functionCalls();
+            if (!calls) return [];
+            return calls.map(c => ({
+              name: c.name,
+              args: c.args
+            }));
+          }
+        };
+      } catch (err: any) {
+        console.warn(`[GeminiAdapter] Attempt ${i + 1} with key prefix ${activeKey.substring(0, 6)} failed:`, err.message || err);
+        lastError = err;
+      }
+    }
+
+    throw lastError || new Error("GeminiAdapter: All API keys exhausted");
+  }
+}

@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>WireUp Registry Visualizer</title>
+
+<style>
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Segoe UI,sans-serif;
+}
+
+body{
+    height:100vh;
+    display:flex;
+    flex-direction:column;
+}
+
+.topbar{
+    padding:10px;
+    border-bottom:1px solid #ddd;
+    display:flex;
+    gap:10px;
+    align-items:center;
+}
+
+.search{
+    flex:1;
+    padding:8px;
+}
+
+.main{
+    flex:1;
+    display:grid;
+    grid-template-columns:350px 1fr;
+    overflow:hidden;
+}
+
+.sidebar{
+    border-right:1px solid #ddd;
+    overflow:auto;
+}
+
+.details{
+    overflow:auto;
+    padding:20px;
+}
+
+.section{
+    background:#f5f5f5;
+    padding:10px;
+    font-weight:bold;
+    border-bottom:1px solid #ddd;
+}
+
+.card{
+    padding:10px;
+    border-bottom:1px solid #eee;
+    cursor:pointer;
+}
+
+.card:hover{
+    background:#f0f0f0;
+}
+
+.name{
+    font-weight:600;
+}
+
+.meta{
+    font-size:12px;
+    color:#666;
+    margin-top:4px;
+}
+
+.tag{
+    display:inline-block;
+    background:#eee;
+    padding:4px 8px;
+    margin:3px;
+    border-radius:5px;
+    font-size:12px;
+}
+
+textarea{
+    width:100%;
+    height:400px;
+    margin-top:10px;
+    font-family:Consolas,monospace;
+}
+
+pre{
+    background:#f7f7f7;
+    padding:10px;
+    border:1px solid #ddd;
+    overflow:auto;
+}
+
+button{
+    padding:8px 12px;
+    cursor:pointer;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+
+    <input type="file" id="fileInput">
+
+    <button id="exportBtn">
+        Export JSON
+    </button>
+
+    <input
+        id="search"
+        class="search"
+        placeholder="Search..."
+    >
+
+</div>
+
+<div class="main">
+
+    <div id="sidebar" class="sidebar"></div>
+
+    <div id="details" class="details">
+        <h2>WireUp Registry</h2>
+        <br>
+        <p>Load componentRegistry.json</p>
+    </div>
+
+</div>
+
+<script>
+
+let registry = {};
+let items = [];
+
+document
+.getElementById("fileInput")
+.addEventListener("change", async (e) => {
+
+    const file = e.target.files[0];
+
+    if(!file) return;
+
+    const text = await file.text();
+
+    registry = JSON.parse(text);
+
+    buildItems();
+
+    renderSidebar();
+});
+
+function buildItems(){
+
+    items = [];
+
+    Object.entries(registry).forEach(([section,data]) => {
+
+        if(typeof data !== "object") return;
+
+        Object.entries(data).forEach(([id,item]) => {
+
+            if(!item || typeof item !== "object") return;
+
+            items.push({
+                section,
+                id,
+                ...item
+            });
+
+        });
+
+    });
+
+}
+
+function renderSidebar(filter=""){
+
+    const sidebar =
+        document.getElementById("sidebar");
+
+    sidebar.innerHTML = "";
+
+    const grouped = {};
+
+    items.forEach(item => {
+
+        const searchText =
+            JSON.stringify(item)
+            .toLowerCase();
+
+        if(
+            filter &&
+            !searchText.includes(filter.toLowerCase())
+        ){
+            return;
+        }
+
+        if(!grouped[item.section]){
+            grouped[item.section] = [];
+        }
+
+        grouped[item.section].push(item);
+
+    });
+
+    Object.entries(grouped).forEach(([section,list]) => {
+
+        const header =
+            document.createElement("div");
+
+        header.className = "section";
+
+        header.innerText =
+            `${section} (${list.length})`;
+
+        sidebar.appendChild(header);
+
+        list.forEach(item => {
+
+            const card =
+                document.createElement("div");
+
+            card.className = "card";
+
+            card.innerHTML = `
+                <div class="name">
+                    ${item.name || item.id}
+                </div>
+
+                <div class="meta">
+                    ${item.category || section}
+                </div>
+            `;
+
+            card.onclick =
+                () => showDetails(item);
+
+            sidebar.appendChild(card);
+
+        });
+
+    });
+
+}
+
+function showDetails(item){
+
+    const details =
+        document.getElementById("details");
+
+    const tags =
+        (item.tags || [])
+        .map(tag =>
+            `<span class="tag">${tag}</span>`
+        )
+        .join("");
+
+    details.innerHTML = `
+        <h1>${item.name || item.id}</h1>
+
+        <br>
+
+        <p><b>ID:</b> ${item.id}</p>
+
+        <p><b>Section:</b> ${item.section}</p>
+
+        <p><b>Category:</b> ${
+            item.category || "-"
+        }</p>
+
+        <br>
+
+        <p>
+            ${item.description || ""}
+        </p>
+
+        <br>
+
+        <h3>Tags</h3>
+
+        ${tags || "No tags"}
+
+        <br><br>
+
+        <h3>Raw JSON</h3>
+
+        <textarea readonly>${JSON.stringify(item,null,2)}</textarea>
+    `;
+}
+
+document
+.getElementById("search")
+.addEventListener("input", e => {
+
+    renderSidebar(e.target.value);
+
+});
+
+document
+.getElementById("exportBtn")
+.addEventListener("click", () => {
+
+    if(!registry || !Object.keys(registry).length){
+        alert("Load registry first");
+        return;
+    }
+
+    const blob = new Blob(
+        [JSON.stringify(registry,null,2)],
+        {
+            type:"application/json"
+        }
+    );
+
+    const a =
+        document.createElement("a");
+
+    a.href =
+        URL.createObjectURL(blob);
+
+    a.download =
+        "componentRegistry.json";
+
+    a.click();
+});
+
+</script>
+
+</body>
+</html>

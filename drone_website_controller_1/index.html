@@ -1,0 +1,1246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>AERO-LINK Remote Controller</title>
+    <!-- ??$$$ - Google Font for sci-fi tech look -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --neon-cyan: #00f3ff;
+            --neon-blue: #0077ff;
+            --neon-red: #ff3b30;
+            --neon-green: #00ff88;
+            --neon-yellow: #ffcc00;
+            --bg-dark: #0a0a0a;
+            --glass-bg: rgba(255, 255, 255, 0.02);
+            --glass-border: rgba(0, 243, 255, 0.15);
+            --text-primary: #e2e8f0;
+            --text-muted: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* Prevents default zooming and scrolling */
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(circle at center, rgba(0, 243, 255, 0.03) 0%, transparent 70%),
+                linear-gradient(rgba(18, 18, 18, 0.3) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(18, 18, 18, 0.3) 1px, transparent 1px);
+            background-size: 100% 100%, 25px 25px, 25px 25px;
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-primary);
+            position: fixed;
+        }
+
+        /* Splash Screen styling */
+        /* ??$$$ - Restore splash screen display for connection diagnostics and dynamic IP input */
+        #splash-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-dark);
+            z-index: 100;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.5s ease;
+        }
+
+        #splash-screen.fade-out {
+            opacity: 0;
+            transform: scale(0.95);
+            pointer-events: none;
+        }
+
+        .splash-container {
+            width: 100%;
+            max-width: 380px;
+            padding: 30px;
+            border-radius: 16px;
+            background: rgba(10, 10, 10, 0.8);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.8), 
+                        0 0 30px rgba(0, 243, 255, 0.05),
+                        inset 0 0 15px rgba(0, 243, 255, 0.02);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        /* Drone logo bounce animation */
+        .drone-logo {
+            filter: drop-shadow(0 0 12px rgba(0, 243, 255, 0.5));
+            animation: levitate 4s ease-in-out infinite, pulse-glow 2.5s ease-in-out infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes levitate {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { filter: drop-shadow(0 0 10px rgba(0, 243, 255, 0.4)); }
+            50% { filter: drop-shadow(0 0 22px rgba(0, 243, 255, 0.75)); }
+        }
+
+        .splash-title {
+            font-size: 26px;
+            font-weight: normal;
+            color: #fff;
+            letter-spacing: 5px;
+            text-shadow: 0 0 12px rgba(0, 243, 255, 0.6);
+            margin-bottom: 5px;
+        }
+
+        .splash-subtitle {
+            font-size: 11px;
+            color: var(--text-muted);
+            letter-spacing: 3px;
+            margin-bottom: 35px;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            width: 100%;
+            margin-bottom: 25px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .input-label {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .ip-input {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(0, 243, 255, 0.2);
+            border-radius: 8px;
+            color: var(--neon-cyan);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 18px;
+            text-align: center;
+            outline: none;
+            letter-spacing: 1.5px;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.03);
+        }
+
+        .ip-input:focus {
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 18px rgba(0, 243, 255, 0.25), inset 0 0 8px rgba(0, 243, 255, 0.05);
+        }
+
+        .connect-btn {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, var(--neon-blue) 0%, var(--neon-cyan) 100%);
+            color: #050505;
+            font-weight: bold;
+            border: none;
+            font-size: 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            box-shadow: 0 4px 20px rgba(0, 243, 255, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .connect-btn:disabled {
+            background: #222 !important;
+            color: #666 !important;
+            box-shadow: none !important;
+            cursor: not-allowed;
+        }
+
+        .connect-btn:not(:disabled):active {
+            transform: scale(0.98);
+            box-shadow: 0 2px 10px rgba(0, 243, 255, 0.4);
+        }
+
+        .status-msg {
+            margin-top: 20px;
+            font-size: 12px;
+            line-height: 1.5;
+            min-height: 36px;
+            letter-spacing: 1px;
+        }
+
+        .status-msg.info {
+            color: var(--neon-cyan);
+            text-shadow: 0 0 5px rgba(0, 243, 255, 0.3);
+        }
+
+        .status-msg.error {
+            color: var(--neon-red);
+            text-shadow: 0 0 5px rgba(255, 59, 48, 0.3);
+        }
+
+        /* Controller Screen Layout */
+        /* ??$$$ - Changed default opacity to 1 since splash is bypassed */
+        #controller-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            opacity: 1;
+            padding: 15px;
+            box-sizing: border-box;
+            background-color: var(--bg-dark);
+        }
+
+        #controller-screen.visible {
+            opacity: 1;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Top HUD Bar */
+        .hud-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 20px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            height: 55px;
+            flex-shrink: 0;
+        }
+
+        .hud-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .flex-start { align-items: flex-start; }
+        .flex-center { align-items: center; }
+        .flex-end { align-items: flex-end; }
+
+        .hud-label {
+            font-size: 9px;
+            color: var(--text-muted);
+            letter-spacing: 1.5px;
+            margin-bottom: 3px;
+        }
+
+        .hud-value {
+            font-size: 14px;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 5px rgba(0, 243, 255, 0.35);
+            font-weight: bold;
+            transition: color 0.3s;
+        }
+
+        .hud-value.good {
+            color: var(--neon-green);
+            text-shadow: 0 0 5px rgba(0, 255, 136, 0.35);
+        }
+        
+        .hud-value.warn {
+            color: var(--neon-yellow);
+            text-shadow: 0 0 5px rgba(255, 204, 0, 0.35);
+        }
+
+        .hud-value.critical {
+            color: var(--neon-red);
+            text-shadow: 0 0 5px rgba(255, 59, 48, 0.35);
+        }
+
+        .hud-value.offline {
+            color: #555 !important;
+            text-shadow: none !important;
+        }
+
+        .signal-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #hud-status-text {
+            font-size: 12px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot.connected {
+            background-color: var(--neon-green);
+            box-shadow: 0 0 8px var(--neon-green);
+        }
+
+        .dot.connecting {
+            background-color: var(--neon-yellow);
+            box-shadow: 0 0 8px var(--neon-yellow);
+            animation: pulse-flash 1s infinite alternate;
+        }
+
+        .dot.disconnected {
+            background-color: var(--neon-red);
+            box-shadow: 0 0 8px var(--neon-red);
+        }
+
+        @keyframes pulse-flash {
+            0% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+
+        /* Joysticks Panel */
+        .joystick-container {
+            display: flex;
+            flex-grow: 1;
+            justify-content: space-around;
+            align-items: center;
+            padding: 10px 0;
+            gap: 20px;
+        }
+
+        .joystick-zone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            height: 100%;
+        }
+
+        .joystick-label {
+            font-size: 11px;
+            color: #555;
+            letter-spacing: 2.5px;
+            margin-bottom: 12px;
+            font-weight: bold;
+        }
+
+        .joystick-track {
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.015);
+            border: 2px solid rgba(0, 243, 255, 0.12);
+            box-shadow: 0 0 25px rgba(0, 0, 0, 0.7), inset 0 0 20px rgba(0, 243, 255, 0.03);
+            position: relative;
+            backdrop-filter: blur(5px);
+            -webkit-backdrop-filter: blur(5px);
+            touch-action: none;
+            transition: border-color 0.3s, box-shadow 0.3s;
+        }
+
+        .joystick-track.active {
+            border-color: rgba(0, 243, 255, 0.35);
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.8), 
+                        0 0 15px rgba(0, 243, 255, 0.1),
+                        inset 0 0 20px rgba(0, 243, 255, 0.05);
+        }
+
+        /* Grid lines in track */
+        .crosshair-h {
+            position: absolute;
+            top: 50%;
+            left: 8%;
+            right: 8%;
+            height: 1px;
+            border-top: 1px dashed rgba(0, 243, 255, 0.12);
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        .crosshair-v {
+            position: absolute;
+            left: 50%;
+            top: 8%;
+            bottom: 8%;
+            width: 1px;
+            border-left: 1px dashed rgba(0, 243, 255, 0.12);
+            transform: translateX(-50%);
+            pointer-events: none;
+        }
+
+        .deadzone-indicator {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 1px dashed rgba(0, 243, 255, 0.18);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .joystick-knob {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%, #00f3ff 0%, #005580 70%, #001f33 100%);
+            box-shadow: 0 0 22px rgba(0, 243, 255, 0.75), inset 0 0 6px rgba(255,255,255,0.25);
+            position: absolute;
+            top: calc(50% - 32px);
+            left: calc(50% - 32px);
+            cursor: pointer;
+            touch-action: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            will-change: transform;
+        }
+
+        .joystick-knob.snapping {
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .knob-center {
+            width: 8px;
+            height: 8px;
+            background-color: #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #ffffff;
+            opacity: 0.85;
+        }
+
+        .axis-readout {
+            margin-top: 15px;
+            font-size: 11px;
+            color: #555;
+            display: flex;
+            gap: 15px;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .axis-readout span span {
+            color: var(--neon-cyan);
+            font-weight: bold;
+            display: inline-block;
+            width: 32px;
+            text-align: right;
+        }
+
+        /* Bottom Controls Bar */
+        .bottom-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 70px;
+            background: rgba(10, 10, 10, 0.7);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 0 20px;
+            box-shadow: 0 -5px 25px rgba(0,0,0,0.6);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            flex-shrink: 0;
+            gap: 10px;
+        }
+
+        .bottom-left, .bottom-right {
+            width: 30%;
+            display: flex;
+            align-items: center;
+        }
+        .bottom-left { justify-content: flex-start; }
+        .bottom-right { justify-content: flex-end; }
+        .bottom-center {
+            width: 40%;
+            display: flex;
+            justify-content: center;
+        }
+
+        .control-btn {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 16px;
+            border-radius: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(0, 243, 255, 0.25);
+            color: #bbb;
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 5px rgba(0, 243, 255, 0.02);
+            outline: none;
+        }
+
+        .control-btn.unlocked {
+            color: var(--neon-cyan);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 12px rgba(0, 243, 255, 0.15);
+        }
+
+        .control-btn.locked {
+            color: var(--neon-red);
+            border-color: var(--neon-red);
+            box-shadow: 0 0 12px rgba(255, 59, 48, 0.25);
+            background: rgba(255, 59, 48, 0.04);
+        }
+
+        .control-btn:active {
+            transform: scale(0.96);
+        }
+
+        .reset-btn {
+            padding: 12px 24px;
+            background: rgba(255, 59, 48, 0.05);
+            border: 1px solid var(--neon-red);
+            color: #fff;
+            font-weight: bold;
+            border-radius: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 2px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 59, 48, 0.25);
+            transition: all 0.3s ease;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .reset-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 25px rgba(255, 59, 48, 0.6);
+            background: rgba(255, 59, 48, 0.2);
+        }
+
+        .brand-text {
+            font-size: 9px;
+            color: #444;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        /* Responsive Scaling for Small/Medium viewport widths */
+        @media (max-width: 480px) {
+            .joystick-track {
+                width: 170px;
+                height: 170px;
+            }
+            .joystick-knob {
+                width: 56px;
+                height: 56px;
+                top: calc(50% - 28px);
+                left: calc(50% - 28px);
+            }
+            .hud-bar {
+                padding: 10px 12px;
+            }
+            .bottom-bar {
+                padding: 0 12px;
+            }
+            .control-btn {
+                padding: 10px 10px;
+            }
+            .reset-btn {
+                padding: 12px 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ??$$$ - Splash / Connection Screen -->
+    <div id="splash-screen">
+        <div class="splash-container">
+            <!-- Quadcopter logo -->
+            <svg viewBox="0 0 100 100" width="100" height="100" class="drone-logo">
+                <circle cx="50" cy="50" r="10" fill="none" stroke="var(--neon-cyan)" stroke-width="2.5" />
+                <circle cx="50" cy="50" r="3.5" fill="var(--neon-cyan)" />
+                <line x1="25" y1="25" x2="75" y2="75" stroke="var(--neon-cyan)" stroke-width="3.5" stroke-linecap="round" opacity="0.8" />
+                <line x1="75" y1="25" x2="25" y2="75" stroke="var(--neon-cyan)" stroke-width="3.5" stroke-linecap="round" opacity="0.8" />
+                
+                <!-- Front Rotors (Cyan/Green Glow) -->
+                <circle cx="25" cy="25" r="9" fill="none" stroke="var(--neon-cyan)" stroke-width="1.5" stroke-dasharray="3,2" />
+                <circle cx="25" cy="25" r="2" fill="var(--neon-cyan)" />
+                <circle cx="75" cy="25" r="9" fill="none" stroke="var(--neon-cyan)" stroke-width="1.5" stroke-dasharray="3,2" />
+                <circle cx="75" cy="25" r="2" fill="var(--neon-cyan)" />
+                
+                <!-- Rear Rotors (Red Glow) -->
+                <circle cx="25" cy="75" r="9" fill="none" stroke="var(--neon-red)" stroke-width="1.5" stroke-dasharray="3,2" />
+                <circle cx="25" cy="75" r="2" fill="var(--neon-red)" />
+                <circle cx="75" cy="75" r="9" fill="none" stroke="var(--neon-red)" stroke-width="1.5" stroke-dasharray="3,2" />
+                <circle cx="75" cy="75" r="2" fill="var(--neon-red)" />
+                
+                <!-- Direction Pointer -->
+                <polygon points="50,30 46,37 54,37" fill="var(--neon-cyan)" />
+            </svg>
+
+            <h1 class="splash-title">AERO-LINK</h1>
+            <p class="splash-subtitle">Drone Control Link</p>
+
+            <div class="input-group">
+                <span class="input-label">Simulator IP Address</span>
+                <input type="text" id="ip-input" class="ip-input" placeholder="192.168.1.XX" autocomplete="off" spellcheck="false">
+            </div>
+
+            <button id="connect-btn" class="connect-btn">Establish Link</button>
+            <div id="status-msg" class="status-msg">Ready for transmission connection.</div>
+        </div>
+    </div>
+
+    <!-- ??$$$ - Controller UI Screen -->
+    <div id="controller-screen">
+        <!-- Top HUD Panel -->
+        <div class="hud-bar">
+            <div class="hud-item flex-start">
+                <span class="hud-label">SIGNAL</span>
+                <div class="signal-indicator">
+                    <span id="hud-status-dot" class="dot disconnected"></span>
+                    <span id="hud-status-text">DISCONNECTED</span>
+                </div>
+            </div>
+            <div class="hud-item flex-center">
+                <span class="hud-label">LATENCY</span>
+                <span id="hud-latency" class="hud-value offline">--- ms</span>
+            </div>
+            <div class="hud-item flex-end">
+                <span class="hud-label">BATTERY</span>
+                <span id="hud-battery" class="hud-value offline">--%</span>
+            </div>
+        </div>
+
+        <!-- Joysticks Area -->
+        <div class="joystick-container">
+            <!-- Left Stick Column: Throttle & Yaw -->
+            <div id="left-column" class="joystick-zone">
+                <div class="joystick-label">THROTTLE / YAW</div>
+                <div id="left-track" class="joystick-track">
+                    <div class="crosshair-h"></div>
+                    <div class="crosshair-v"></div>
+                    <div class="deadzone-indicator"></div>
+                    <div id="left-knob" class="joystick-knob">
+                        <div class="knob-center"></div>
+                    </div>
+                </div>
+                <div class="axis-readout">
+                    <span>THR:<span id="val-throttle">0.00</span></span>
+                    <span>YAW:<span id="val-yaw">0.00</span></span>
+                </div>
+            </div>
+
+            <!-- Right Stick Column: Pitch & Roll -->
+            <div id="right-column" class="joystick-zone">
+                <div class="joystick-label">PITCH / ROLL</div>
+                <div id="right-track" class="joystick-track">
+                    <div class="crosshair-h"></div>
+                    <div class="crosshair-v"></div>
+                    <div class="deadzone-indicator"></div>
+                    <div id="right-knob" class="joystick-knob">
+                        <div class="knob-center"></div>
+                    </div>
+                </div>
+                <div class="axis-readout">
+                    <span>PIT:<span id="val-pitch">0.00</span></span>
+                    <span>ROL:<span id="val-roll">0.00</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Controls Bar -->
+        <div class="bottom-bar">
+            <!-- Lock/Unlock toggle -->
+            <div class="bottom-left">
+                <button id="lock-btn" class="control-btn unlocked">
+                    <!-- Padlock SVG -->
+                    <svg id="lock-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Open Shackle path by default -->
+                        <path id="lock-shackle" d="M7 11V7a5 5 0 0 1 9.9-1" />
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    </svg>
+                    <span id="lock-text">UNLOCKED</span>
+                </button>
+            </div>
+            
+            <!-- Centered reset button -->
+            <div class="bottom-center">
+                <button id="reset-btn" class="reset-btn">RESET SIM</button>
+            </div>
+            
+            <!-- Right watermark info -->
+            <div class="bottom-right">
+                <span class="brand-text">AERO-LINK RC</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ??$$$ - Controller Logic with robust connection loops, joystick kinematics, and feedback
+
+        // DOM Elements
+        const splashScreen = document.getElementById('splash-screen');
+        const controllerScreen = document.getElementById('controller-screen');
+        const ipInput = document.getElementById('ip-input');
+        const connectBtn = document.getElementById('connect-btn');
+        const statusMsg = document.getElementById('status-msg');
+        
+        const hudStatusDot = document.getElementById('hud-status-dot');
+        const hudStatusText = document.getElementById('hud-status-text');
+        const hudLatency = document.getElementById('hud-latency');
+        const hudBattery = document.getElementById('hud-battery');
+        
+        const valThrottle = document.getElementById('val-throttle');
+        const valYaw = document.getElementById('val-yaw');
+        const valPitch = document.getElementById('val-pitch');
+        const valRoll = document.getElementById('val-roll');
+        
+        const lockBtn = document.getElementById('lock-btn');
+        const lockText = document.getElementById('lock-text');
+        const lockShackle = document.getElementById('lock-shackle');
+        const resetBtn = document.getElementById('reset-btn');
+
+        // Joystick configuration state models
+        const leftStick = {
+            column: document.getElementById('left-column'),
+            track: document.getElementById('left-track'),
+            knob: document.getElementById('left-knob'),
+            touchId: null,
+            centerX: 0,
+            centerY: 0,
+            x: 0, 
+            y: 0,
+            maxRadius: 70,
+            deadzone: 10
+        };
+
+        const rightStick = {
+            column: document.getElementById('right-column'),
+            track: document.getElementById('right-track'),
+            knob: document.getElementById('right-knob'),
+            touchId: null,
+            centerX: 0,
+            centerY: 0,
+            x: 0,
+            y: 0,
+            maxRadius: 70,
+            deadzone: 10
+        };
+
+        // System variables
+        let socket = null;
+        /*
+        let lastIp = localStorage.getItem('drone_sim_ip') || '';
+        */
+        // ??$$$ - Dynamic simulator IP checking, defaults to window.location.hostname
+        let lastIp = window.location.hostname || localStorage.getItem('drone_sim_ip') || '192.168.1.33';
+        // let lastIp = '192.168.1.33'; // Commented old hardcoded value
+        let inputLocked = false;
+        let transmitTimer = null;
+        let connectionTimeout = null;
+        let lastAckReceived = 0;
+        let isReconnecting = false;
+        let targetHostIp = '';
+
+        // Prevent dragging on body
+        document.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+        // Disable context menu to prevent touch issues
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+        // Initialize IP Input
+        if (lastIp) {
+            ipInput.value = lastIp;
+        }
+
+        // Haptic Feedback Helper
+        function triggerHaptic(duration) {
+            if (navigator.vibrate) {
+                try {
+                    navigator.vibrate(duration);
+                } catch(e) {}
+            }
+        }
+
+        // Setup Joystick dimensions dynamically
+        function initStickProperties(stick) {
+            const trackRect = stick.track.getBoundingClientRect();
+            const knobRect = stick.knob.getBoundingClientRect();
+            // Max distance the knob center can travel from the track center
+            stick.maxRadius = (trackRect.width - knobRect.width) / 2;
+            stick.deadzone = trackRect.width * 0.08; // 8% deadzone
+        }
+
+        function updateStickCenter(stick) {
+            const rect = stick.track.getBoundingClientRect();
+            stick.centerX = rect.left + rect.width / 2;
+            stick.centerY = rect.top + rect.height / 2;
+        }
+
+        // Joystick Visual & Kinematic movements
+        function moveJoystick(stick, clientX, clientY) {
+            let dx = clientX - stick.centerX;
+            let dy = clientY - stick.centerY;
+            
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > stick.maxRadius) {
+                dx = (dx / distance) * stick.maxRadius;
+                dy = (dy / distance) * stick.maxRadius;
+            }
+            
+            // Render knob position
+            stick.knob.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+            
+            // Calculate normalized axes (-1.0 to 1.0) with scaled deadzone
+            if (distance < stick.deadzone) {
+                stick.x = 0;
+                stick.y = 0;
+            } else {
+                const scale = (Math.min(distance, stick.maxRadius) - stick.deadzone) / (stick.maxRadius - stick.deadzone);
+                stick.x = (dx / distance) * scale;
+                stick.y = (dy / distance) * scale;
+            }
+
+            // Update local axis printouts
+            updateReadouts();
+        }
+
+        function resetJoystick(stick) {
+            stick.touchId = null;
+            stick.x = 0;
+            stick.y = 0;
+            stick.knob.classList.add('snapping');
+            stick.knob.style.transform = 'translate3d(0px, 0px, 0)';
+            stick.track.classList.remove('active');
+            updateReadouts();
+        }
+
+        function updateReadouts() {
+            // Left stick: throttle Y (inverted), yaw X
+            valThrottle.textContent = (-leftStick.y).toFixed(2);
+            valYaw.textContent = leftStick.x.toFixed(2);
+            
+            // Right stick: pitch Y (direct, drag up = forward = negative), roll X
+            valPitch.textContent = rightStick.y.toFixed(2);
+            valRoll.textContent = rightStick.x.toFixed(2);
+        }
+
+        // Multi-touch Event Handlers
+        function handleTouchStart(e) {
+            // ??$$$ - Allow default interaction on buttons/inputs (critical for mobile taps)
+            if (e.target.closest('button') || e.target.closest('input')) {
+                return;
+            }
+            e.preventDefault();
+            
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                const target = touch.target;
+                
+                // Identify target zone
+                const isLeftTouched = leftStick.column.contains(target);
+                const isRightTouched = rightStick.column.contains(target);
+                
+                if (isLeftTouched && leftStick.touchId === null) {
+                    leftStick.touchId = touch.identifier;
+                    leftStick.knob.classList.remove('snapping');
+                    leftStick.track.classList.add('active');
+                    updateStickCenter(leftStick);
+                    initStickProperties(leftStick);
+                    moveJoystick(leftStick, touch.clientX, touch.clientY);
+                    triggerHaptic(15);
+                } else if (isRightTouched && rightStick.touchId === null) {
+                    rightStick.touchId = touch.identifier;
+                    rightStick.knob.classList.remove('snapping');
+                    rightStick.track.classList.add('active');
+                    updateStickCenter(rightStick);
+                    initStickProperties(rightStick);
+                    moveJoystick(rightStick, touch.clientX, touch.clientY);
+                    triggerHaptic(15);
+                }
+            }
+        }
+
+        function handleTouchMove(e) {
+            // ??$$$ - Allow default interaction on buttons/inputs (critical for mobile taps)
+            if (e.target.closest('button') || e.target.closest('input')) {
+                return;
+            }
+            e.preventDefault();
+            
+            for (let i = 0; i < e.touches.length; i++) {
+                const touch = e.touches[i];
+                
+                if (touch.identifier === leftStick.touchId) {
+                    moveJoystick(leftStick, touch.clientX, touch.clientY);
+                } else if (touch.identifier === rightStick.touchId) {
+                    moveJoystick(rightStick, touch.clientX, touch.clientY);
+                }
+            }
+        }
+
+        function handleTouchEnd(e) {
+            // ??$$$ - Allow default interaction on buttons/inputs (critical for mobile taps)
+            if (e.target.closest('button') || e.target.closest('input')) {
+                return;
+            }
+            e.preventDefault();
+            
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                const touch = e.changedTouches[i];
+                
+                if (touch.identifier === leftStick.touchId) {
+                    resetJoystick(leftStick);
+                } else if (touch.identifier === rightStick.touchId) {
+                    resetJoystick(rightStick);
+                }
+            }
+        }
+
+        // Mouse Fallbacks for Simulator Web Interface Testing
+        let activeMouseStick = null;
+
+        function handleMouseDown(stick, e) {
+            e.preventDefault();
+            activeMouseStick = stick;
+            stick.knob.classList.remove('snapping');
+            stick.track.classList.add('active');
+            updateStickCenter(stick);
+            initStickProperties(stick);
+            moveJoystick(stick, e.clientX, e.clientY);
+            triggerHaptic(15);
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+        }
+
+        function handleMouseMove(e) {
+            if (activeMouseStick) {
+                moveJoystick(activeMouseStick, e.clientX, e.clientY);
+            }
+        }
+
+        function handleMouseUp(e) {
+            if (activeMouseStick) {
+                resetJoystick(activeMouseStick);
+                activeMouseStick = null;
+            }
+            document.removeEventListener('mousemove', handleMouseMove);
+            document.removeEventListener('mouseup', handleMouseUp);
+        }
+
+        // Event listener bindings for visual components
+        leftStick.track.addEventListener('mousedown', (e) => handleMouseDown(leftStick, e));
+        rightStick.track.addEventListener('mousedown', (e) => handleMouseDown(rightStick, e));
+        
+        document.addEventListener('touchstart', handleTouchStart, { passive: false });
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { passive: false });
+        document.addEventListener('touchcancel', handleTouchEnd, { passive: false });
+
+        window.addEventListener('resize', () => {
+            if (controllerScreen.classList.contains('visible')) {
+                updateStickCenter(leftStick);
+                initStickProperties(leftStick);
+                updateStickCenter(rightStick);
+                initStickProperties(rightStick);
+            }
+        });
+
+        // Connection Action Handler
+        connectBtn.addEventListener('click', () => {
+            const ip = ipInput.value.trim();
+            if (!ip) {
+                showError("Please enter a valid IP address.");
+                return;
+            }
+            
+            // Validate basic IP format or allow localhost
+            const ipPattern = /^([0-9]{1,3}\.){3}[0-9]{1,3}$/;
+            if (ip !== 'localhost' && !ipPattern.test(ip)) {
+                showError("Invalid IP address format. (e.g. 192.168.1.10)");
+                return;
+            }
+            
+            localStorage.setItem('drone_sim_ip', ip);
+            targetHostIp = ip;
+            connectToRelay(ip);
+        });
+
+        function connectToRelay(ip) {
+            connectBtn.disabled = true;
+            statusMsg.className = "status-msg info";
+            statusMsg.textContent = "ESTABLISHING TELEMETRY LINK...";
+            
+            // Close any existing sockets
+            if (socket) {
+                try { socket.close(); } catch(e) {}
+            }
+
+            // Create Web Socket client
+            const wsUrl = `ws://${ip}:8765`;
+            socket = new WebSocket(wsUrl);
+
+            // Timeout timer
+            connectionTimeout = setTimeout(() => {
+                if (socket.readyState !== WebSocket.OPEN) {
+                    socket.close();
+                    showError("LINK TIMEOUT. IS THE RELAY RUNNING?");
+                    triggerHaptic(300);
+                }
+            }, 4000);
+
+            socket.onopen = () => {
+                clearTimeout(connectionTimeout);
+                triggerHaptic([80, 50, 80]);
+                isReconnecting = false;
+                
+                // Show controller screen and hide splash screen
+                splashScreen.classList.add('fade-out');
+                controllerScreen.classList.remove('hidden');
+                setTimeout(() => {
+                    controllerScreen.classList.add('visible');
+                    // Initialize joystick centers once coordinates render
+                    updateStickCenter(leftStick);
+                    initStickProperties(leftStick);
+                    updateStickCenter(rightStick);
+                    initStickProperties(rightStick);
+                }, 50);
+
+                // Update HUD Status
+                hudStatusDot.className = "dot connected";
+                hudStatusText.textContent = "CONNECTED";
+                hudStatusText.style.color = "var(--neon-green)";
+
+                // Start transmission loop
+                startTelemetryStream();
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.action === "ack" && data.ts !== undefined) {
+                        const now = Date.now();
+                        const rtt = now - data.ts;
+                        lastAckReceived = now;
+                        
+                        // Update HUD latency
+                        hudLatency.classList.remove('offline');
+                        hudLatency.textContent = `${rtt} ms`;
+                        if (rtt < 50) {
+                            hudLatency.className = "hud-value good";
+                        } else if (rtt < 150) {
+                            hudLatency.className = "hud-value warn";
+                        } else {
+                            hudLatency.className = "hud-value critical";
+                        }
+
+                        // Update HUD battery
+                        if (data.battery !== undefined) {
+                            hudBattery.classList.remove('offline');
+                            hudBattery.textContent = `${data.battery}%`;
+                            if (data.battery > 50) {
+                                hudBattery.className = "hud-value good";
+                            } else if (data.battery > 20) {
+                                hudBattery.className = "hud-value warn";
+                            } else {
+                                hudBattery.className = "hud-value critical";
+                            }
+                        }
+                    }
+                } catch(e) {}
+            };
+
+            socket.onclose = () => {
+                clearTimeout(connectionTimeout);
+                stopTelemetryStream();
+                
+                // Set HUD status to disconnected or reconnecting
+                hudStatusDot.className = "dot disconnected";
+                hudStatusText.textContent = "DISCONNECTED";
+                hudStatusText.style.color = "var(--neon-red)";
+                
+                hudLatency.className = "hud-value offline";
+                hudLatency.textContent = "--- ms";
+                hudBattery.className = "hud-value offline";
+                hudBattery.textContent = "--%";
+
+                // Auto reconnect loop if we already transitioned
+                if (controllerScreen.classList.contains('visible') && !isReconnecting) {
+                    isReconnecting = true;
+                    hudStatusDot.className = "dot connecting";
+                    hudStatusText.textContent = "RECONNECTING";
+                    hudStatusText.style.color = "var(--neon-yellow)";
+                    triggerHaptic([200, 100, 200]);
+                    
+                    // Attempt background reconnects
+                    setTimeout(reconnectBackground, 2000);
+                } else if (!isReconnecting) {
+                    showError("LINK DISCONNECTED. CHECK NETWORK CONFIG.");
+                    connectBtn.disabled = false;
+                }
+            };
+
+            socket.onerror = () => {
+                // let onclose handle state transition
+            };
+        }
+
+        function reconnectBackground() {
+            if (!isReconnecting) return;
+            
+            const wsUrl = `ws://${targetHostIp}:8765`;
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                triggerHaptic([80, 50, 80]);
+                isReconnecting = false;
+                
+                hudStatusDot.className = "dot connected";
+                hudStatusText.textContent = "CONNECTED";
+                hudStatusText.style.color = "var(--neon-green)";
+                
+                startTelemetryStream();
+            };
+
+            socket.onmessage = socket.onmessage; // Keep the same handler
+            
+            socket.onclose = () => {
+                if (isReconnecting) {
+                    // Try again in 2 seconds
+                    setTimeout(reconnectBackground, 2000);
+                }
+            };
+        }
+
+        function showError(msg) {
+            statusMsg.className = "status-msg error";
+            statusMsg.textContent = msg;
+            connectBtn.disabled = false;
+        }
+
+        // Telemetry Stream Emitters
+        function startTelemetryStream() {
+            stopTelemetryStream();
+            
+            // Send packets at 30Hz (~33ms intervals)
+            transmitTimer = setInterval(transmitTelemetry, 33);
+            
+            // Check latency timeout every 200ms
+            latencyTimeoutCheck = setInterval(() => {
+                if (Date.now() - lastAckReceived > 2000) {
+                    hudLatency.className = "hud-value offline";
+                    hudLatency.textContent = "--- ms";
+                    hudBattery.className = "hud-value offline";
+                    hudBattery.textContent = "--%";
+                }
+            }, 200);
+        }
+
+        function stopTelemetryStream() {
+            if (transmitTimer) {
+                clearInterval(transmitTimer);
+                transmitTimer = null;
+            }
+            if (window.latencyTimeoutCheck) {
+                clearInterval(latencyTimeoutCheck);
+                latencyTimeoutCheck = null;
+            }
+        }
+
+        function transmitTelemetry() {
+            if (!socket || socket.readyState !== WebSocket.OPEN) return;
+
+            let payload;
+            
+            if (inputLocked) {
+                // When input is locked, transmit neutral values but keep timestamps/heartbeat active
+                payload = {
+                    throttle: 0.0,
+                    yaw: 0.0,
+                    pitch: 0.0,
+                    roll: 0.0,
+                    ts: Date.now()
+                };
+            } else {
+                // Invert leftStick Y so pushing forward translates to positive throttle
+                // Right stick Y remains direct (pushing forward translates to negative pitch)
+                payload = {
+                    throttle: parseFloat((-leftStick.y).toFixed(3)),
+                    yaw: parseFloat(leftStick.x.toFixed(3)),
+                    pitch: parseFloat(rightStick.y.toFixed(3)),
+                    roll: parseFloat(rightStick.x.toFixed(3)),
+                    ts: Date.now()
+                };
+            }
+
+            try {
+                socket.send(JSON.stringify(payload));
+            } catch(e) {}
+        }
+
+        // Lock / Unlock Toggle Action
+        lockBtn.addEventListener('click', () => {
+            inputLocked = !inputLocked;
+            triggerHaptic(80);
+            
+            if (inputLocked) {
+                lockBtn.className = "control-btn locked";
+                lockText.textContent = "LOCKED";
+                
+                // Animate lock shackle SVG to closed (modify d attribute)
+                lockShackle.setAttribute("d", "M7 11V7a5 5 0 0 1 10 0v4");
+            } else {
+                lockBtn.className = "control-btn unlocked";
+                lockText.textContent = "UNLOCKED";
+                
+                // Animate lock shackle SVG to open (modify d attribute)
+                lockShackle.setAttribute("d", "M7 11V7a5 5 0 0 1 9.9-1");
+            }
+        });
+
+        // Reset Button Event
+        resetBtn.addEventListener('click', () => {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                triggerHaptic(150);
+                try {
+                    socket.send(JSON.stringify({ action: "reset" }));
+                } catch(e) {}
+            }
+        });
+
+        // ??$$$ - Auto-connect to simulator relay on startup
+        connectToRelay(lastIp);
+    </script>
+</body>
+</html>

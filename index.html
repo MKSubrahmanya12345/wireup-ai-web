@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Wireup · Component Testbed</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600&family=Inter:wght@300;400;500&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+
+  :root{
+    --bg:#0a0c10;
+    --surface:#10141c;
+    --surface2:#171c28;
+    --border:#1e2535;
+    --border2:#2a3348;
+    --text:#e2e8f0;
+    --muted:#64748b;
+    --accent:#3b82f6;
+    --accent2:#06b6d4;
+    --warn:#f59e0b;
+    --success:#10b981;
+    --danger:#ef4444;
+    --mono:'JetBrains Mono',monospace;
+    --sans:'Inter',sans-serif;
+  }
+
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    font-size:13px;
+    height:100vh;
+    overflow:hidden;
+    display:grid;
+    grid-template-rows:40px 1fr;
+    grid-template-columns:300px 1fr 280px;
+    grid-template-areas:
+      "topbar topbar topbar"
+      "left   canvas right";
+  }
+
+  /* TOPBAR */
+  #topbar{
+    grid-area:topbar;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;
+    padding:0 16px;gap:12px;
+    font-family:var(--mono);font-size:11px;
+    letter-spacing:.05em;
+  }
+  .logo{color:var(--accent);font-weight:600;font-size:12px;margin-right:8px}
+  .logo span{color:var(--muted)}
+  .badge{
+    padding:2px 8px;border-radius:3px;font-size:10px;
+    background:rgba(59,130,246,.12);color:var(--accent);
+    border:1px solid rgba(59,130,246,.25);
+  }
+  .badge.green{background:rgba(16,185,129,.12);color:var(--success);border-color:rgba(16,185,129,.25)}
+  .badge.amber{background:rgba(245,158,11,.12);color:var(--warn);border-color:rgba(245,158,11,.25)}
+  #clock{margin-left:auto;color:var(--muted)}
+
+  /* LEFT PANEL */
+  #left{
+    grid-area:left;
+    background:var(--surface);
+    border-right:1px solid var(--border);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+
+  .panel-title{
+    padding:10px 14px 8px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  .panel-title .dot{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--success);animation:pulse 2s infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+  #search-wrap{padding:10px 12px;border-bottom:1px solid var(--border)}
+  #search{
+    width:100%;background:var(--surface2);
+    border:1px solid var(--border2);
+    border-radius:5px;padding:6px 10px;
+    color:var(--text);font-family:var(--mono);font-size:11px;
+    outline:none;transition:border-color .15s;
+  }
+  #search:focus{border-color:var(--accent)}
+  #search::placeholder{color:var(--muted)}
+
+  #results{flex:1;overflow-y:auto;padding:6px}
+  #results::-webkit-scrollbar{width:4px}
+  #results::-webkit-scrollbar-track{background:transparent}
+  #results::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+  .result-item{
+    padding:8px 10px;border-radius:5px;cursor:pointer;
+    border:1px solid transparent;margin-bottom:3px;
+    transition:all .12s;
+  }
+  .result-item:hover{background:var(--surface2);border-color:var(--border2)}
+  .result-item.selected{background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.3)}
+  .ri-name{font-weight:500;color:var(--text);margin-bottom:2px;font-size:12px}
+  .ri-meta{color:var(--muted);font-family:var(--mono);font-size:10px;display:flex;gap:6px}
+  .type-pill{
+    padding:1px 6px;border-radius:3px;font-size:9px;
+    font-family:var(--mono);letter-spacing:.04em;text-transform:uppercase;
+  }
+  .t-microcontroller{background:rgba(59,130,246,.15);color:#60a5fa}
+  .t-motor,.t-servo{background:rgba(245,158,11,.15);color:#fbbf24}
+  .t-sensor{background:rgba(16,185,129,.15);color:#34d399}
+  .t-led{background:rgba(250,204,21,.15);color:#fde047}
+  .t-button{background:rgba(148,163,184,.15);color:#94a3b8}
+  .t-display{background:rgba(168,85,247,.15);color:#c084fc}
+  .t-module{background:rgba(100,116,139,.15);color:#64748b}
+
+  #bom-title{
+    padding:8px 14px 6px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+    border-top:1px solid var(--border);
+    display:flex;align-items:center;justify-content:space-between;
+  }
+  #bom-list{max-height:160px;overflow-y:auto;padding:4px 6px}
+  .bom-item{
+    display:flex;align-items:center;gap:8px;
+    padding:5px 8px;border-radius:4px;margin-bottom:2px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--text);
+    background:var(--surface2);
+    border:1px solid var(--border);
+    cursor:pointer;
+    transition:border-color .12s;
+  }
+  .bom-item:hover{border-color:var(--danger)}
+  .bom-key{color:var(--muted);min-width:50px}
+  .bom-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bom-remove{color:var(--danger);margin-left:auto;font-size:12px;opacity:.6}
+  .bom-remove:hover{opacity:1}
+
+  #add-btn{
+    margin:8px 12px;padding:7px;
+    background:rgba(59,130,246,.12);
+    border:1px solid rgba(59,130,246,.3);
+    color:var(--accent);border-radius:5px;
+    font-family:var(--mono);font-size:11px;
+    cursor:pointer;text-align:center;
+    transition:all .12s;letter-spacing:.05em;
+  }
+  #add-btn:hover{background:rgba(59,130,246,.22)}
+  #add-btn:disabled{opacity:.3;cursor:not-allowed}
+
+  /* CANVAS */
+  #canvas-wrap{
+    grid-area:canvas;
+    position:relative;
+    background:#080b12;
+    overflow:hidden;
+  }
+  #three-canvas{width:100%;height:100%;display:block}
+  #overlay-info{
+    position:absolute;top:12px;left:12px;
+    background:rgba(10,12,16,.85);
+    border:1px solid var(--border2);
+    border-radius:6px;padding:8px 12px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--muted);line-height:1.8;
+    pointer-events:none;
+    backdrop-filter:blur(4px);
+  }
+  #overlay-info b{color:var(--text)}
+
+  #selected-label{
+    position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+    background:rgba(10,12,16,.9);
+    border:1px solid var(--accent);
+    border-radius:4px;padding:4px 12px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--accent);
+    pointer-events:none;
+    display:none;
+  }
+
+  /* RIGHT PANEL - PIPELINE LOG */
+  #right{
+    grid-area:right;
+    background:var(--surface);
+    border-left:1px solid var(--border);
+    display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  #log-list{
+    flex:1;overflow-y:auto;padding:6px;
+    font-family:var(--mono);font-size:10px;
+    line-height:1.6;
+  }
+  #log-list::-webkit-scrollbar{width:3px}
+  #log-list::-webkit-scrollbar-thumb{background:var(--border2)}
+
+  .log-entry{
+    padding:4px 8px;border-radius:3px;margin-bottom:2px;
+    border-left:2px solid transparent;
+    word-break:break-word;
+  }
+  .log-entry.boot{border-color:var(--accent);color:#93c5fd}
+  .log-entry.info{border-color:var(--muted);color:var(--muted)}
+  .log-entry.success{border-color:var(--success);color:#6ee7b7}
+  .log-entry.warn{border-color:var(--warn);color:#fcd34d}
+  .log-entry.error{border-color:var(--danger);color:#fca5a5}
+  .log-entry.pipeline{border-color:var(--accent2);color:#67e8f9}
+  .log-entry.render{border-color:#a78bfa;color:#c4b5fd}
+
+  .log-ts{color:var(--border2);margin-right:6px}
+
+  .clear-btn{
+    margin:6px 8px;padding:5px;
+    background:transparent;border:1px solid var(--border2);
+    color:var(--muted);border-radius:4px;
+    font-family:var(--mono);font-size:9px;
+    cursor:pointer;text-align:center;letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .clear-btn:hover{border-color:var(--danger);color:var(--danger)}
+
+  #wire-controls{
+    padding:8px 12px;border-top:1px solid var(--border);
+  }
+  .ctrl-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ctrl-label{font-family:var(--mono);font-size:10px;color:var(--muted);min-width:60px}
+  .toggle{
+    position:relative;width:32px;height:16px;
+    background:var(--border2);border-radius:8px;
+    cursor:pointer;transition:background .15s;flex-shrink:0;
+  }
+  .toggle.on{background:var(--accent)}
+  .toggle::after{
+    content:'';position:absolute;
+    top:2px;left:2px;width:12px;height:12px;
+    border-radius:50%;background:#fff;transition:left .15s;
+  }
+  .toggle.on::after{left:18px}
+
+  #simulate-btn{
+    width:100%;padding:7px;margin-top:4px;
+    background:rgba(16,185,129,.12);
+    border:1px solid rgba(16,185,129,.3);
+    color:var(--success);border-radius:5px;
+    font-family:var(--mono);font-size:11px;
+    cursor:pointer;letter-spacing:.05em;
+    transition:all .12s;
+  }
+  #simulate-btn.running{
+    background:rgba(239,68,68,.12);
+    border-color:rgba(239,68,68,.3);
+    color:var(--danger);
+  }
+  #simulate-btn:hover{filter:brightness(1.2)}
+
+  .no-results{
+    text-align:center;padding:24px 12px;
+    color:var(--muted);font-family:var(--mono);font-size:10px;
+  }
+
+  #fps-counter{
+    position:absolute;top:12px;right:12px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--muted);
+    background:rgba(10,12,16,.7);
+    padding:3px 8px;border-radius:3px;
+    border:1px solid var(--border);
+    pointer-events:none;
+  }
+
+  .section-sep{
+    padding:6px 14px 4px;
+    font-family:var(--mono);font-size:10px;
+    color:var(--muted);letter-spacing:.1em;text-transform:uppercase;
+    border-top:1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <span class="logo">WIREUP<span>.AI</span></span>
+  <span class="badge">TESTBED v0.1</span>
+  <span id="status-badge" class="badge amber">IDLE</span>
+  <span id="bom-count-badge" class="badge">BOM: 0</span>
+  <span id="clock"></span>
+</div>
+
+<div id="left">
+  <div class="panel-title">
+    Component Library <div class="dot"></div>
+  </div>
+  <div id="search-wrap">
+    <input id="search" placeholder="search parts... (e.g. servo, ESP32, DHT22)" autocomplete="off"/>
+  </div>
+  <div id="results"><div class="no-results">Type to search components</div></div>
+
+  <div id="bom-title">
+    Active BOM
+    <span id="bom-total" style="color:var(--text)">0 parts</span>
+  </div>
+  <div id="bom-list"></div>
+  <button id="add-btn" disabled>+ Add Selected to BOM</button>
+
+  <div class="section-sep">Wire layer</div>
+  <div id="wire-controls">
+    <div class="ctrl-row">
+      <span class="ctrl-label">Show wires</span>
+      <div class="toggle on" id="toggle-wires"></div>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Labels</span>
+      <div class="toggle on" id="toggle-labels"></div>
+    </div>
+    <button id="simulate-btn">▶ RUN SIMULATION</button>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="three-canvas"></canvas>
+  <div id="overlay-info">
+    <b>Canvas Controls</b><br>
+    Rotate · Left drag<br>
+    Pan · Right drag<br>
+    Zoom · Scroll
+  </div>
+  <div id="fps-counter">-- fps</div>
+  <div id="selected-label"></div>
+</div>
+
+<div id="right">
+  <div class="panel-title">
+    Pipeline Log
+    <div class="dot"></div>
+  </div>
+  <div id="log-list"></div>
+  <button class="clear-btn" onclick="clearLogs()">CLEAR LOG</button>
+</div>
+
+<script>
+// ─── COMPONENT REGISTRY (mirrors componentTypeMap in backend) ───────────────
+const COMPONENT_REGISTRY = [
+  { key:'arduino-uno',    name:'Arduino Uno',              type:'microcontroller', wokwi:'wokwi-arduino-uno',         price:300, specs:{MCU:'ATmega328P', voltage:'5V', pins:14} },
+  { key:'arduino-nano',   name:'Arduino Nano',             type:'microcontroller', wokwi:'wokwi-arduino-nano',        price:250, specs:{MCU:'ATmega328P', voltage:'5V', pins:14} },
+  { key:'esp32',          name:'ESP32 DevKit V1',          type:'microcontroller', wokwi:'wokwi-esp32-devkit-v1',     price:350, specs:{MCU:'Xtensa LX6', voltage:'3.3V', pins:38} },
+  { key:'esp8266',        name:'NodeMCU ESP8266',          type:'microcontroller', wokwi:'wokwi-nodemcu-esp8266',     price:250, specs:{MCU:'ESP8266', voltage:'3.3V', pins:11} },
+  { key:'sg90',           name:'SG90 Micro Servo',         type:'motor',           wokwi:'wokwi-servo',               price:110, specs:{angle:'180°', voltage:'4.8-6V', torque:'1.8kg-cm'} },
+  { key:'dc-motor',       name:'130 DC Motor',             type:'motor',           wokwi:'wokwi-dc-motor',            price:25,  specs:{voltage:'3-6V', rpm:'9000 @3V'} },
+  { key:'stepper',        name:'28BYJ-48 Stepper + ULN2003',type:'motor',          wokwi:'wokwi-stepper-motor',       price:180, specs:{voltage:'5V', stepAngle:'5.625°'} },
+  { key:'pushbutton',     name:'Tactile Push Button 6mm',  type:'button',          wokwi:'wokwi-pushbutton',          price:3,   specs:{contact:'Momentary', current:'50mA'} },
+  { key:'led-red',        name:'5mm Red LED',              type:'led',             wokwi:'wokwi-led',                 price:2,   specs:{color:'Red', fwd_voltage:'2.0V'} },
+  { key:'led-green',      name:'5mm Green LED',            type:'led',             wokwi:'wokwi-led',                 price:2,   specs:{color:'Green', fwd_voltage:'2.1V'} },
+  { key:'neopixel',       name:'WS2812B NeoPixel Ring',    type:'led',             wokwi:'wokwi-neopixel',            price:80,  specs:{LEDs:12, voltage:'5V', protocol:'SPI'} },
+  { key:'lcd1602',        name:'LCD 16×2 Display',         type:'display',         wokwi:'wokwi-lcd1602',             price:90,  specs:{cols:16, rows:2, interface:'I2C/Parallel'} },
+  { key:'oled',           name:'0.96″ OLED SSD1306',       type:'display',         wokwi:'wokwi-oled-ssd1306',        price:120, specs:{res:'128×64', interface:'I2C', voltage:'3.3-5V'} },
+  { key:'dht22',          name:'DHT22 Temp & Humidity',    type:'sensor',          wokwi:'wokwi-dht22',               price:150, specs:{range_t:'-40~80°C', range_h:'0~100%'} },
+  { key:'hcsr04',         name:'HC-SR04 Ultrasonic',       type:'sensor',          wokwi:'wokwi-hc-sr04',             price:50,  specs:{range:'2-400cm', accuracy:'3mm'} },
+  { key:'mpu6050',        name:'MPU-6050 IMU',             type:'sensor',          wokwi:'wokwi-mpu6050',             price:90,  specs:{dof:6, interface:'I2C', voltage:'3-5V'} },
+  { key:'photoresistor',  name:'LDR Photoresistor',        type:'sensor',          wokwi:'wokwi-photoresistor',       price:5,   specs:{resistance:'1k-10MΩ'} },
+  { key:'potentiometer',  name:'10kΩ Potentiometer',       type:'sensor',          wokwi:'wokwi-potentiometer',       price:15,  specs:{resistance:'10kΩ', type:'Rotary'} },
+  { key:'relay',          name:'5V Single Relay Module',   type:'module',          wokwi:'',                          price:45,  specs:{load:'250VAC/30VDC', trigger:'5V'} },
+  { key:'l298n',          name:'L298N Motor Driver',       type:'module',          wokwi:'',                          price:120, specs:{voltage:'5-35V', current:'2A'} },
+];
+
+// ─── PIPELINE STATE ──────────────────────────────────────────────────────────
+const state = {
+  bom: [],
+  selectedPart: null,
+  showWires: true,
+  showLabels: true,
+  simRunning: false,
+  searchQuery: ''
+};
+
+// ─── LOG ENGINE ──────────────────────────────────────────────────────────────
+const logEl = document.getElementById('log-list');
+function log(msg, type='info'){
+  const ts = new Date().toLocaleTimeString('en',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const el = document.createElement('div');
+  el.className = `log-entry ${type}`;
+  el.innerHTML = `<span class="log-ts">${ts}</span>${msg}`;
+  logEl.appendChild(el);
+  logEl.scrollTop = logEl.scrollHeight;
+  if(logEl.children.length > 200) logEl.removeChild(logEl.firstChild);
+}
+function clearLogs(){ logEl.innerHTML=''; }
+
+// ─── THREE.JS SCENE ──────────────────────────────────────────────────────────
+const canvas = document.getElementById('three-canvas');
+const wrap = document.getElementById('canvas-wrap');
+
+const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.setClearColor(0x080b12);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
+camera.position.set(0, 5, 7);
+camera.lookAt(0,0,0);
+
+// Lights
+scene.add(new THREE.AmbientLight(0xffffff, 0.35));
+const sun = new THREE.DirectionalLight(0xffffff, 1.2);
+sun.position.set(5,8,4); sun.castShadow=true;
+sun.shadow.mapSize.width = 1024; sun.shadow.mapSize.height = 1024;
+sun.shadow.camera.near = 0.1; sun.shadow.camera.far = 30;
+[-6,6,-6,6].forEach((v,i)=>{ if(i<2)sun.shadow.camera.left=v; if(i>=2)sun.shadow.camera.right=v; });
+sun.shadow.camera.top=6; sun.shadow.camera.bottom=-6;
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x4488ff, 0.3);
+fill.position.set(-4,3,-2); scene.add(fill);
+
+// Grid
+const gridHelper = new THREE.GridHelper(14,28,0x1e2535,0x1a1f2e);
+gridHelper.position.y = -0.05;
+scene.add(gridHelper);
+
+// Workbench
+const bench = new THREE.Mesh(
+  new THREE.BoxGeometry(12,0.06,6),
+  new THREE.MeshStandardMaterial({color:0x0d1117, roughness:0.6, metalness:0.4})
+);
+bench.position.y = -0.03; bench.receiveShadow=true;
+scene.add(bench);
+
+// ─── ORBIT CONTROLS (manual) ────────────────────────────────────────────────
+let orb = {isDragging:false,isRight:false,lastX:0,lastY:0,
+           theta:0.5,phi:0.9,radius:9,tx:0,ty:0};
+
+function updateCamera(){
+  const x = orb.radius * Math.sin(orb.phi) * Math.sin(orb.theta);
+  const y = orb.radius * Math.cos(orb.phi);
+  const z = orb.radius * Math.sin(orb.phi) * Math.cos(orb.theta);
+  camera.position.set(x+orb.tx, y, z);
+  camera.lookAt(orb.tx, 0, 0);
+}
+updateCamera();
+
+canvas.addEventListener('mousedown', e=>{
+  orb.isDragging=true; orb.isRight=(e.button===2);
+  orb.lastX=e.clientX; orb.lastY=e.clientY;
+});
+window.addEventListener('mouseup',()=>orb.isDragging=false);
+window.addEventListener('mousemove',e=>{
+  if(!orb.isDragging) return;
+  const dx=(e.clientX-orb.lastX)*0.008;
+  const dy=(e.clientY-orb.lastY)*0.008;
+  orb.lastX=e.clientX; orb.lastY=e.clientY;
+  if(orb.isRight){ orb.tx -= dx*2; }
+  else { orb.theta -= dx; orb.phi = Math.max(0.1, Math.min(1.48, orb.phi+dy)); }
+  updateCamera();
+});
+canvas.addEventListener('wheel',e=>{
+  orb.radius = Math.max(2, Math.min(18, orb.radius + e.deltaY*0.01));
+  updateCamera();
+  e.preventDefault();
+},{passive:false});
+canvas.addEventListener('contextmenu',e=>e.preventDefault());
+
+// ─── COMPONENT 3D BUILDERS ──────────────────────────────────────────────────
+const COLOR_MAP = {
+  microcontroller: 0x1e3a5f,
+  motor:           0x78350f,
+  sensor:          0x064e3b,
+  led:             0x713f12,
+  button:          0x1e293b,
+  display:         0x3b0764,
+  module:          0x1e293b
+};
+
+const LABEL_MAP = {}; // key -> sprite mesh
+
+function makeLabel(text, position, color=0x60a5fa){
+  const canvas2 = document.createElement('canvas');
+  canvas2.width=256; canvas2.height=48;
+  const ctx=canvas2.getContext('2d');
+  ctx.clearRect(0,0,256,48);
+  ctx.fillStyle='rgba(8,11,18,0.88)';
+  const r=6;
+  ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(256-r,0);
+  ctx.quadraticCurveTo(256,0,256,r);ctx.lineTo(256,48-r);
+  ctx.quadraticCurveTo(256,48,256-r,48);ctx.lineTo(r,48);
+  ctx.quadraticCurveTo(0,48,0,48-r);ctx.lineTo(0,r);
+  ctx.quadraticCurveTo(0,0,r,0);ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(59,130,246,0.4)';ctx.lineWidth=1;ctx.stroke();
+  ctx.fillStyle='#e2e8f0';ctx.font='bold 18px JetBrains Mono,monospace';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(text.toUpperCase().slice(0,18),128,24);
+  const tex=new THREE.CanvasTexture(canvas2);
+  const mat=new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false});
+  const sprite=new THREE.Sprite(mat);
+  sprite.scale.set(1.4,0.26,1);
+  sprite.position.set(position[0], position[1]+0.85, position[2]);
+  return sprite;
+}
+
+function buildMCU(pos){
+  const g=new THREE.Group(); g.position.set(...pos);
+  // PCB
+  const pcb=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.06,2.2),
+    new THREE.MeshStandardMaterial({color:0x0d4a1f,roughness:0.7,metalness:0.1}));
+  pcb.castShadow=true; g.add(pcb);
+  // chip
+  const chip=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.1,0.5),
+    new THREE.MeshStandardMaterial({color:0x0a0a0a,roughness:0.4,metalness:0.6}));
+  chip.position.set(0,0.08,0); g.add(chip);
+  // USB port
+  const usb=new THREE.Mesh(new THREE.BoxGeometry(0.3,0.12,0.15),
+    new THREE.MeshStandardMaterial({color:0x888888,metalness:0.8,roughness:0.2}));
+  usb.position.set(0,0.09,1.15); g.add(usb);
+  // pins row
+  for(let i=-5;i<=5;i++){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.18,6),
+      new THREE.MeshStandardMaterial({color:0xd4af37,metalness:0.9,roughness:0.1}));
+    p.position.set(-0.82,0.0,i*0.18); g.add(p);
+    const p2=p.clone(); p2.position.set(0.82,0.0,i*0.18); g.add(p2);
+  }
+  // LED indicator
+  const led=new THREE.Mesh(new THREE.SphereGeometry(0.06,8,8),
+    new THREE.MeshStandardMaterial({color:0x00ff44,emissive:0x00ff44,emissiveIntensity:0.5}));
+  led.position.set(0.5,0.1,-0.9); g.add(led);
+  return g;
+}
+
+function buildServo(pos){
+  const g=new THREE.Group(); g.position.set(...pos);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.7,0.5,0.9),
+    new THREE.MeshStandardMaterial({color:0x1a1a2e,roughness:0.5,metalness:0.3}));
+  body.castShadow=true; g.add(body);
+  const horn=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.18,0.12,16),
+    new THREE.MeshStandardMaterial({color:0xf0f0f0,roughness:0.4}));
+  horn.position.set(0,0.31,0); g.add(horn);
+  const arm=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.06,0.1),
+    new THREE.MeshStandardMaterial({color:0xe0e0e0,roughness:0.3}));
+  arm.position.set(0.25,0.38,0); g.add(arm);
+  // wire leads
+  ['#ff6600','#ff0000','#8b4513'].forEach((c,i)=>{
+    const w=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.5,6),
+      new THREE.MeshStandardMaterial({color:parseInt(c.replace('#','0x'))}));
+    w.position.set(-0.5+i*0.12, 0.0, -0.55); w.rotation.x=Math.PI/2; g.add(w);
+  });
+  return g;
+}
+
+function buildButton(pos){
+  const g=new THREE.Group(); g.position.set(...pos);
+  const base=new THREE.Mesh(new THREE.BoxGeometry(0.4,0.08,0.4),
+    new THREE.MeshStandardMaterial({color:0x1a1a2e,roughness:0.6}));
+  base.castShadow=true; g.add(base);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.16,0.14,16),
+    new THREE.MeshStandardMaterial({color:0x2563eb,roughness:0.3,metalness:0.1}));
+  cap.position.set(0,0.11,0); g.add(cap);
+  [[-0.15,-0.1,-0.15],[0.15,-0.1,-0.15],[-0.15,-0.1,0.15],[0.15,-0.1,0.15]].forEach(p=>{
+    const pin=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.12,6),
+      new THREE.MeshStandardMaterial({color:0xd4af37,metalness:0.9}));
+    pin.position.set(...p); g.add(pin);
+  });
+  return g;
+}
+
+function buildLED(pos, color=0xff2200){
+  const g=new THREE.Group(); g.position.set(...pos);
+  const body=new THREE.Mesh(new THREE.SphereGeometry(0.18,16,16,0,Math.PI*2,0,Math.PI/1.6),
+    new THREE.MeshStandardMaterial({color,roughness:0.1,metalness:0.0,
+      transparent:true,opacity:0.85,emissive:color,emissiveIntensity:0.2}));
+  body.castShadow=true; g.add(body);
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.1,16),
+    new THREE.MeshStandardMaterial({color:0x333333}));
+  base.position.y=-0.08; g.add(base);
+  [[-0.06,-0.22,0],[0.06,-0.22,0]].forEach((p,i)=>{
+    const lead=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,i===0?0.35:0.28,6),
+      new THREE.MeshStandardMaterial({color:0xd4af37,metalness:0.9}));
+    lead.position.set(...p); g.add(lead);
+  });
+  return g;
+}
+
+function buildDisplay(pos){
+  const g=new THREE.Group(); g.position.set(...pos);
+  const pcb=new THREE.Mesh(new THREE.BoxGeometry(1.8,0.06,0.7),
+    new THREE.MeshStandardMaterial({color:0x1a0a2e,roughness:0.7}));
+  pcb.castShadow=true; g.add(pcb);
+  const screen=new THREE.Mesh(new THREE.BoxGeometry(1.6,0.02,0.52),
+    new THREE.MeshStandardMaterial({color:0x0a2a0a,roughness:0.2,metalness:0.0,
+      emissive:0x003300,emissiveIntensity:0.4}));
+  screen.position.y=0.04; g.add(screen);
+  // pixel dots
+  for(let r=0;r<2;r++) for(let c=0;c<16;c++){
+    const dot=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.01,0.12),
+      new THREE.MeshStandardMaterial({color:0x00ff44,emissive:0x00aa22,emissiveIntensity:0.6}));
+    dot.position.set(-0.73+c*0.1,0.055,-0.08+r*0.19); g.add(dot);
+  }
+  // I2C pins
+  for(let i=0;i<4;i++){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.15,6),
+      new THREE.MeshStandardMaterial({color:0xd4af37,metalness:0.9}));
+    p.position.set(-0.74+i*0.12,0.0,-0.4); g.add(p);
+  }
+  return g;
+}
+
+function buildSensor(pos){
+  const g=new THREE.Group(); g.position.set(...pos);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.1,0.55),
+    new THREE.MeshStandardMaterial({color:0x0d2e1f,roughness:0.6}));
+  body.castShadow=true; g.add(body);
+  // sensor element
+  const elem=new THREE.Mesh(new THREE.BoxGeometry(0.2,0.08,0.2),
+    new THREE.MeshStandardMaterial({color:0x1a1a1a,roughness:0.3,metalness:0.5}));
+  elem.position.set(0,0.09,0); g.add(elem);
+  for(let i=0;i<3;i++){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.15,6),
+      new THREE.MeshStandardMaterial({color:0xd4af37,metalness:0.9}));
+    p.position.set(-0.2+i*0.2,0,-0.34); g.add(p);
+  }
+  return g;
+}
+
+function buildGeneric(pos, color=0x1e293b){
+  const g=new THREE.Group(); g.position.set(...pos);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.12,0.65),
+    new THREE.MeshStandardMaterial({color,roughness:0.5,metalness:0.2}));
+  body.castShadow=true; g.add(body);
+  for(let i=0;i<4;i++){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,0.14,6),
+      new THREE.MeshStandardMaterial({color:0xd4af37,metalness:0.9}));
+    p.position.set(-0.3+i*0.2,0,-0.4); g.add(p);
+  }
+  return g;
+}
+
+function buildComponent(part, pos){
+  const type = part.type;
+  switch(type){
+    case 'microcontroller': return buildMCU(pos);
+    case 'motor':           return buildServo(pos);
+    case 'button':          return buildButton(pos);
+    case 'led':             return buildLED(pos, part.key.includes('green')?0x00ff44:0xff2200);
+    case 'display':         return buildDisplay(pos);
+    case 'sensor':          return buildSensor(pos);
+    default:                return buildGeneric(pos, COLOR_MAP[type]||0x1e293b);
+  }
+}
+
+// ─── GRID LAYOUT ENGINE (mirrors App.tsx logic) ─────────────────────────────
+function gridPosition(index, total){
+  const cols = Math.min(total, 4);
+  const col = index % cols;
+  const row = Math.floor(index / cols);
+  const xSpacing = 2.8;
+  const zSpacing = 2.4;
+  const xOffset = -(cols-1)*xSpacing/2;
+  return [
+    xOffset + col*xSpacing,
+    0.08,
+    -(row)*zSpacing + 1.2
+  ];
+}
+
+// ─── SCENE OBJECTS ──────────────────────────────────────────────────────────
+const sceneObjects = {}; // key -> {mesh, labelSprite, pos}
+const wireObjects = [];
+
+function rebuildScene(){
+  log('[RENDER] Rebuilding 3D scene...', 'pipeline');
+  // remove old meshes
+  Object.values(sceneObjects).forEach(obj=>{
+    scene.remove(obj.mesh);
+    if(obj.labelSprite) scene.remove(obj.labelSprite);
+  });
+  Object.keys(sceneObjects).forEach(k=>delete sceneObjects[k]);
+  wireObjects.forEach(w=>scene.remove(w));
+  wireObjects.length=0;
+
+  const total = state.bom.length;
+  if(total===0){
+    log('[RENDER] BOM is empty — nothing to render', 'warn');
+    return;
+  }
+
+  state.bom.forEach((item, idx)=>{
+    const hasPos = Array.isArray(item.position) && item.position.length===3;
+    const pos = hasPos ? item.position : gridPosition(idx, total);
+    if(!hasPos) log(`[LAYOUT] ${item.key}: no position → grid[${idx}] (${pos.map(v=>v.toFixed(2)).join(', ')})`, 'info');
+    else log(`[LAYOUT] ${item.key}: using stored position (${pos.map(v=>v.toFixed(2)).join(', ')})`, 'info');
+
+    const mesh = buildComponent(item, pos);
+    mesh.userData = { key: item.key, name: item.name };
+    scene.add(mesh);
+
+    let labelSprite = null;
+    if(state.showLabels){
+      labelSprite = makeLabel(item.name, pos);
+      scene.add(labelSprite);
+    }
+
+    sceneObjects[item.key] = { mesh, labelSprite, pos };
+    log(`[RENDER] ${item.name} → type:${item.type} rendered at (${pos.map(v=>v.toFixed(1)).join(',')})`, 'render');
+  });
+
+  if(state.showWires) buildWires();
+  log(`[RENDER] Scene complete — ${total} component(s) drawn`, 'success');
+  updateStatus();
+}
+
+function buildWires(){
+  // wire center-to-center between consecutive parts (demo wiring)
+  const keys = state.bom.map(b=>b.key);
+  for(let i=0;i<keys.length-1;i++){
+    const a = sceneObjects[keys[i]];
+    const b = sceneObjects[keys[i+1]];
+    if(!a||!b) continue;
+    const from = new THREE.Vector3(...a.pos);
+    const to = new THREE.Vector3(...b.pos);
+    const mid = from.clone().lerp(to,0.5).add(new THREE.Vector3(0,0.7,0));
+    const curve = new THREE.CatmullRomCurve3([from,mid,to]);
+    const geo = new THREE.TubeGeometry(curve,20,0.025,6,false);
+    const colors = [0x3b82f6,0xef4444,0x10b981,0xf59e0b,0xa78bfa];
+    const mat = new THREE.MeshStandardMaterial({color:colors[i%colors.length],roughness:0.4,metalness:0.2});
+    const tube = new THREE.Mesh(geo,mat);
+    scene.add(tube);
+    wireObjects.push(tube);
+    log(`[WIRE] ${keys[i]} → ${keys[i+1]} (center-to-center fallback)`, 'info');
+  }
+}
+
+// ─── SELECTION ───────────────────────────────────────────────────────────────
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selectedKey = null;
+
+canvas.addEventListener('click', e=>{
+  const rect = canvas.getBoundingClientRect();
+  mouse.x = ((e.clientX-rect.left)/rect.width)*2-1;
+  mouse.y = -((e.clientY-rect.top)/rect.height)*2+1;
+  raycaster.setFromCamera(mouse, camera);
+  const meshes = Object.values(sceneObjects).flatMap(o=>{
+    const arr=[];
+    o.mesh.traverse(c=>{ if(c.isMesh) arr.push(c); });
+    return arr;
+  });
+  const hits = raycaster.intersectObjects(meshes);
+  if(hits.length){
+    let obj = hits[0].object;
+    while(obj.parent && !obj.userData.key) obj=obj.parent;
+    const key = obj.userData.key;
+    if(key){
+      selectedKey = key;
+      const item = state.bom.find(b=>b.key===key);
+      const lbl = document.getElementById('selected-label');
+      lbl.textContent = `${item.name} · ${item.type}`;
+      lbl.style.display='block';
+      log(`[SELECT] ${item.name} (${item.type}, ${item.wokwi})`, 'pipeline');
+    }
+  } else {
+    selectedKey=null;
+    document.getElementById('selected-label').style.display='none';
+  }
+});
+
+// ─── RENDER LOOP ─────────────────────────────────────────────────────────────
+let lastTime=0, frameCount=0, fpsMeasure=0;
+const fpsEl = document.getElementById('fps-counter');
+let simAngle=0, simDir=1;
+
+function resize(){
+  const w=wrap.clientWidth, h=wrap.clientHeight;
+  renderer.setSize(w,h,false);
+  camera.aspect=w/h;
+  camera.updateProjectionMatrix();
+}
+resize();
+window.addEventListener('resize',resize);
+
+function tick(now){
+  requestAnimationFrame(tick);
+  frameCount++;
+  if(now-fpsMeasure>1000){
+    fpsEl.textContent=frameCount+' fps';
+    frameCount=0; fpsMeasure=now;
+  }
+  // sim: pulse LED emissive
+  if(state.simRunning){
+    simAngle += 0.04*simDir;
+    if(simAngle>Math.PI||simAngle<0) simDir*=-1;
+    Object.values(sceneObjects).forEach(obj=>{
+      obj.mesh.traverse(c=>{
+        if(c.isMesh && c.material.emissiveIntensity!==undefined && c.material.emissive.getHex()!==0){
+          c.material.emissiveIntensity = 0.15+Math.abs(Math.sin(simAngle))*0.6;
+        }
+      });
+    });
+  }
+  renderer.render(scene, camera);
+}
+requestAnimationFrame(tick);
+
+// ─── SEARCH ──────────────────────────────────────────────────────────────────
+function doSearch(q){
+  const resultsEl = document.getElementById('results');
+  if(!q.trim()){
+    resultsEl.innerHTML='<div class="no-results">Type to search components</div>';
+    state.selectedPart=null;
+    document.getElementById('add-btn').disabled=true;
+    return;
+  }
+  log(`[SEARCH] query: "${q}"`, 'pipeline');
+  const ql = q.toLowerCase();
+  const hits = COMPONENT_REGISTRY.filter(c=>
+    c.name.toLowerCase().includes(ql)||
+    c.type.toLowerCase().includes(ql)||
+    c.wokwi.toLowerCase().includes(ql)||
+    c.key.toLowerCase().includes(ql)
+  );
+  log(`[SEARCH] found ${hits.length} result(s)`, hits.length?'success':'warn');
+  if(!hits.length){
+    resultsEl.innerHTML='<div class="no-results">No components found</div>';
+    return;
+  }
+  resultsEl.innerHTML = hits.map(c=>`
+    <div class="result-item" data-key="${c.key}" onclick="selectPart('${c.key}')">
+      <div class="ri-name">${c.name}</div>
+      <div class="ri-meta">
+        <span class="type-pill t-${c.type}">${c.type}</span>
+        <span>${c.wokwi||'no-sim'}</span>
+        <span style="margin-left:auto;color:var(--muted)">₹${c.price}</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectPart(key){
+  state.selectedPart = COMPONENT_REGISTRY.find(c=>c.key===key);
+  document.querySelectorAll('.result-item').forEach(el=>{
+    el.classList.toggle('selected', el.dataset.key===key);
+  });
+  document.getElementById('add-btn').disabled=false;
+  log(`[SELECT] staged: ${state.selectedPart.name} (${state.selectedPart.type})`, 'pipeline');
+}
+
+document.getElementById('search').addEventListener('input', e=>doSearch(e.target.value));
+
+// ─── BOM MANAGEMENT ──────────────────────────────────────────────────────────
+function updateBOMUI(){
+  const list = document.getElementById('bom-list');
+  document.getElementById('bom-total').textContent = state.bom.length+' parts';
+  document.getElementById('bom-count-badge').textContent = 'BOM: '+state.bom.length;
+  if(!state.bom.length){
+    list.innerHTML='<div style="padding:8px 12px;color:var(--muted);font-family:var(--mono);font-size:10px">No parts added yet</div>';
+    return;
+  }
+  list.innerHTML = state.bom.map(item=>`
+    <div class="bom-item" title="Click to remove" onclick="removePart('${item.key}')">
+      <span class="bom-key">${item.key}</span>
+      <span class="bom-name">${item.name}</span>
+      <span class="type-pill t-${item.type}" style="font-size:9px">${item.type}</span>
+      <span class="bom-remove">✕</span>
+    </div>
+  `).join('');
+}
+
+function updateStatus(){
+  const badge = document.getElementById('status-badge');
+  if(state.simRunning){ badge.textContent='SIMULATING'; badge.className='badge green'; }
+  else if(state.bom.length){ badge.textContent='BOM READY'; badge.className='badge'; }
+  else { badge.textContent='IDLE'; badge.className='badge amber'; }
+}
+
+document.getElementById('add-btn').addEventListener('click',()=>{
+  if(!state.selectedPart) return;
+  const existing = state.bom.find(b=>b.key===state.selectedPart.key);
+  if(existing){
+    log(`[BOM] ${state.selectedPart.name} already in BOM`, 'warn');
+    return;
+  }
+  const entry = {
+    ...state.selectedPart,
+    qty: 1,
+    position: null
+  };
+  state.bom.push(entry);
+  log(`[BOM] + ${entry.name} | type:${entry.type} | wokwi:${entry.wokwi||'none'} | price:₹${entry.price}`, 'success');
+  log(`[PIPELINE] mapSessionToVirtualProject → BOM[${state.bom.length-1}].type = "${entry.type}"`, 'pipeline');
+  updateBOMUI();
+  rebuildScene();
+  updateStatus();
+});
+
+function removePart(key){
+  const item = state.bom.find(b=>b.key===key);
+  state.bom = state.bom.filter(b=>b.key!==key);
+  log(`[BOM] - removed: ${item?.name}`, 'warn');
+  updateBOMUI();
+  rebuildScene();
+  updateStatus();
+}
+
+// ─── TOGGLES ─────────────────────────────────────────────────────────────────
+document.getElementById('toggle-wires').addEventListener('click',function(){
+  state.showWires=!state.showWires;
+  this.classList.toggle('on', state.showWires);
+  log(`[SCENE] showWires = ${state.showWires}`, 'info');
+  rebuildScene();
+});
+document.getElementById('toggle-labels').addEventListener('click',function(){
+  state.showLabels=!state.showLabels;
+  this.classList.toggle('on', state.showLabels);
+  log(`[SCENE] showLabels = ${state.showLabels}`, 'info');
+  rebuildScene();
+});
+
+// ─── SIMULATION ──────────────────────────────────────────────────────────────
+let simInterval=null;
+document.getElementById('simulate-btn').addEventListener('click',()=>{
+  state.simRunning=!state.simRunning;
+  const btn=document.getElementById('simulate-btn');
+  if(state.simRunning){
+    btn.textContent='⏹ STOP SIMULATION';
+    btn.classList.add('running');
+    log('[SIM] Simulation started', 'boot');
+    const types = state.bom.map(b=>b.type);
+    if(types.includes('microcontroller')) log('[SIM] MCU initialized — serial 9600 baud', 'success');
+    if(types.includes('motor')) log('[SIM] Servo attached — pin 11 PWM ready', 'success');
+    if(types.includes('button')) log('[SIM] Button INPUT_PULLUP on A5', 'success');
+    if(types.includes('sensor')) log('[SIM] Sensor polling started (2500ms interval)', 'success');
+    if(types.includes('display')) log('[SIM] LCD initialized — 16×2 backlight ON', 'success');
+
+    simInterval=setInterval(()=>{
+      if(!state.simRunning) return;
+      const t=(22+Math.random()*4).toFixed(1);
+      const h=(50+Math.random()*15).toFixed(0);
+      const dist=Math.floor(10+Math.random()*150);
+      const hasSensor=state.bom.some(b=>b.type==='sensor');
+      const hasMotor=state.bom.some(b=>b.type==='motor');
+      const hasLed=state.bom.some(b=>b.type==='led');
+      if(hasSensor) log(`[OUTPUT] Sensor: temp=${t}°C hum=${h}% dist=${dist}cm`, 'success');
+      if(hasMotor){ const angle=Math.floor(Math.random()*180); log(`[OUTPUT] Servo position: ${angle}°`, 'success'); }
+      if(hasLed) log(`[OUTPUT] LED state: ${Math.random()>.5?'HIGH':'LOW'}`, 'info');
+    }, 2500);
+  } else {
+    btn.textContent='▶ RUN SIMULATION';
+    btn.classList.remove('running');
+    clearInterval(simInterval);
+    log('[SIM] Simulation stopped', 'warn');
+  }
+  updateStatus();
+});
+
+// ─── CLOCK ────────────────────────────────────────────────────────────────────
+setInterval(()=>{
+  document.getElementById('clock').textContent=
+    new Date().toLocaleTimeString('en',{hour12:false});
+},1000);
+
+// ─── BOOT LOG ────────────────────────────────────────────────────────────────
+log('[BOOT] Wireup testbed initialized', 'boot');
+log('[BOOT] Three.js r128 renderer ready', 'boot');
+log('[BOOT] Component registry loaded — '+COMPONENT_REGISTRY.length+' parts', 'success');
+log('[PIPELINE] Waiting for BOM input...', 'info');
+updateBOMUI();
+updateStatus();
+</script>
+</body>
+</html>

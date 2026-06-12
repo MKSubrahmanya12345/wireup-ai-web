@@ -1,0 +1,2194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Hardware Playground - Drone Simulator</title>
+    <!-- ??$$$ - Google Fonts for GCS sci-fi and playground aesthetics -->
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- ??$$$ - External Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- ??$$$ - Highlight.js for editor syntax highlighting -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/styles/github-dark.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/highlight.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/arduino.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/json.min.js"></script>
+
+    <style>
+        /* ??$$$ - Playground Theme Color Palette matching the user screenshot */
+        :root {
+            --bg-main: #060913;
+            --bg-sidebar: #090e1a;
+            --bg-panel: #0d1527;
+            --bg-editor: #050811;
+            --border-color: #1b263b;
+            --accent-cyan: #00f3ff;
+            --accent-blue: #3b82f6;
+            --accent-lime: #39ff14;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --text-primary: #f8fafc;
+            --text-muted: #94a3b8;
+            --text-dark: #64748b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-main);
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-primary);
+        }
+
+        /* ??$$$ - Master Grid Layout similar to Virtual Hardware Playground */
+        #playground-container {
+            display: grid;
+            grid-template-rows: 50px 1fr;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Top Header Navigation */
+        #playground-header {
+            background-color: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 20;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .header-logo {
+            color: var(--accent-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 1.5px;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-sub {
+            font-size: 10px;
+            color: var(--text-dark);
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 6px 14px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            font-weight: bold;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+
+        .control-btn.active {
+            background: rgba(0, 243, 255, 0.1);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+            box-shadow: 0 0 8px rgba(0, 243, 255, 0.25);
+        }
+
+        .header-telemetry {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+
+        .header-tel-item {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .header-tel-item span {
+            color: var(--accent-cyan);
+            font-weight: bold;
+        }
+
+        /* ??$$$ - Main Workspace layout with sidebars */
+        #workspace-body {
+            display: grid;
+            grid-template-columns: 240px 1fr 280px;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Left Sidebar (Files + Guide) */
+        #left-sidebar {
+            background-color: var(--bg-sidebar);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            overflow: hidden;
+        }
+
+        .sidebar-section {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        }
+
+        .sidebar-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--accent-blue);
+            letter-spacing: 1.5px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        .explorer-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .explorer-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .explorer-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-primary);
+        }
+
+        .explorer-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border-left: 3px solid var(--accent-blue);
+            font-weight: bold;
+        }
+
+        .explorer-size {
+            font-size: 9px;
+            color: var(--text-dark);
+        }
+
+        .guide-box {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-muted);
+        }
+
+        /* Center Split View (Editor left, 3D Simulator right) */
+        #center-split-view {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Left Pane: Code Editor + Bottom Logs */
+        #editor-pane {
+            display: grid;
+            grid-template-rows: 1fr 220px;
+            border-right: 1px solid var(--border-color);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-editor);
+        }
+
+        .editor-tabs {
+            display: flex;
+            background: var(--bg-sidebar);
+            border-bottom: 1px solid var(--border-color);
+            height: 38px;
+            align-items: flex-end;
+            padding-left: 10px;
+        }
+
+        .editor-tab {
+            padding: 6px 16px;
+            font-size: 11px;
+            color: var(--text-muted);
+            border: 1px solid transparent;
+            border-bottom: none;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            margin-right: 3px;
+            transition: all 0.2s;
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        .editor-tab:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .editor-tab.active {
+            color: var(--accent-cyan);
+            background: var(--bg-editor);
+            border-color: var(--border-color);
+            font-weight: bold;
+        }
+
+        .editor-workspace {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .line-numbers {
+            width: 40px;
+            padding: 15px 0;
+            text-align: right;
+            padding-right: 8px;
+            color: #4b5563;
+            background: #050811;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .line-numbers div {
+            height: 18px;
+        }
+
+        .code-area {
+            flex-grow: 1;
+            height: 100%;
+            margin: 0;
+            padding: 15px;
+            background: transparent;
+            color: var(--text-primary);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            resize: none;
+            border: none;
+            outline: none;
+            white-space: pre;
+            overflow: auto;
+        }
+
+        /* SVG Split Layout for wiring.json active */
+        .wiring-split {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .wiring-svg-pane {
+            background-color: #03060d;
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .wiring-svg-header {
+            padding: 8px 12px;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--accent-cyan);
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            letter-spacing: 1px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .editor-footer {
+            height: 40px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            padding: 0 15px;
+            background-color: var(--bg-sidebar);
+        }
+
+        .apply-btn {
+            background: rgba(0, 243, 255, 0.05);
+            border: 1px solid var(--accent-cyan);
+            color: var(--accent-cyan);
+            border-radius: 4px;
+            padding: 5px 15px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 1px;
+        }
+
+        .apply-btn:hover {
+            background: var(--accent-cyan);
+            color: #000;
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.4);
+        }
+
+        /* Bottom Console Pane */
+        .console-container {
+            display: grid;
+            grid-template-rows: 35px 1fr;
+            background-color: var(--bg-sidebar);
+            border-top: 1px solid var(--border-color);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .console-tabs {
+            display: flex;
+            background-color: rgba(0, 0, 0, 0.2);
+            border-bottom: 1px solid var(--border-color);
+            padding-left: 10px;
+            align-items: center;
+        }
+
+        .console-tab {
+            padding: 8px 15px;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }
+
+        .console-tab.active {
+            color: var(--accent-cyan);
+            border-bottom: 2px solid var(--accent-cyan);
+        }
+
+        .console-logs {
+            padding: 12px;
+            overflow-y: auto;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            line-height: 1.4;
+            color: var(--text-muted);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .log-entry {
+            border-left: 2px solid transparent;
+            padding-left: 6px;
+        }
+        .log-sys { color: var(--text-primary); border-left-color: var(--accent-cyan); }
+        .log-warn { color: var(--accent-yellow); border-left-color: var(--accent-yellow); }
+        .log-crit { color: var(--accent-red); border-left-color: var(--accent-red); }
+        .log-conn { color: var(--accent-lime); border-left-color: var(--accent-lime); }
+
+        /* Right Pane: 3D Simulator container */
+        #sim-pane {
+            position: relative;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+
+        .canvas-controls-overlay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(13, 21, 39, 0.7);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 10px 14px;
+            font-size: 10px;
+            color: var(--text-muted);
+            backdrop-filter: blur(8px);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .canvas-controls-overlay h4 {
+            color: var(--accent-cyan);
+            margin-bottom: 6px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+
+        /* Right Sidebar (Metadata + Milestones + Controls) */
+        #right-sidebar {
+            background-color: var(--bg-sidebar);
+            border-left: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 15px;
+            gap: 20px;
+        }
+
+        .right-section {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-box-content {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.02);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: var(--text-muted);
+        }
+
+        .milestone-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .milestone-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 8px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 4px;
+        }
+
+        .milestone-item.achieved {
+            border-color: rgba(57, 255, 20, 0.2);
+            background: rgba(57, 255, 20, 0.05);
+        }
+
+        .milestone-badge {
+            font-size: 8px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: bold;
+        }
+
+        .milestone-badge.pending {
+            background: #374151;
+            color: #9ca3af;
+        }
+
+        .milestone-badge.done {
+            background: #14532d;
+            color: #4ade80;
+        }
+
+        .axis-slider-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .axis-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .axis-label {
+            width: 30px;
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--text-muted);
+        }
+
+        .axis-fill-bar {
+            flex-grow: 1;
+            height: 8px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .axis-fill {
+            height: 100%;
+            background: var(--accent-cyan);
+            width: 0%;
+        }
+
+        .axis-value {
+            width: 38px;
+            text-align: right;
+            font-size: 10px;
+            color: var(--accent-cyan);
+        }
+
+        /* Large Arm / Reset Button */
+        .right-large-btn {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 6px;
+            padding: 12px;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--text-primary);
+            font-weight: bold;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            letter-spacing: 2px;
+            text-align: center;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.15);
+        }
+
+        .right-large-btn:hover {
+            background: var(--accent-red);
+            color: #000;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+        }
+
+        /* SVG elements styling */
+        .svg-component-group:hover .svg-component {
+            stroke: var(--accent-cyan) !important;
+            stroke-width: 2px !important;
+        }
+
+        /* Scrollbars customization */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        /* Engine cut overlay */
+        .critical-warning {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            background: rgba(239, 68, 68, 0.25);
+            border: 2px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 20px 40px;
+            text-align: center;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.6);
+            backdrop-filter: blur(10px);
+            display: none;
+            pointer-events: none;
+            width: 80%;
+            max-width: 450px;
+        }
+
+        .critical-warning h1 {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-red);
+            font-size: 22px;
+            margin-bottom: 8px;
+            letter-spacing: 2px;
+            animation: blink 0.6s infinite alternate;
+        }
+
+        @keyframes blink {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="playground-container">
+        <!-- ??$$$ - Header Navigation -->
+        <header id="playground-header">
+            <div class="header-left">
+                <div class="header-logo">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <circle cx="12" cy="12" r="3" />
+                        <line x1="3" y1="3" x2="21" y2="21" />
+                        <line x1="21" y1="3" x2="3" y2="21" />
+                    </svg>
+                    VIRTUAL HARDWARE PLAYGROUND
+                </div>
+                <div class="header-sub">ESP32 Drone Simulator Runtime</div>
+            </div>
+
+            <div class="header-controls">
+                <button id="btn-run" class="control-btn active">RUN</button>
+                <button id="btn-pause" class="control-btn">PAUSE</button>
+                <button id="btn-reset" class="control-btn">RESET</button>
+                <button id="btn-wires" class="control-btn active">WIRES</button>
+                <button id="btn-labels" class="control-btn active">LABELS</button>
+            </div>
+
+            <div class="header-telemetry">
+                <div class="header-tel-item">VCC: <span id="tel-vcc">11.10V</span></div>
+                <div class="header-tel-item">CPU: <span id="tel-cpu">0%</span></div>
+                <div class="header-tel-item">FPS: <span id="tel-fps">60</span></div>
+            </div>
+        </header>
+
+        <!-- Workspace content -->
+        <div id="workspace-body">
+            <!-- Left Sidebar -->
+            <aside id="left-sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-title">PROJECT FILES</div>
+                    <ul class="explorer-list">
+                        <li class="explorer-item active" data-file="sketch">
+                            <span>sketch.ino</span>
+                            <span class="explorer-size">6.6 KB</span>
+                        </li>
+                        <li class="explorer-item" data-file="wiring">
+                            <span>wiring.json</span>
+                            <span class="explorer-size">1.8 KB</span>
+                        </li>
+                        <li class="explorer-item" data-file="editable">
+                            <span>editable.json</span>
+                            <span class="explorer-size">920 B</span>
+                        </li>
+                        <li class="explorer-item" data-file="scenario">
+                            <span>scenario.json</span>
+                            <span class="explorer-size">1.2 KB</span>
+                        </li>
+                        <li class="explorer-item" data-file="project">
+                            <span>project.json</span>
+                            <span class="explorer-size">2.4 KB</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="sidebar-section" style="border-bottom: none;">
+                    <div class="sidebar-title">Simulation Guide</div>
+                    <div class="guide-box">
+                        <p style="margin-bottom: 8px; font-weight: bold; color: var(--accent-cyan);">FLIGHT KEYBOARD INPUTS:</p>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 4px;">
+                            <li>• Throttle: <span style="color:#fff">Space / Shift</span></li>
+                            <li>• Pitch: <span style="color:#fff">W / S</span></li>
+                            <li>• Roll: <span style="color:#fff">A / D</span></li>
+                            <li>• Yaw: <span style="color:#fff">Q / E</span></li>
+                            <li>• Camera: <span style="color:#fff">C</span> (Follow/Tower)</li>
+                            <li>• Overlay: <span style="color:#fff">H</span> (Toggle Wires)</li>
+                        </ul>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Center View -->
+            <div id="center-split-view">
+                <!-- Left Pane: Editor + Logs -->
+                <div id="editor-pane">
+                    <div class="editor-container">
+                        <div class="editor-tabs">
+                            <button class="editor-tab active" data-tab="sketch">sketch.ino</button>
+                            <button class="editor-tab" data-tab="wiring">wiring.json</button>
+                            <button class="editor-tab" data-tab="editable">editable.json</button>
+                            <button class="editor-tab" data-tab="scenario">scenario.json</button>
+                            <button class="editor-tab" data-tab="project">project.json</button>
+                        </div>
+                        <div class="editor-workspace">
+                            <!-- Left Area: Code & Lines -->
+                            <div id="editor-code-container" style="display: flex; flex-direction: row; flex-grow: 1;">
+                                <div class="line-numbers" id="editor-line-numbers"></div>
+                                <textarea class="code-area" id="editor-textarea" spellcheck="false"></textarea>
+                            </div>
+                            
+                            <!-- Split Area for wiring schema -->
+                            <div id="editor-wiring-svg" class="wiring-split" style="display: none;">
+                                <div style="display: flex; flex-direction: row; flex-grow: 1;">
+                                    <div class="line-numbers" id="wiring-line-numbers"></div>
+                                    <textarea class="code-area" id="wiring-textarea" spellcheck="false"></textarea>
+                                </div>
+                                <div class="wiring-svg-pane">
+                                    <div class="wiring-svg-header">
+                                        <span>CIRCUIT DIAGRAM VISUALIZATION</span>
+                                        <span id="inspected-comp-label" style="color: var(--accent-cyan)">CLICK COMPONENT TO INSPECT</span>
+                                    </div>
+                                    <div id="wiring-svg-canvas" style="flex-grow: 1;"></div>
+                                    <div id="wiring-properties-box" style="height: 70px; background: rgba(0,0,0,0.4); padding: 8px; font-size: 10px; border-top: 1px solid var(--border-color); overflow-y: auto;"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="editor-footer">
+                            <button id="btn-apply" class="apply-btn">APPLY CODE CHANGES</button>
+                        </div>
+                    </div>
+
+                    <!-- Bottom Logs -->
+                    <div class="console-container">
+                        <div class="console-tabs">
+                            <div class="console-tab active">OUTPUT CONSOLE</div>
+                        </div>
+                        <div id="console-logs" class="console-logs"></div>
+                    </div>
+                </div>
+
+                <!-- Right Pane: 3D Simulator -->
+                <div id="sim-pane">
+                    <div id="canvas-container"></div>
+                    
+                    <!-- Canvas controls guide -->
+                    <div class="canvas-controls-overlay">
+                        <h4>CANVAS CONTROLS</h4>
+                        <p>Rotate: Left Click + Drag</p>
+                        <p>Pan: Right Click + Drag</p>
+                        <p>Zoom: Scroll Wheel</p>
+                    </div>
+
+                    <!-- Battery Death Warning Overlay -->
+                    <div id="critical-overlay" class="critical-warning">
+                        <h1>POWER DEPL / ENGINE CUT</h1>
+                        <p>TRANSMIT RESET COMMAND TO RESTORE POWER SYSTEM.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Sidebar -->
+            <aside id="right-sidebar">
+                <div class="right-section">
+                    <div class="sidebar-title">PROJECT METADATA</div>
+                    <div class="right-box-content" id="meta-project-desc" style="font-size: 10px;">
+                        Drone Hardware Emulation Platform. Connected to Virtual ESP32 relay link on port 8766.
+                    </div>
+                </div>
+
+                <div class="right-section">
+                    <div class="sidebar-title">MILESTONES</div>
+                    <div class="milestone-list">
+                        <div class="milestone-item" id="ms-link">
+                            <span style="font-size: 11px;">Link Status</span>
+                            <span class="milestone-badge pending" id="badge-link">LOST</span>
+                        </div>
+                        <div class="milestone-item" id="ms-voltage">
+                            <span style="font-size: 11px;">Battery VCC</span>
+                            <span class="milestone-badge pending" id="badge-voltage">LOW</span>
+                        </div>
+                        <div class="milestone-item" id="ms-takeoff">
+                            <span style="font-size: 11px;">First Takeoff</span>
+                            <span class="milestone-badge pending" id="badge-takeoff">PENDING</span>
+                        </div>
+                        <div class="milestone-item" id="ms-altitude">
+                            <span style="font-size: 11px;">High Altitude (>20m)</span>
+                            <span class="milestone-badge pending" id="badge-altitude">PENDING</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="right-section">
+                    <div class="sidebar-title">FLIGHT TELEMETRY</div>
+                    <div class="axis-slider-group">
+                        <div class="axis-row">
+                            <span class="axis-label">THR</span>
+                            <div class="axis-fill-bar"><div id="bar-thr" class="axis-fill"></div></div>
+                            <span class="axis-value" id="val-thr">0.00</span>
+                        </div>
+                        <div class="axis-row">
+                            <span class="axis-label">PIT</span>
+                            <div class="axis-fill-bar"><div id="bar-pit" class="axis-fill"></div></div>
+                            <span class="axis-value" id="val-pit">0.00</span>
+                        </div>
+                        <div class="axis-row">
+                            <span class="axis-label">ROL</span>
+                            <div class="axis-fill-bar"><div id="bar-rol" class="axis-fill"></div></div>
+                            <span class="axis-value" id="val-rol">0.00</span>
+                        </div>
+                        <div class="axis-row">
+                            <span class="axis-label">YAW</span>
+                            <div class="axis-fill-bar"><div id="bar-yaw" class="axis-fill"></div></div>
+                            <span class="axis-value" id="val-yaw">0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button id="btn-hardware-reset" class="right-large-btn">HARDWARE RESET</button>
+            </aside>
+        </div>
+    </div>
+
+    <!-- ??$$$ - Controller and Simulation scripts -->
+    <script>
+        // ??$$$ - Hardcoded files database
+        const filesData = {
+            sketch: `// Flash this to ESP32 to replace the virtual emulator
+// ??$$$ - ESP32 Drone Firmware Sketch
+#include <WiFi.h>
+#include <WebSocketsServer.h>
+#include <ArduinoJson.h>
+#include <ESP32Servo.h>
+
+const char* ssid = "YourWiFiSSID";
+const char* password = "YourWiFiPassword";
+
+WebSocketsServer webSocket = WebSocketsServer(8765);
+
+Servo esc1;
+Servo esc2;
+Servo esc3;
+Servo esc4;
+
+const int ESC1_PIN = 13;
+const int ESC2_PIN = 12;
+const int ESC3_PIN = 14;
+const int ESC4_PIN = 27;
+const int LED_PIN = 2;
+const int BATTERY_PIN = 34;
+
+int getBatteryPercentage() {
+  int rawADC = analogRead(BATTERY_PIN);
+  int percent = map(rawADC, 2700, 3400, 0, 100);
+  if (percent > 100) percent = 100;
+  if (percent < 0) percent = 0;
+  return percent;
+}
+
+void webSocketEvent(uint8_t num, WSevent_t type, uint8_t * payload, size_t length) {
+  switch(type) {
+    case WSevent_t::WSEVENT_DISCONNECTED:
+      digitalWrite(LED_PIN, LOW);
+      esc1.writeMicroseconds(1000);
+      esc2.writeMicroseconds(1000);
+      esc3.writeMicroseconds(1000);
+      esc4.writeMicroseconds(1000);
+      break;
+    case WSevent_t::WSEVENT_CONNECTED:
+      digitalWrite(LED_PIN, HIGH);
+      break;
+    case WSevent_t::WSEVENT_TEXT: {
+      StaticJsonDocument<256> doc;
+      deserializeJson(doc, payload, length);
+      if (doc.containsKey("action") && doc["action"] == "reset") {
+        esc1.writeMicroseconds(1000);
+        esc2.writeMicroseconds(1000);
+        esc3.writeMicroseconds(1000);
+        esc4.writeMicroseconds(1000);
+        return;
+      }
+      if (doc.containsKey("throttle")) {
+        float throttle = doc["throttle"];
+        float pitch = doc["pitch"];
+        float roll = doc["roll"];
+        float yaw = doc["yaw"];
+        float throttle_normalized = (throttle + 1.0) / 2.0;
+        if (throttle_normalized < 0.0) throttle_normalized = 0.0;
+        float base = 1000.0 + (throttle_normalized * 1000.0);
+        
+        float m1 = base - pitch*200.0 - roll*200.0 + yaw*100.0;
+        float m2 = base - pitch*200.0 + roll*200.0 - yaw*100.0;
+        float m3 = base + pitch*200.0 + roll*200.0 + yaw*100.0;
+        float m4 = base + pitch*200.0 - roll*200.0 - yaw*100.0;
+        
+        esc1.writeMicroseconds(constrain((int)round(m1), 1000, 2000));
+        esc2.writeMicroseconds(constrain((int)round(m2), 1000, 2000));
+        esc3.writeMicroseconds(constrain((int)round(m3), 1000, 2000));
+        esc4.writeMicroseconds(constrain((int)round(m4), 1000, 2000));
+      }
+      break;
+    }
+  }
+}`,
+            wiring: `{
+  "board": "ESP32 DevKit V1",
+  "components": [
+    { "id": "esp32", "type": "ESP32", "position": [0,0] },
+    { "id": "m1", "type": "Brushless Motor", "label": "M1 Front-Left", "pin": 13, "rotation": "CW", "esc_id": "esc1" },
+    { "id": "m2", "type": "Brushless Motor", "label": "M2 Front-Right", "pin": 12, "rotation": "CCW", "esc_id": "esc2" },
+    { "id": "m3", "type": "Brushless Motor", "label": "M3 Rear-Right", "pin": 14, "rotation": "CW", "esc_id": "esc3" },
+    { "id": "m4", "type": "Brushless Motor", "label": "M4 Rear-Left", "pin": 27, "rotation": "CCW", "esc_id": "esc4" },
+    { "id": "esc1", "type": "ESC 30A", "signal_pin": 13, "power": "VBAT", "ground": "GND" },
+    { "id": "esc2", "type": "ESC 30A", "signal_pin": 12, "power": "VBAT", "ground": "GND" },
+    { "id": "esc3", "type": "ESC 30A", "signal_pin": 14, "power": "VBAT", "ground": "GND" },
+    { "id": "esc4", "type": "ESC 30A", "signal_pin": 27, "power": "VBAT", "ground": "GND" },
+    { "id": "bat", "type": "LiPo 3S 2200mAh", "voltage": 11.1, "pin_positive": "VBAT", "pin_negative": "GND" },
+    { "id": "imu", "type": "MPU6050", "sda_pin": 21, "scl_pin": 22 }
+  ],
+  "wires": [
+    { "from": "bat.positive", "to": "esc1.power", "color": "red" },
+    { "from": "bat.positive", "to": "esc2.power", "color": "red" },
+    { "from": "bat.positive", "to": "esc3.power", "color": "red" },
+    { "from": "bat.positive", "to": "esc4.power", "color": "red" },
+    { "from": "bat.negative", "to": "esc1.ground", "color": "black" },
+    { "from": "bat.negative", "to": "esc2.ground", "color": "black" },
+    { "from": "bat.negative", "to": "esc3.ground", "color": "black" },
+    { "from": "bat.negative", "to": "esc4.ground", "color": "black" },
+    { "from": "esp32.gpio13", "to": "esc1.signal", "color": "yellow" },
+    { "from": "esp32.gpio12", "to": "esc2.signal", "color": "yellow" },
+    { "from": "esp32.gpio14", "to": "esc3.signal", "color": "yellow" },
+    { "from": "esp32.gpio27", "to": "esc4.signal", "color": "yellow" },
+    { "from": "esp32.gpio21", "to": "imu.sda", "color": "blue" },
+    { "from": "esp32.gpio22", "to": "imu.scl", "color": "green" }
+  ]
+}`,
+            editable: `{
+  "wifi_ssid": "YourNetwork",
+  "wifi_password": "YourPassword",
+  "websocket_port": 8765,
+  "motor_min_pwm": 1000,
+  "motor_max_pwm": 2000,
+  "hover_throttle": 0.3,
+  "battery_cells": 3,
+  "battery_capacity_mah": 2200,
+  "pid": {
+    "pitch": { "kp": 1.2, "ki": 0.05, "kd": 0.8 },
+    "roll":  { "kp": 1.2, "ki": 0.05, "kd": 0.8 },
+    "yaw":   { "kp": 2.0, "ki": 0.1,  "kd": 0.3 }
+  }
+}`,
+            scenario: `{
+  "obstacle_count": 25,
+  "scatter_range": 250,
+  "weather": {
+    "wind_speed_mps": 1.2,
+    "wind_direction_deg": 45,
+    "fog_density": 0.0065
+  },
+  "boundaries": {
+    "min_x": -300,
+    "max_x": 300,
+    "min_z": -300,
+    "max_z": 300,
+    "max_y": 120
+  }
+}`,
+            project: `{
+  "id": "drone_sim_esp32_quad",
+  "name": "Virtual Drone Controller flight system",
+  "author": "Antigravity",
+  "version": "1.0.0",
+  "created_at": "2026-06-05",
+  "target_hardware": {
+    "controller": "ESP32 DevKit V1",
+    "motors": "Brushless 2212 1000KV",
+    "esc": "30A BLHeli_S",
+    "battery": "3S 11.1V LiPo"
+  }
+}`
+        };
+
+        // Current active workspace configs
+        let currentFile = 'sketch';
+        let wiringConfig = JSON.parse(filesData.wiring);
+        let editableConfig = JSON.parse(filesData.editable);
+
+        // Three.js Scene Variables
+        let scene, camera, renderer, clock;
+        let drone, rotors = [];
+        let dirLight;
+        let obstacles = [];
+        let cameraMode = 'follow';
+        let isPaused = false;
+        let wiresOverlayVisible = true;
+        let labelsOverlayVisible = true;
+
+        // Drone flight state vectors
+        const position = new THREE.Vector3(0, 0.5, 0);
+        const velocity = new THREE.Vector3(0, 0, 0);
+        let yawAngle = 0;
+        let pitchAngle = 0;
+        let rollAngle = 0;
+        
+        let battery = 100.0;
+        let isDead = false;
+        let lowBatteryWarnTriggered = false;
+
+        // Milestones checking
+        let milestoneTakeoffTriggered = false;
+        let milestoneAlt20Triggered = false;
+
+        // Input structures
+        let wsInput = { throttle: -1.0, pitch: 0, roll: 0, yaw: 0 };
+        let kbInput = { throttle: 0, pitch: 0, roll: 0, yaw: 0 };
+        let currentInput = { throttle: -1.0, pitch: 0, roll: 0, yaw: 0 };
+
+        // Mapped motor microsecond outputs
+        let currentMotorPWM = [1000, 1000, 1000, 1000];
+        let hasReceivedWsData = false;
+
+        // Constants for flight mechanics
+        const GRAVITY_CONSTANT = 9.8;
+        const verticalForceMultiplier = 16.0;
+        const gravityFactor = 15.0;
+        const moveAcceleration = 22.0;
+        const yawSpeed = 2.5;
+        const maxTiltAngle = 0.35;
+        const drag = 2.0;
+        const verticalDrag = 1.5;
+        const groundHeight = 0.15;
+        const maxAltitude = 120.0;
+
+        // 3D Hardware Overlay Group
+        let hardwareOverlayGroup;
+
+        // WebSocket Link
+        let socket = null;
+        const wsUrl = "ws://localhost:8766";
+
+        // DOM Elements mapping
+        const telVcc = document.getElementById('tel-vcc');
+        const telCpu = document.getElementById('tel-cpu');
+        const telFps = document.getElementById('tel-fps');
+        
+        const badgeLink = document.getElementById('badge-link');
+        const badgeVoltage = document.getElementById('badge-voltage');
+        const badgeTakeoff = document.getElementById('badge-takeoff');
+        const badgeAltitude = document.getElementById('badge-altitude');
+
+        const barThr = document.getElementById('bar-thr');
+        const barPit = document.getElementById('bar-pit');
+        const barRol = document.getElementById('bar-rol');
+        const barYaw = document.getElementById('bar-yaw');
+
+        const valThr = document.getElementById('val-thr');
+        const valPit = document.getElementById('val-pit');
+        const valRol = document.getElementById('val-rol');
+        const valYaw = document.getElementById('val-yaw');
+
+        const consoleLogs = document.getElementById('console-logs');
+        const criticalOverlay = document.getElementById('critical-overlay');
+
+        // ??$$$ - Output Console logger
+        function addLog(message, type = 'sys') {
+            const timeStr = new Date().toLocaleTimeString('en-US', { hour12: false });
+            const logDiv = document.createElement('div');
+            logDiv.className = `log-entry log-${type}`;
+            logDiv.innerText = `[${timeStr}] ${message}`;
+            consoleLogs.appendChild(logDiv);
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+
+            while (consoleLogs.children.length > 50) {
+                consoleLogs.removeChild(consoleLogs.firstChild);
+            }
+        }
+
+        // Setup Monospaced Code Area with Line Numbers
+        function setupLineNumbers(textElId, numbersElId) {
+            const textarea = document.getElementById(textElId);
+            const lineNumbers = document.getElementById(numbersElId);
+            if (!textarea || !lineNumbers) return;
+
+            function update() {
+                const lines = textarea.value.split('\n');
+                const count = lines.length;
+                let html = '';
+                for (let i = 1; i <= count; i++) {
+                    html += `<div>${i}</div>`;
+                }
+                lineNumbers.innerHTML = html;
+            }
+
+            textarea.addEventListener('input', update);
+            textarea.addEventListener('scroll', () => {
+                lineNumbers.scrollTop = textarea.scrollTop;
+            });
+            update();
+        }
+
+        // ??$$$ - SVG circuit renderer matching default wiring.json
+        function drawWiringSVG(config) {
+            const canvasDiv = document.getElementById('wiring-svg-canvas');
+            canvasDiv.innerHTML = '';
+            
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            svg.setAttribute("viewBox", "0 0 500 500");
+            svg.style.background = "#03060d";
+
+            const coords = {
+                esp32: { x: 250, y: 230, w: 90, h: 120, label: "ESP32" },
+                esc1: { x: 130, y: 130, w: 60, h: 40, label: "ESC M1" },
+                esc2: { x: 370, y: 130, w: 60, h: 40, label: "ESC M2" },
+                esc3: { x: 370, y: 330, w: 60, h: 40, label: "ESC M3" },
+                esc4: { x: 130, y: 330, w: 60, h: 40, label: "ESC M4" },
+                m1: { x: 60, y: 60, r: 20, label: "M1" },
+                m2: { x: 440, y: 60, r: 20, label: "M2" },
+                m3: { x: 440, y: 400, r: 20, label: "M3" },
+                m4: { x: 60, y: 400, r: 20, label: "M4" },
+                bat: { x: 250, y: 420, w: 100, h: 45, label: "3S LiPo" },
+                imu: { x: 250, y: 70, w: 60, h: 35, label: "IMU" }
+            };
+
+            function getPinPos(compPin) {
+                const parts = compPin.split('.');
+                const compId = parts[0];
+                const pinName = parts[1];
+                const info = coords[compId];
+                if (!info) return { x: 250, y: 250 };
+                
+                if (compId === 'esp32') {
+                    if (pinName === 'gpio21') return { x: info.x - info.w/2, y: info.y - 40 };
+                    if (pinName === 'gpio22') return { x: info.x - info.w/2, y: info.y - 20 };
+                    if (pinName === 'gpio13') return { x: info.x - info.w/2, y: info.y };
+                    if (pinName === 'gpio14') return { x: info.x - info.w/2, y: info.y + 20 };
+                    if (pinName === 'gpio27') return { x: info.x - info.w/2, y: info.y + 40 };
+                    if (pinName === 'gpio12') return { x: info.x + info.w/2, y: info.y - 20 };
+                    if (pinName === 'gnd') return { x: info.x + info.w/2, y: info.y + 40 };
+                } else if (compId === 'bat') {
+                    if (pinName === 'positive') return { x: info.x - 30, y: info.y };
+                    if (pinName === 'negative') return { x: info.x + 30, y: info.y };
+                } else if (compId === 'imu') {
+                    if (pinName === 'sda') return { x: info.x - 15, y: info.y + info.h/2 };
+                    if (pinName === 'scl') return { x: info.x + 15, y: info.y + info.h/2 };
+                } else if (compId.startsWith('esc')) {
+                    const isTop = (compId === 'esc1' || compId === 'esc2');
+                    if (pinName === 'signal') return { x: info.x, y: isTop ? info.y - info.h/2 : info.y + info.h/2 };
+                    if (pinName === 'power') return { x: info.x - 15, y: isTop ? info.y + info.h/2 : info.y - info.h/2 };
+                    if (pinName === 'ground') return { x: info.x + 15, y: isTop ? info.y + info.h/2 : info.y - info.h/2 };
+                }
+                return { x: info.x, y: info.y };
+            }
+
+            // Draw Wire traces
+            if (config.wires) {
+                config.wires.forEach(wire => {
+                    const fromPos = getPinPos(wire.from);
+                    const toPos = getPinPos(wire.to);
+                    
+                    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+                    const dx = Math.abs(toPos.x - fromPos.x);
+                    const dy = Math.abs(toPos.y - fromPos.y);
+                    let d;
+                    if (dx > dy) {
+                        const ctrlX = fromPos.x + (toPos.x - fromPos.x)/2;
+                        d = `M ${fromPos.x} ${fromPos.y} C ${ctrlX} ${fromPos.y}, ${ctrlX} ${toPos.y}, ${toPos.x} ${toPos.y}`;
+                    } else {
+                        const ctrlY = fromPos.y + (toPos.y - fromPos.y)/2;
+                        d = `M ${fromPos.x} ${fromPos.y} C ${fromPos.x} ${ctrlY}, ${toPos.x} ${ctrlY}, ${toPos.x} ${toPos.y}`;
+                    }
+                    path.setAttribute("d", d);
+                    path.setAttribute("fill", "none");
+                    path.setAttribute("stroke", wire.color || "#ffffff");
+                    path.setAttribute("stroke-width", "1.8");
+                    path.setAttribute("opacity", "0.7");
+                    svg.appendChild(path);
+                });
+            }
+
+            // Draw Component blocks
+            if (config.components) {
+                config.components.forEach(comp => {
+                    const info = coords[comp.id];
+                    if (!info) return;
+
+                    const group = document.createElementNS("http://www.w3.org/2000/svg", "g");
+                    group.setAttribute("class", "svg-component-group");
+
+                    group.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        document.querySelectorAll('.svg-component').forEach(el => {
+                            el.setAttribute("stroke", "rgba(0, 243, 255, 0.2)");
+                            el.setAttribute("stroke-width", "1.2");
+                        });
+                        rectOrCircle.setAttribute("stroke", "var(--accent-cyan)");
+                        rectOrCircle.setAttribute("stroke-width", "2.5");
+                        
+                        showComponentProperties(comp);
+                    });
+
+                    let rectOrCircle;
+                    if (comp.type === 'Brushless Motor') {
+                        rectOrCircle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        rectOrCircle.setAttribute("cx", info.x);
+                        rectOrCircle.setAttribute("cy", info.y);
+                        rectOrCircle.setAttribute("r", info.r);
+                        rectOrCircle.setAttribute("class", "svg-component");
+                        rectOrCircle.setAttribute("fill", "#090d16");
+                        rectOrCircle.setAttribute("stroke", "rgba(0, 243, 255, 0.2)");
+                        rectOrCircle.setAttribute("stroke-width", "1.2");
+                        group.appendChild(rectOrCircle);
+                    } else {
+                        rectOrCircle = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+                        rectOrCircle.setAttribute("x", info.x - info.w/2);
+                        rectOrCircle.setAttribute("y", info.y - info.h/2);
+                        rectOrCircle.setAttribute("width", info.w);
+                        rectOrCircle.setAttribute("height", info.h);
+                        rectOrCircle.setAttribute("rx", "4");
+                        rectOrCircle.setAttribute("class", "svg-component");
+
+                        let fill = "#0f172a";
+                        if (comp.type === 'ESP32') fill = "#090d16";
+                        else if (comp.type.startsWith('ESC')) fill = "#0f172a";
+                        else if (comp.type.startsWith('LiPo')) fill = "#7f1d1d";
+                        else if (comp.type === 'MPU6050') fill = "#1e3a8a";
+
+                        rectOrCircle.setAttribute("fill", fill);
+                        rectOrCircle.setAttribute("stroke", "rgba(0, 243, 255, 0.2)");
+                        rectOrCircle.setAttribute("stroke-width", "1.2");
+                        group.appendChild(rectOrCircle);
+                    }
+
+                    // Text labels
+                    const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                    text.setAttribute("x", info.x);
+                    text.setAttribute("y", comp.type === 'Brushless Motor' ? info.y + 2 : info.y - 2);
+                    text.setAttribute("fill", "#ffffff");
+                    text.setAttribute("font-size", comp.type === 'Brushless Motor' ? "8" : "9");
+                    text.setAttribute("font-family", "'Orbitron', sans-serif");
+                    text.setAttribute("text-anchor", "middle");
+                    text.textContent = comp.id.toUpperCase();
+                    group.appendChild(text);
+
+                    if (comp.type !== 'Brushless Motor') {
+                        const subText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                        subText.setAttribute("x", info.x);
+                        subText.setAttribute("y", info.y + 10);
+                        subText.setAttribute("fill", "#64748b");
+                        subText.setAttribute("font-size", "7");
+                        subText.setAttribute("font-family", "monospace");
+                        subText.setAttribute("text-anchor", "middle");
+                        subText.textContent = comp.type;
+                        group.appendChild(subText);
+                    }
+
+                    svg.appendChild(group);
+                });
+            }
+
+            canvasDiv.appendChild(svg);
+        }
+
+        function showComponentProperties(comp) {
+            const propBox = document.getElementById('wiring-properties-box');
+            document.getElementById('inspected-comp-label').innerText = `INSPECTING: ${comp.id.toUpperCase()}`;
+            
+            let html = `
+                <div style="font-weight: bold; color: var(--accent-cyan); margin-bottom: 4px;">TYPE: ${comp.type}</div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;">
+            `;
+            for (const [key, value] of Object.entries(comp)) {
+                if (key !== 'id' && key !== 'type') {
+                    html += `<div><span style="color:#64748b">${key}:</span> ${value}</div>`;
+                }
+            }
+            html += `</div>`;
+            propBox.innerHTML = html;
+        }
+
+        // ??$$$ - Rebuild 3D hardware components overlay derived from wiring.json
+        function rebuildHardwareOverlay3D() {
+            if (!hardwareOverlayGroup) return;
+
+            while (hardwareOverlayGroup.children.length > 0) {
+                hardwareOverlayGroup.remove(hardwareOverlayGroup.children[0]);
+            }
+
+            const config = wiringConfig;
+            if (!config || !config.components) return;
+
+            const positions3D = {
+                esp32: new THREE.Vector3(0, 0.08, 0),
+                bat: new THREE.Vector3(0, -0.15, 0),
+                imu: new THREE.Vector3(0, 0.12, 0.12),
+                esc1: new THREE.Vector3(-0.4, 0.04, -0.4),
+                esc2: new THREE.Vector3(0.4, 0.04, -0.4),
+                esc3: new THREE.Vector3(0.4, 0.04, 0.4),
+                esc4: new THREE.Vector3(-0.4, 0.04, 0.4),
+                m1: new THREE.Vector3(-0.9, 0.18, -0.9),
+                m2: new THREE.Vector3(0.9, 0.18, -0.9),
+                m3: new THREE.Vector3(0.9, 0.18, 0.9),
+                m4: new THREE.Vector3(-0.9, 0.18, 0.9)
+            };
+
+            // Build Components
+            config.components.forEach(comp => {
+                const pos = positions3D[comp.id];
+                if (!pos) return;
+
+                let mesh;
+                if (comp.type === 'ESP32') {
+                    const group = new THREE.Group();
+                    const pcbGeom = new THREE.BoxGeometry(0.35, 0.02, 0.55);
+                    const pcbMat = new THREE.MeshStandardMaterial({ color: 0x14532d, roughness: 0.8 });
+                    const pcb = new THREE.Mesh(pcbGeom, pcbMat);
+                    group.add(pcb);
+
+                    const shieldGeom = new THREE.BoxGeometry(0.18, 0.03, 0.25);
+                    const shieldMat = new THREE.MeshStandardMaterial({ color: 0xd1d5db, metalness: 0.9, roughness: 0.1 });
+                    const shield = new THREE.Mesh(shieldGeom, shieldMat);
+                    shield.position.set(0, 0.02, -0.08);
+                    group.add(shield);
+
+                    group.position.copy(pos);
+                    mesh = group;
+                } else if (comp.type.startsWith('ESC')) {
+                    const escGeom = new THREE.BoxGeometry(0.18, 0.04, 0.28);
+                    const escMat = new THREE.MeshStandardMaterial({ color: 0x1d4ed8, roughness: 0.6 });
+                    mesh = new THREE.Mesh(escGeom, escMat);
+                    mesh.position.copy(pos);
+                } else if (comp.type.startsWith('LiPo')) {
+                    const batGeom = new THREE.BoxGeometry(0.4, 0.15, 0.7);
+                    const batMat = new THREE.MeshStandardMaterial({ color: 0xd97706, roughness: 0.6 });
+                    mesh = new THREE.Mesh(batGeom, batMat);
+                    mesh.position.copy(pos);
+                } else if (comp.type === 'MPU6050') {
+                    const imuGeom = new THREE.BoxGeometry(0.12, 0.015, 0.12);
+                    const imuMat = new THREE.MeshStandardMaterial({ color: 0x0369a1, roughness: 0.7 });
+                    mesh = new THREE.Mesh(imuGeom, imuMat);
+                    mesh.position.copy(pos);
+                }
+
+                if (mesh) {
+                    hardwareOverlayGroup.add(mesh);
+                }
+            });
+
+            // Build Wires
+            if (config.wires) {
+                config.wires.forEach(wire => {
+                    const fromId = wire.from.split('.')[0];
+                    const toId = wire.to.split('.')[0];
+                    
+                    const p1 = positions3D[fromId];
+                    const p2 = positions3D[toId];
+
+                    if (p1 && p2) {
+                        const wireMesh = create3DWire(p1, p2, wire.color);
+                        hardwareOverlayGroup.add(wireMesh);
+                    }
+                });
+            }
+        }
+
+        function create3DWire(p1, p2, colorStr) {
+            const distance = p1.distanceTo(p2);
+            const pos = p1.clone().add(p2).multiplyScalar(0.5);
+            
+            const geom = new THREE.CylinderGeometry(0.01, 0.01, distance, 6);
+            const direction = p2.clone().sub(p1).normalize();
+            const up = new THREE.Vector3(0, 1, 0);
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(up, direction);
+            
+            const colorMap = {
+                "red": 0xef4444,
+                "black": 0x111827,
+                "yellow": 0xf59e0b,
+                "blue": 0x3b82f6,
+                "green": 0x10b981
+            };
+            const color = colorMap[colorStr] || 0xffffff;
+            const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.5 });
+            
+            const mesh = new THREE.Mesh(geom, mat);
+            mesh.position.copy(pos);
+            mesh.quaternion.copy(quaternion);
+            return mesh;
+        }
+
+        // Canvas texture helper for M1-M4 rotor labels
+        function createRotorLabelTexture(label, rotationType) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, 128, 128);
+            
+            ctx.strokeStyle = 'rgba(0, 243, 255, 0.3)';
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(64, 64, 45, 0, Math.PI * 2);
+            ctx.stroke();
+            
+            ctx.fillStyle = '#00f3ff';
+            ctx.font = 'bold 24px "Orbitron", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, 64, 64);
+            
+            ctx.font = '12px "Share Tech Mono", monospace';
+            ctx.fillText(rotationType, 64, 85);
+            
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function updateRotorsFromWiring() {
+            rotors.forEach(rotor => {
+                const motorComp = wiringConfig.components.find(c => c.id === 'm' + rotor.motorId);
+                if (motorComp) {
+                    rotor.directionSign = (motorComp.rotation === 'CW') ? 1 : -1;
+                    const newTex = createRotorLabelTexture('M' + rotor.motorId, motorComp.rotation);
+                    rotor.labelMesh.material.map.dispose();
+                    rotor.labelMesh.material.map = newTex;
+                    rotor.labelMesh.material.needsUpdate = true;
+                }
+            });
+        }
+
+        // Initialize 3D Flight Scene
+        function initScene() {
+            const container = document.getElementById('canvas-container');
+            
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x060913);
+            scene.fog = new THREE.FogExp2(0x060913, 0.0065);
+
+            camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 5, 8);
+
+            clock = new THREE.Clock();
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            const ambientLight = new THREE.HemisphereLight(0x0d1527, 0x1b263b, 0.8);
+            scene.add(ambientLight);
+
+            dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            dirLight.position.set(40, 80, 40);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            dirLight.shadow.bias = -0.0005;
+            scene.add(dirLight);
+
+            // Infinite grid helper
+            const gridHelper = new THREE.GridHelper(2000, 200, 0x1b263b, 0x0c1322);
+            gridHelper.position.y = 0.01;
+            scene.add(gridHelper);
+
+            // Ground plane
+            const floorGeom = new THREE.PlaneGeometry(2000, 2000);
+            const floorMat = new THREE.MeshStandardMaterial({ color: 0x050811, roughness: 0.9 });
+            const floorMesh = new THREE.Mesh(floorGeom, floorMat);
+            floorMesh.rotation.x = -Math.PI / 2;
+            floorMesh.receiveShadow = true;
+            scene.add(floorMesh);
+
+            buildObstacles();
+            buildDrone();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+
+        function buildObstacles() {
+            const count = 25;
+            for (let i = 0; i < count; i++) {
+                const height = 15 + Math.random() * 25;
+                const radius = 3 + Math.random() * 6;
+                const geom = new THREE.CylinderGeometry(radius, radius, height, 12);
+                const mat = new THREE.MeshStandardMaterial({
+                    color: 0x0d1527,
+                    roughness: 0.4,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const mesh = new THREE.Mesh(geom, mat);
+                mesh.castShadow = true;
+
+                const edges = new THREE.EdgesGeometry(geom);
+                const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: 0x3b82f6 }));
+                mesh.add(line);
+
+                let px, pz;
+                do {
+                    px = (Math.random() - 0.5) * 220;
+                    pz = (Math.random() - 0.5) * 220;
+                } while (Math.sqrt(px*px + pz*pz) < 15);
+
+                mesh.position.set(px, height / 2, pz);
+                scene.add(mesh);
+                obstacles.push(mesh);
+            }
+        }
+
+        function buildDrone() {
+            drone = new THREE.Group();
+            drone.position.copy(position);
+            scene.add(drone);
+
+            // Frame Core
+            const coreGeom = new THREE.BoxGeometry(0.5, 0.2, 0.7);
+            const coreMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9 });
+            const core = new THREE.Mesh(coreGeom, coreMat);
+            core.castShadow = true;
+            drone.add(core);
+
+            // LED light indicator
+            const ledGeom = new THREE.SphereGeometry(0.08, 8, 8);
+            const ledMat = new THREE.MeshBasicMaterial({ color: 0x39ff14 });
+            const statusLed = new THREE.Mesh(ledGeom, ledMat);
+            statusLed.position.set(0, 0.12, -0.3);
+            drone.add(statusLed);
+
+            // X-Arms
+            const armGeom = new THREE.CylinderGeometry(0.04, 0.04, 1.2, 8);
+            armGeom.rotateX(Math.PI / 2);
+            const armMat = new THREE.MeshStandardMaterial({ color: 0x1e293b });
+
+            const armAngles = [Math.PI / 4, 3 * Math.PI / 4, -Math.PI / 4, -3 * Math.PI / 4];
+            const motorMapping = [3, 4, 2, 1]; // RR, RL, FR, FL
+
+            armAngles.forEach((angle, i) => {
+                const armGroup = new THREE.Group();
+                const motorId = motorMapping[i];
+
+                const arm = new THREE.Mesh(armGeom, armMat);
+                arm.position.set(0, 0, 0.6);
+                armGroup.add(arm);
+
+                // Motor
+                const motorGeom = new THREE.CylinderGeometry(0.1, 0.1, 0.18, 8);
+                const motorMesh = new THREE.Mesh(motorGeom, new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+                motorMesh.position.set(0, 0.1, 1.2);
+                armGroup.add(motorMesh);
+
+                const isFront = (motorId === 1 || motorId === 2);
+
+                // Rotor spinning propeller
+                const propGroup = new THREE.Group();
+                propGroup.position.set(0, 0.2, 1.2);
+                
+                const bladeGeom = new THREE.BoxGeometry(0.8, 0.01, 0.05);
+                const blade = new THREE.Mesh(bladeGeom, new THREE.MeshStandardMaterial({ color: 0x475569 }));
+                propGroup.add(blade);
+
+                const blurGeom = new THREE.CircleGeometry(0.4, 16);
+                blurGeom.rotateX(Math.PI / 2);
+                const blur = new THREE.Mesh(blurGeom, new THREE.MeshBasicMaterial({
+                    color: isFront ? 0x00f3ff : 0x39ff14,
+                    transparent: true,
+                    opacity: 0.1
+                }));
+                propGroup.add(blur);
+
+                const ringGeom = new THREE.TorusGeometry(0.42, 0.008, 6, 24);
+                ringGeom.rotateX(Math.PI / 2);
+                const ring = new THREE.Mesh(ringGeom, new THREE.MeshBasicMaterial({
+                    color: isFront ? 0x00f3ff : 0x39ff14,
+                    transparent: true,
+                    opacity: 0.25
+                }));
+                propGroup.add(ring);
+
+                armGroup.add(propGroup);
+
+                // Floaty Labels
+                const motorComp = wiringConfig.components.find(c => c.id === 'm' + motorId);
+                const rotation = motorComp ? motorComp.rotation : (isFront ? 'CCW' : 'CW');
+                const labelTex = createRotorLabelTexture('M' + motorId, rotation);
+                const labelMat = new THREE.MeshBasicMaterial({ map: labelTex, transparent: true, side: THREE.DoubleSide });
+                const labelMesh = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.6), labelMat);
+                labelMesh.position.set(0, 0.4, 1.2);
+                labelMesh.rotation.x = -Math.PI / 2;
+                armGroup.add(labelMesh);
+
+                // Floaty PWM Bar
+                const barFillGeom = new THREE.BoxGeometry(0.04, 1.0, 0.04);
+                barFillGeom.translate(0, 0.5, 0); // Bottom anchor
+                const barFillMesh = new THREE.Mesh(barFillGeom, new THREE.MeshBasicMaterial({ color: 0x39ff14 }));
+                barFillMesh.position.set(0, 0, 0.7);
+                armGroup.add(barFillMesh);
+
+                armGroup.rotation.y = angle;
+                drone.add(armGroup);
+
+                rotors.push({
+                    group: propGroup,
+                    blade: blade,
+                    blur: blur,
+                    ring: ring,
+                    labelMesh: labelMesh,
+                    fillMesh: barFillMesh,
+                    motorId: motorId,
+                    directionSign: (rotation === 'CW') ? 1 : -1
+                });
+            });
+
+            // Hardware overlays
+            hardwareOverlayGroup = new THREE.Group();
+            drone.add(hardwareOverlayGroup);
+            rebuildHardwareOverlay3D();
+        }
+
+        // Connect to port 8766 simulator socket
+        function setupWebSocket() {
+            badgeLink.className = "milestone-badge pending";
+            badgeLink.innerText = "CONN";
+            
+            socket = new WebSocket(wsUrl);
+
+            socket.onopen = () => {
+                badgeLink.className = "milestone-badge done";
+                badgeLink.innerText = "LINK";
+                addLog("NET: Virtual ESP32 websocket connected successfully.", "conn");
+            };
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    
+                    if (data.action === "reset") {
+                        triggerReset();
+                        return;
+                    }
+
+                    if (data.throttle !== undefined) wsInput.throttle = parseFloat(data.throttle);
+                    if (data.pitch !== undefined)    wsInput.pitch    = parseFloat(data.pitch);
+                    if (data.roll !== undefined)     wsInput.roll     = parseFloat(data.roll);
+                    if (data.yaw !== undefined)      wsInput.yaw      = parseFloat(data.yaw);
+
+                    if (data.motor_pwm !== undefined) {
+                        currentMotorPWM = data.motor_pwm;
+                        hasReceivedWsData = true;
+                    }
+                    if (data.battery !== undefined) {
+                        battery = data.battery;
+                    }
+                } catch (e) {
+                    addLog("NET: Telemetry packet error.", "warn");
+                }
+            };
+
+            socket.onclose = () => {
+                badgeLink.className = "milestone-badge pending";
+                badgeLink.innerText = "LOST";
+                wsInput = { throttle: -1.0, pitch: 0, roll: 0, yaw: 0 };
+                hasReceivedWsData = false;
+                
+                setTimeout(setupWebSocket, 2000);
+            };
+        }
+
+        // Keyboard commands binding
+        function setupKeyboard() {
+            const pressed = {};
+
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'INPUT') {
+                    return;
+                }
+                pressed[e.key.toLowerCase()] = true;
+
+                if (e.key.toLowerCase() === 'c') {
+                    cameraMode = (cameraMode === 'follow') ? 'tower' : 'follow';
+                    addLog(`SYS: Camera view toggled to ${cameraMode.toUpperCase()}`);
+                }
+                if (e.key.toLowerCase() === 'r') {
+                    triggerReset();
+                }
+                if (e.key.toLowerCase() === 'h') {
+                    wiresOverlayVisible = !wiresOverlayVisible;
+                    hardwareOverlayGroup.visible = wiresOverlayVisible;
+                    document.getElementById('btn-wires').classList.toggle('active', wiresOverlayVisible);
+                    addLog(`SYS: Hardware wiring overlay set to ${wiresOverlayVisible ? 'ON' : 'OFF'}`);
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                pressed[e.key.toLowerCase()] = false;
+            });
+
+            window.updateKeyboardInputs = function() {
+                kbInput.throttle = 0;
+                kbInput.pitch = 0;
+                kbInput.roll = 0;
+                kbInput.yaw = 0;
+
+                if (pressed[' ']) kbInput.throttle = 1.0;
+                else if (pressed['shift']) kbInput.throttle = -1.0;
+
+                if (pressed['w']) kbInput.pitch = -1.0;
+                else if (pressed['s']) kbInput.pitch = 1.0;
+
+                if (pressed['a']) kbInput.roll = -1.0;
+                else if (pressed['d']) kbInput.roll = 1.0;
+
+                if (pressed['q']) kbInput.yaw = -1.0;
+                else if (pressed['e']) kbInput.yaw = 1.0;
+            };
+        }
+
+        function triggerReset() {
+            position.set(0, 0.5, 0);
+            velocity.set(0, 0, 0);
+            yawAngle = 0;
+            pitchAngle = 0;
+            rollAngle = 0;
+            
+            drone.position.copy(position);
+            drone.rotation.set(0, 0, 0);
+
+            battery = 100.0;
+            isDead = false;
+            lowBatteryWarnTriggered = false;
+            
+            milestoneTakeoffTriggered = false;
+            milestoneAlt20Triggered = false;
+            badgeTakeoff.className = "milestone-badge pending";
+            badgeTakeoff.innerText = "PENDING";
+            badgeAltitude.className = "milestone-badge pending";
+            badgeAltitude.innerText = "PENDING";
+
+            criticalOverlay.style.display = 'none';
+
+            wsInput = { throttle: -1.0, pitch: 0, roll: 0, yaw: 0 };
+            kbInput = { throttle: 0, pitch: 0, roll: 0, yaw: 0 };
+            currentInput = { throttle: -1.0, pitch: 0, roll: 0, yaw: 0 };
+            currentMotorPWM = [1000, 1000, 1000, 1000];
+
+            addLog("SYS: Full flight simulation parameters reset.", "sys");
+            
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ action: "reset" }));
+            }
+        }
+
+        // Calculate fallback local PWMs when server is down
+        function calculateLocalPWMs() {
+            const throttle = currentInput.throttle;
+            const pitch = currentInput.pitch;
+            const roll = currentInput.roll;
+            const yaw = currentInput.yaw;
+            
+            const throttle_norm = Math.max(0.0, Math.min(1.0, (throttle + 1.0) / 2.0));
+            const base = 1000.0 + (throttle_norm * 1000.0);
+            
+            const m1 = base - pitch * 200.0 - roll * 200.0 + yaw * 100.0;
+            const m2 = base - pitch * 200.0 + roll * 200.0 - yaw * 100.0;
+            const m3 = base + pitch * 200.0 + roll * 200.0 + yaw * 100.0;
+            const m4 = base + pitch * 200.0 - roll * 200.0 - yaw * 100.0;
+            
+            return [
+                Math.max(1000, Math.min(2000, Math.round(m1))),
+                Math.max(1000, Math.min(2000, Math.round(m2))),
+                Math.max(1000, Math.min(2000, Math.round(m3))),
+                Math.max(1000, Math.min(2000, Math.round(m4)))
+            ];
+        }
+
+        // Core physics ticks
+        function updatePhysics(dt) {
+            let pwms;
+            if (socket && socket.readyState === WebSocket.OPEN && hasReceivedWsData) {
+                pwms = currentMotorPWM;
+            } else {
+                pwms = calculateLocalPWMs();
+            }
+
+            const minP = Number(editableConfig.motor_min_pwm) || 1000;
+            const maxP = Number(editableConfig.motor_max_pwm) || 2000;
+            const range = maxP - minP || 1000;
+
+            let f1 = Math.max(0.0, Math.min(1.0, (pwms[0] - minP) / range));
+            let f2 = Math.max(0.0, Math.min(1.0, (pwms[1] - minP) / range));
+            let f3 = Math.max(0.0, Math.min(1.0, (pwms[2] - minP) / range));
+            let f4 = Math.max(0.0, Math.min(1.0, (pwms[3] - minP) / range));
+
+            if (isDead) { f1 = f2 = f3 = f4 = 0.0; }
+
+            const derivedThrottle = (f1 + f2 + f3 + f4) / 4.0;
+            const derivedPitch = ((f3 + f4) - (f1 + f2)) / 2.0;
+            const derivedRoll = ((f2 + f3) - (f1 + f4)) / 2.0;
+            const derivedYaw = ((f1 + f3) - (f2 + f4)) / 2.0;
+
+            yawAngle += derivedYaw * yawSpeed * dt;
+
+            const targetPitch = derivedPitch * maxTiltAngle;
+            const targetRoll = -derivedRoll * maxTiltAngle;
+
+            pitchAngle = THREE.MathUtils.lerp(pitchAngle, targetPitch, 8 * dt);
+            rollAngle = THREE.MathUtils.lerp(rollAngle, targetRoll, 8 * dt);
+
+            drone.rotation.set(0, 0, 0);
+            drone.rotateY(yawAngle);
+            drone.rotateX(pitchAngle);
+            drone.rotateZ(rollAngle);
+
+            const forwardVec = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle);
+            const rightVec = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), yawAngle);
+
+            velocity.addScaledVector(forwardVec, -derivedPitch * moveAcceleration * dt);
+            velocity.addScaledVector(rightVec, derivedRoll * moveAcceleration * dt);
+
+            const hover_threshold = Number(editableConfig.hover_throttle) || 0.3;
+            if (derivedThrottle < hover_threshold) {
+                const gravityPull = (hover_threshold - derivedThrottle) * gravityFactor;
+                velocity.y -= (gravityPull + GRAVITY_CONSTANT) * 0.5 * dt;
+            } else {
+                const climbLift = (derivedThrottle - hover_threshold) * verticalForceMultiplier;
+                velocity.y += climbLift * dt;
+            }
+
+            velocity.x *= Math.exp(-drag * dt);
+            velocity.y *= Math.exp(-verticalDrag * dt);
+            velocity.z *= Math.exp(-drag * dt);
+
+            position.addScaledVector(velocity, dt);
+
+            if (position.y < groundHeight) {
+                position.y = groundHeight;
+                velocity.y = 0;
+                velocity.x *= Math.exp(-5.0 * dt);
+                velocity.z *= Math.exp(-5.0 * dt);
+                
+                if (Math.abs(derivedPitch) < 0.1 && Math.abs(derivedRoll) < 0.1) {
+                    pitchAngle = THREE.MathUtils.lerp(pitchAngle, 0, 15 * dt);
+                    rollAngle = THREE.MathUtils.lerp(rollAngle, 0, 15 * dt);
+                }
+            }
+
+            if (position.y > maxAltitude) {
+                position.y = maxAltitude;
+                velocity.y = 0;
+            }
+
+            drone.position.copy(position);
+
+            // Milestones tracking
+            if (position.y > 1.0 && !milestoneTakeoffTriggered) {
+                milestoneTakeoffTriggered = true;
+                badgeTakeoff.className = "milestone-badge done";
+                badgeTakeoff.innerText = "ACHIEVED";
+                addLog("MILESTONE: Drone successfully achieved takeoff lift off ground!", "conn");
+            }
+            if (position.y > 20.0 && !milestoneAlt20Triggered) {
+                milestoneAlt20Triggered = true;
+                badgeAltitude.className = "milestone-badge done";
+                badgeAltitude.innerText = "ACHIEVED";
+                addLog("MILESTONE: Drone climbed past 20 meters altitude barrier!", "conn");
+            }
+        }
+
+        function updateBattery(dt) {
+            if (socket && socket.readyState === WebSocket.OPEN && hasReceivedWsData) {
+                if (battery <= 0.0 && !isDead) {
+                    isDead = true;
+                    criticalOverlay.style.display = 'block';
+                    addLog("POWER FAILURE: Battery exhausted completely.", "crit");
+                }
+                return;
+            }
+
+            if (isDead) return;
+
+            const pwms = calculateLocalPWMs();
+            const avg_pwm = (pwms[0] + pwms[1] + pwms[2] + pwms[3]) / 4.0;
+            const normalized_power = (avg_pwm - 1000.0) / 1000.0;
+            const drainRate = 0.15 + (normalized_power * 0.65);
+            
+            battery = Math.max(0.0, battery - (drainRate * dt));
+
+            if (battery < 20.0 && !lowBatteryWarnTriggered) {
+                lowBatteryWarnTriggered = true;
+                addLog("WARNING: Battery low. Capacity under 20%!", "warn");
+            }
+
+            if (battery <= 0.0) {
+                isDead = true;
+                criticalOverlay.style.display = 'block';
+                addLog("CRITICAL: Battery power exhausted. Engine disarmed.", "crit");
+            }
+        }
+
+        function animateRotors(dt) {
+            let pwms;
+            if (socket && socket.readyState === WebSocket.OPEN && hasReceivedWsData) {
+                pwms = currentMotorPWM;
+            } else {
+                pwms = calculateLocalPWMs();
+            }
+
+            rotors.forEach((rotor, idx) => {
+                const pwm = pwms[idx];
+                let spinSpeed = 0;
+                
+                if (!isDead) {
+                    spinSpeed = ((pwm - 1000) / 1000.0 + 1.2) * 28.0;
+                }
+
+                rotor.blade.rotation.y += spinSpeed * dt * rotor.directionSign;
+
+                const normalized_pwm = (pwm - 1000) / 1000.0;
+                rotor.blur.material.opacity = isDead ? 0.0 : Math.max(0.05, Math.min(0.25, 0.1 + (normalized_pwm * 0.1)));
+                rotor.ring.rotation.y += spinSpeed * 0.5 * dt * rotor.directionSign;
+
+                // Floaty labels & bars
+                rotor.labelMesh.visible = labelsOverlayVisible;
+                rotor.fillMesh.visible = labelsOverlayVisible;
+                if (labelsOverlayVisible) {
+                    rotor.fillMesh.scale.y = Math.max(0.001, normalized_pwm * 0.6);
+                    let color = 0x39ff14;
+                    if (pwm > 1700) color = 0xef4444;
+                    else if (pwm > 1300) color = 0xf59e0b;
+                    rotor.fillMesh.material.color.setHex(color);
+                }
+            });
+        }
+
+        function updateHUD() {
+            // VCC mapping
+            const cells = Number(editableConfig.battery_cells) || 3;
+            const fullV = cells * 4.2;
+            const emptyV = cells * 3.3;
+            const currentV = emptyV + (battery / 100.0) * (fullV - emptyV);
+            telVcc.innerText = `${currentV.toFixed(2)}V`;
+
+            if (battery < 20) {
+                badgeVoltage.className = "milestone-badge pending";
+                badgeVoltage.innerText = "LOW";
+            } else {
+                badgeVoltage.className = "milestone-badge done";
+                badgeVoltage.innerText = "GOOD";
+            }
+
+            // Fill sliders
+            drawTelBar(currentInput.throttle, barThr, valThr);
+            drawTelBar(currentInput.pitch, barPit, valPit);
+            drawTelBar(currentInput.roll, barRol, valRol);
+            drawTelBar(currentInput.yaw, barYaw, valYaw);
+        }
+
+        function drawTelBar(val, barEl, textEl) {
+            textEl.innerText = val.toFixed(2);
+            // Translate from [-1.0, 1.0] to [0%, 100%]
+            const percentage = ((val + 1.0) / 2.0) * 100;
+            barEl.style.width = `${percentage}%`;
+        }
+
+        function updateCamera(dt) {
+            if (cameraMode === 'follow') {
+                const targetOffset = new THREE.Vector3(0, 1.6, 4.5).applyAxisAngle(
+                    new THREE.Vector3(0, 1, 0),
+                    yawAngle
+                );
+                const desired = drone.position.clone().add(targetOffset);
+                camera.position.lerp(desired, 6.0 * dt);
+                camera.lookAt(drone.position.clone().add(new THREE.Vector3(0, 0.2, 0)));
+            } else {
+                const tower = new THREE.Vector3(25, 20, 25);
+                camera.position.lerp(tower, 4.0 * dt);
+                camera.lookAt(drone.position);
+            }
+        }
+
+        // Main animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isPaused) return;
+
+            let dt = clock.getDelta();
+            if (dt > 0.1) dt = 0.1;
+
+            window.updateKeyboardInputs();
+
+            if (!isDead) {
+                currentInput.throttle = Math.max(-1.0, Math.min(1.0, wsInput.throttle + kbInput.throttle));
+                currentInput.pitch = Math.max(-1.0, Math.min(1.0, wsInput.pitch + kbInput.pitch));
+                currentInput.roll = Math.max(-1.0, Math.min(1.0, wsInput.roll + kbInput.roll));
+                currentInput.yaw = Math.max(-1.0, Math.min(1.0, wsInput.yaw + kbInput.yaw));
+            } else {
+                currentInput.throttle = -1.0;
+                currentInput.pitch = 0;
+                currentInput.roll = 0;
+                currentInput.yaw = 0;
+            }
+
+            updatePhysics(dt);
+            updateBattery(dt);
+            animateRotors(dt);
+            updateHUD();
+            updateCamera(dt);
+
+            dirLight.position.set(drone.position.x + 40, drone.position.y + 80, drone.position.z + 40);
+            dirLight.target = drone;
+
+            renderer.render(scene, camera);
+        }
+
+        // Workspace and File Manager
+        document.addEventListener('DOMContentLoaded', () => {
+            const textarea = document.getElementById('editor-textarea');
+            const wiringTextarea = document.getElementById('wiring-textarea');
+            
+            // Set initial file contents
+            textarea.value = filesData[currentFile];
+            setupLineNumbers('editor-textarea', 'editor-line-numbers');
+
+            // Explorer list selection
+            const expItems = document.querySelectorAll('.explorer-item');
+            expItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    expItems.forEach(i => i.classList.remove('active'));
+                    item.classList.add('active');
+                    
+                    const file = item.getAttribute('data-file');
+                    currentFile = file;
+                    
+                    // Activate corresponding editor tab
+                    document.querySelectorAll('.editor-tab').forEach(t => {
+                        t.classList.toggle('active', t.getAttribute('data-tab') === file);
+                    });
+
+                    switchEditorView(file);
+                });
+            });
+
+            // Tab bar selection
+            const tabs = document.querySelectorAll('.editor-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    const file = tab.getAttribute('data-tab');
+                    currentFile = file;
+
+                    // Activate corresponding explorer item
+                    document.querySelectorAll('.explorer-item').forEach(i => {
+                        i.classList.toggle('active', i.getAttribute('data-file') === file);
+                    });
+
+                    switchEditorView(file);
+                });
+            });
+
+            function switchEditorView(file) {
+                if (file === 'wiring') {
+                    document.getElementById('editor-code-container').style.display = 'none';
+                    document.getElementById('editor-wiring-svg').style.display = 'grid';
+                    wiringTextarea.value = filesData.wiring;
+                    setupLineNumbers('wiring-textarea', 'wiring-line-numbers');
+                    drawWiringSVG(wiringConfig);
+                } else {
+                    document.getElementById('editor-code-container').style.display = 'flex';
+                    document.getElementById('editor-wiring-svg').style.display = 'none';
+                    textarea.value = filesData[file];
+                    setupLineNumbers('editor-textarea', 'editor-line-numbers');
+                }
+            }
+
+            // Apply modifications
+            document.getElementById('btn-apply').addEventListener('click', () => {
+                let textVal = (currentFile === 'wiring') ? wiringTextarea.value : textarea.value;
+                filesData[currentFile] = textVal;
+
+                if (currentFile === 'wiring') {
+                    try {
+                        wiringConfig = JSON.parse(textVal);
+                        drawWiringSVG(wiringConfig);
+                        rebuildHardwareOverlay3D();
+                        updateRotorsFromWiring();
+                        addLog("SYS: Applied updated wiring schematics config successfully.");
+                    } catch (e) {
+                        addLog("ERR: Invalid JSON syntax in wiring configuration file.", "crit");
+                    }
+                } else if (currentFile === 'editable') {
+                    try {
+                        editableConfig = JSON.parse(textVal);
+                        addLog("SYS: Applied flight parameters config updates successfully.");
+                    } catch (e) {
+                        addLog("ERR: Invalid JSON syntax in flight settings configuration.", "crit");
+                    }
+                } else {
+                    addLog(`SYS: Saved modifications to ${currentFile}.json successfully.`);
+                }
+            });
+
+            // Header Simulation Controls
+            document.getElementById('btn-run').addEventListener('click', () => {
+                isPaused = false;
+                document.getElementById('btn-run').classList.add('active');
+                document.getElementById('btn-pause').classList.remove('active');
+                addLog("SYS: Simulation resumed.");
+            });
+
+            document.getElementById('btn-pause').addEventListener('click', () => {
+                isPaused = true;
+                document.getElementById('btn-run').classList.remove('active');
+                document.getElementById('btn-pause').classList.add('active');
+                addLog("SYS: Simulation paused.");
+            });
+
+            document.getElementById('btn-reset').addEventListener('click', triggerReset);
+            document.getElementById('btn-hardware-reset').addEventListener('click', triggerReset);
+
+            // Overlay display buttons
+            document.getElementById('btn-wires').addEventListener('click', () => {
+                wiresOverlayVisible = !wiresOverlayVisible;
+                hardwareOverlayGroup.visible = wiresOverlayVisible;
+                document.getElementById('btn-wires').classList.toggle('active', wiresOverlayVisible);
+                addLog(`SYS: Hardware wiring overlay toggled ${wiresOverlayVisible ? 'ON' : 'OFF'}`);
+            });
+
+            document.getElementById('btn-labels').addEventListener('click', () => {
+                labelsOverlayVisible = !labelsOverlayVisible;
+                document.getElementById('btn-labels').classList.toggle('active', labelsOverlayVisible);
+                addLog(`SYS: 3D status labels overlay toggled ${labelsOverlayVisible ? 'ON' : 'OFF'}`);
+            });
+
+            // Start up processes
+            initScene();
+            setupWebSocket();
+            setupKeyboard();
+            animate();
+        });
+    </script>
+</body>
+</html>
