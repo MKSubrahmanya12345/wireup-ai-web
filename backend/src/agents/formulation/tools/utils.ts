@@ -10,6 +10,23 @@ import {
 
 export const providerCooldowns = new Map<string, number>();
 
+// ??$$$ newer code - server-side cache of fully generated milestones.
+// generate_milestone returns only a compact reference to the LLM; save_progress(type="milestone", milestoneId)
+// resolves the full milestone (including code) from this cache, eliminating the costly code echo round-trip.
+const milestoneCache = new Map<string, Map<string, any>>();
+
+export function cacheMilestone(sessionId: string, milestone: any) {
+  if (!sessionId || !milestone?.id) return;
+  if (!milestoneCache.has(sessionId)) {
+    milestoneCache.set(sessionId, new Map());
+  }
+  milestoneCache.get(sessionId)!.set(String(milestone.id), milestone);
+}
+
+export function getCachedMilestone(sessionId: string, milestoneId: string): any | undefined {
+  return milestoneCache.get(sessionId)?.get(String(milestoneId));
+}
+
 export function parseIfString(val: any): any {
   if (typeof val === "string") {
     try {

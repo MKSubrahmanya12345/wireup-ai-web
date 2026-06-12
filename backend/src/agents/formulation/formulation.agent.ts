@@ -143,9 +143,14 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
       const lastRole = (lastMsg.role === "assistant" || lastMsg.role === "model") ? "model" : lastMsg.role;
       const currentRole = (currentMsg.role === "assistant" || currentMsg.role === "model") ? "model" : currentMsg.role;
 
-      if (lastRole === currentRole) {
-        // ??$$$ newer code - Merge instead of injecting synthetic messages
-        lastMsg.content = `${lastMsg.content || ""}\n${currentMsg.content || ""}`.trim();
+      // ??$$$ newer code - never merge function/tool messages: parallel tool calls emit consecutive
+      // function messages whose object content would corrupt into "[object Object]" and break
+      // tool_call_id pairing with the assistant message's tool_calls.
+      if (lastRole === currentRole && currentRole !== "function") {
+        // ??$$$ newer code - Merge instead of injecting synthetic messages (stringify non-string content defensively)
+        const lastStr = typeof lastMsg.content === "string" ? lastMsg.content : JSON.stringify(lastMsg.content ?? "");
+        const currStr = typeof currentMsg.content === "string" ? currentMsg.content : JSON.stringify(currentMsg.content ?? "");
+        lastMsg.content = `${lastStr}\n${currStr}`.trim();
         if (currentMsg.functionCalls && currentMsg.functionCalls.length > 0) {
           lastMsg.functionCalls = [
             ...(lastMsg.functionCalls || []),

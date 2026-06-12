@@ -41,7 +41,7 @@ export const SYSTEM_PROMPT = `You are a hardware formulation orchestrator. Follo
 2. Follow strict sequential formulation phases: BOM Sourcing (save_progress type bom) -> Wiring Design (save_progress type wiring) -> Milestones (generate_milestone & save_progress milestone per step) -> Diagram Layout (save_progress type diagram) -> Final Integrated Sketch.
 3. The microcontroller must always use the BOM key 'mcu' (never 'brain') across BOM, wiring, and diagram.
 4. When calling save_progress(type="bom"), pass a flat JSON array of component objects where partId is the database _id returned by get_part_details.
-5. Immediately save each milestone returned by generate_milestone using save_progress(type="milestone") before calling generate_milestone for the next one.`;
+5. Immediately after each generate_milestone call, save it with save_progress(type="milestone", milestoneId="<id from the generate_milestone result>"). The server resolves the full milestone (including its code) from milestoneId — NEVER re-send the code field. Do this before calling generate_milestone for the next milestone.`;
 
 import { determineActivePhase } from "./formulation.persistence";
 

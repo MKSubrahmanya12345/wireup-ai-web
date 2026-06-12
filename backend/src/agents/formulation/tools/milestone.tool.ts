@@ -1,6 +1,7 @@
 // ??$$$
 import NewFlowSession from "../../../models/newFlowSession.model";
-import { parseIfString, unifiedLlmCall } from "./utils";
+// ??$$$ newer code - cacheMilestone enables pass-by-reference milestone saving
+import { parseIfString, unifiedLlmCall, cacheMilestone } from "./utils";
 
 export async function executeGenerateMilestone(args: any, sessionId?: string) {
   const title = args.title;

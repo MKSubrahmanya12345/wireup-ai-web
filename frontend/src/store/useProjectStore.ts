@@ -726,8 +726,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
     try {
       await axiosInstance.put(`/project/${projectId}`, { files: updatedFiles }, { withCredentials: true });
-    } catch {
-      // optimistic update — silently fail
+    } catch (err) {
+      // ??$$$ newer code - keep the optimistic update but surface persistence failures
+      console.error(`[useProjectStore] updateFile("${fileName}") failed to persist to /project/${projectId}:`, err);
     }
   },
 
