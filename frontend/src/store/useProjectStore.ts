@@ -770,8 +770,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ project: updatedProj, currentProject: updatedProj });
     try {
       await axiosInstance.put(`/project/${projectId}`, { activeFile: fileName }, { withCredentials: true });
-    } catch {
-      // silently fail
+    } catch (err) {
+      // ??$$$ newer code - surface persistence failures instead of swallowing them
+      console.error(`[useProjectStore] setActiveFile("${fileName}") failed to persist:`, err);
     }
   },
 }));

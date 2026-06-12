@@ -399,9 +399,13 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   let turns = 0;
   const maxTurns = 30;
   let capacityRetryCount = 0;
+  // ??$$$ newer code - cap rate-limit retries so paused turns cannot spin forever
+  let rateLimitRetryCount = 0;
+  const maxRateLimitRetries = 10;
   let formulationSuccessful = false;
 
-  while (turns < maxTurns) {
+  // ??$$$ newer code - off-by-one fix: <= allows the full 30 working turns before the guard trips
+  while (turns <= maxTurns) {
     turns++;
     // ??$$$ newer code - pace turns faster (1s instead of 3s)
     await new Promise(resolve => setTimeout(resolve, 1000));
