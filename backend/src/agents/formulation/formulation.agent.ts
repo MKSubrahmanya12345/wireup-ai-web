@@ -412,7 +412,8 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     console.log(`[Agent2 Debugger] Starting turn ${turns}...`);
     console.log(`[Agent2 Debugger] Current message history length: ${messages.length}`);
 
-    if (turns >= maxTurns) {
+    // ??$$$ newer code - off-by-one fix
+    if (turns > maxTurns) {
       console.error("[Agent2] Exceeded maximum turns limit.");
       await logAndEmit({
         type: "error",
