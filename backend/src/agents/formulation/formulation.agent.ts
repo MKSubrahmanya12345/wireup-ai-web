@@ -941,6 +941,21 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
         await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
 
+        // ??$$$ newer code - bound rate-limit retries
+        rateLimitRetryCount++;
+        if (rateLimitRetryCount > maxRateLimitRetries) {
+          await logAndEmit({
+            type: "error",
+            text: "Formulation aborted: exceeded the maximum number of rate-limit retries across providers."
+          });
+          if (io) {
+            io.to(sessionId).emit("agent2:error", {
+              message: "Exceeded maximum rate-limit retries across providers.",
+              retryable: true
+            });
+          }
+          break;
+        }
         turns--;
         continue;
       }
