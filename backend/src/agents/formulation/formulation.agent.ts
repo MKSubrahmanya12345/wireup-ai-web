@@ -11,6 +11,8 @@ import { resolveAllPins } from "../../services/pinResolver.service";
 // ??$$$ newer code
 import { runArchitect } from "../architect";
 import rotationService from "../../services/keyRotation.service";
+// ??$$$ newer code
+import { providerCooldowns } from "./tools/utils";
 import {
   LLMAdapter,
   LLMResponse,
@@ -49,32 +51,102 @@ function getRateLimitDelay(err: any): number {
   return 60;
 }
 
-function sanitizeMessageHistory(messages: any[]): any[] {
-  const sanitized: any[] = [];
-  for (const msg of messages) {
-    if (sanitized.length > 0) {
-      const lastMsg = sanitized[sanitized.length - 1];
+
+// ??$$$ newer code - Highly optimized context & token manager for local Ollama and Cloud LLMs to prevent rate limits, loops, and context overflows
+
+// ??$$$ newer code - Highly optimized context & token manager that deletes redundant intermediate messages of completed phases
+function sanitizeMessageHistory(messages: any[], session?: any): any[] {
+  const isBomSaved = session?.bom && session.bom.length > 0;
+  const isWiringSaved = session?.wiring && session.wiring.length > 0;
+  const isMilestonesDone = session?.milestones && session.milestones.length > 0 && session.milestones.every((m: any) => m.code && m.code.trim().length > 0);
+  const isDiagramSaved = session?.diagram && Object.keys(session.diagram).length > 0;
+
+  const toolsToPrune = new Set<string>();
+  if (isBomSaved) {
+    ["search_library", "search_datasheet", "get_part_details", "select_compute", "check_compatibility"].forEach(t => toolsToPrune.add(t));
+  }
+  if (isWiringSaved) {
+    ["generate_wiring", "validate_pin_assignment", "estimate_power_budget"].forEach(t => toolsToPrune.add(t));
+  }
+  if (isMilestonesDone) {
+    ["generate_milestone"].forEach(t => toolsToPrune.add(t));
+  }
+  if (isDiagramSaved) {
+    ["generate_diagram_json", "get_wokwi_part_type", "check_simulation_support"].forEach(t => toolsToPrune.add(t));
+  }
+
+  // Find the index of the latest save_progress of each type
+  const latestSaveIdx: Record<string, number> = {};
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if ((msg.role === "assistant" || msg.role === "model") && msg.functionCalls) {
+      for (const fc of msg.functionCalls) {
+        if (fc.name === "save_progress" && fc.args?.type) {
+          if (latestSaveIdx[fc.args.type] === undefined) {
+            latestSaveIdx[fc.args.type] = i;
+          }
+        }
+      }
+    }
+  }
+
+  const pruned: any[] = [];
+  for (let i = 0; i < messages.length; i++) {
+    const msg = messages[i];
+
+    // Skip intermediate functions belonging to completed phases
+    if (msg.role === "function" && msg.name && toolsToPrune.has(msg.name)) {
+      continue;
+    }
+
+    if (msg.role === "assistant" || msg.role === "model") {
+      const newFc = (msg.functionCalls || []).filter((fc: any) => {
+        if (toolsToPrune.has(fc.name)) return false;
+        if (fc.name === "save_progress" && fc.args?.type) {
+          if (latestSaveIdx[fc.args.type] !== undefined && latestSaveIdx[fc.args.type] > i) {
+            return false;
+          }
+        }
+        return true;
+      });
+
+      if ((msg.content && msg.content.trim().length > 0) || newFc.length > 0) {
+        pruned.push({
+          ...msg,
+          functionCalls: newFc.length > 0 ? newFc : undefined
+        });
+      }
+      continue;
+    }
+
+    pruned.push(msg);
+  }
+
+  // Alternating role sanitization
+  const finalMessages: any[] = [];
+  for (const msg of pruned) {
+    if (finalMessages.length > 0) {
+      const lastMsg = finalMessages[finalMessages.length - 1];
       const lastRole = (lastMsg.role === "assistant" || lastMsg.role === "model") ? "model" : lastMsg.role;
       const currentRole = (msg.role === "assistant" || msg.role === "model") ? "model" : msg.role;
 
       if (lastRole === currentRole) {
         if (currentRole === "user") {
-          sanitized.push({ role: "model", content: "Continuing..." });
+          finalMessages.push({ role: "model", content: "Continuing..." });
         } else if (currentRole === "model") {
-          sanitized.push({ role: "user", content: "Please continue." });
+          finalMessages.push({ role: "user", content: "Please continue." });
         }
       }
     }
-    sanitized.push(msg);
+    finalMessages.push(msg);
   }
 
-  const processed = JSON.parse(JSON.stringify(sanitized));
+  // Restore/reassign tool call IDs
   const nameCounters: Record<string, number> = {};
   let pendingToolCalls: { name: string; assignedId: string }[] = [];
 
-  for (let i = 0; i < processed.length; i++) {
-    const msg = processed[i];
-
+  for (let i = 0; i < finalMessages.length; i++) {
+    const msg = finalMessages[i];
     if (msg.role === "assistant" || msg.role === "model") {
       if (msg.functionCalls && msg.functionCalls.length > 0) {
         pendingToolCalls = [];
@@ -89,31 +161,48 @@ function sanitizeMessageHistory(messages: any[]): any[] {
         });
       }
     } else if (msg.role === "function") {
-      const matchIndex = pendingToolCalls.findIndex(tc => tc.name === msg.name);
-      if (matchIndex > -1) {
-        msg.tool_call_id = pendingToolCalls[matchIndex].assignedId;
-        pendingToolCalls.splice(matchIndex, 1);
-      } else {
-        if (!nameCounters[msg.name]) {
-          nameCounters[msg.name] = 0;
+      if (msg.tool_call_id) {
+        const matchIndex = pendingToolCalls.findIndex(tc => tc.assignedId === msg.tool_call_id);
+        if (matchIndex > -1) {
+          pendingToolCalls.splice(matchIndex, 1);
         }
-        if (!msg.tool_call_id) {
+      } else {
+        const matchIndex = pendingToolCalls.findIndex(tc => tc.name === msg.name);
+        if (matchIndex > -1) {
+          msg.tool_call_id = pendingToolCalls[matchIndex].assignedId;
+          pendingToolCalls.splice(matchIndex, 1);
+        } else {
+          if (!nameCounters[msg.name]) {
+            nameCounters[msg.name] = 0;
+          }
           msg.tool_call_id = `call_${msg.name}_${nameCounters[msg.name]++}`;
         }
       }
     }
   }
 
-  return processed;
+  return finalMessages;
 }
 
+// ??$$$ newer code - per-session execution lock
+const activeSessions = new Set<string>();
+
 export async function runAgent2(sessionId: string, modelName: string, isResume = false, isRescue = false) {
-  let session = await NewFlowSession.findById(sessionId);
+  // ??$$$ newer code - prevent concurrent overlapping loops for the same sessionId
+  if (activeSessions.has(sessionId)) {
+    console.warn(`[Agent2] Session ${sessionId} already has an active agent execution loop. Ignoring duplicate run request.`);
+    return;
+  }
+  activeSessions.add(sessionId);
+
+  try {
+    let session = await NewFlowSession.findById(sessionId);
   if (!session) {
     throw new Error(`Session not found: ${sessionId}`);
   }
 
   const io = (global as any).io;
+  const callHistory: { name: string; argsStr: string }[] = [];
 
   const logAndEmit = async (logObj: {
     type: "thinking" | "tool_call" | "decision" | "error" | "context_received" | "rate_limit";
@@ -122,6 +211,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     input?: any;
     output?: any;
     text?: string;
+    usage?: any; // ??$$$ newer code
   }) => {
     const logItem = {
       ...logObj,
@@ -164,15 +254,6 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         ? session.requirementsDoc
         : (session.idea || "");
       const blueprint = await runArchitect(docForArchitect);
-      // ??$$$ old code
-      /*
-      const freshForBp = await NewFlowSession.findById(sessionId);
-      if (freshForBp) {
-        freshForBp.blueprint = blueprint;
-        await freshForBp.save();
-        session.blueprint = blueprint;
-      }
-      */
       // ??$$$ newer code
       await NewFlowSession.updateOne({ _id: sessionId }, { $set: { blueprint } });
       session.blueprint = blueprint;
@@ -195,9 +276,19 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   const systemPrompt = SYSTEM_PROMPT;
   const initialPrompt = buildInitialPrompt(session, isResume);
 
-  const messages: any[] = [
-    { role: "user", content: initialPrompt }
-  ];
+  // ??$$$ newer code
+  let messages: any[] = [];
+  if (isResume && session.chatHistory && session.chatHistory.length > 0) {
+    messages = [...session.chatHistory];
+    if (messages[0] && messages[0].role === "user") {
+      messages[0].content = initialPrompt;
+    }
+    console.log(`[Agent2] Rehydrated ${messages.length} messages and refreshed initial prompt.`);
+  } else {
+    messages = [
+      { role: "user", content: initialPrompt }
+    ];
+  }
 
   let adapter: LLMAdapter;
   const isHybridMode = modelName.startsWith("hybrid:");
@@ -238,9 +329,14 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     const actualModel = modelName.includes("zai-glm") ? "zai-glm-4.7" : "gpt-oss-120b";
     adapter = new CerebrasAdapter(cerebrasKey, actualModel);
   } else {
-    let actualModel = "qwen/qwen3-32b";
+    // ??$$$ newer code - support Groq Llama 4 Scout and other models
+    let actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
     if (modelName.toLowerCase().includes("qwen")) {
       actualModel = "qwen/qwen3-32b";
+    } else if (modelName.toLowerCase().includes("llama-4-scout") || modelName.toLowerCase().includes("llama")) {
+      actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+    } else {
+      actualModel = modelName;
     }
     adapter = new GroqAdapter(actualModel);
   }
@@ -252,8 +348,8 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
   while (turns < maxTurns) {
     turns++;
-    // ??$$$ newer code - prevent API rate limits by pacing turns
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    // ??$$$ newer code - pace turns faster (1s instead of 3s)
+    await new Promise(resolve => setTimeout(resolve, 1000));
     console.log(`[Agent2 Debugger] Starting turn ${turns}...`);
     console.log(`[Agent2 Debugger] Current message history length: ${messages.length}`);
 
@@ -275,7 +371,8 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
     try {
       let response: LLMResponse | null = null;
       let lastError: any = null;
-      const sanitizedMessages = sanitizeMessageHistory(messages);
+      // ??$$$ newer code - pass the session object to sanitizeMessageHistory for aggressive phase-based pruning
+      const sanitizedMessages = sanitizeMessageHistory(messages, session);
 
       let fallbackAdapters: LLMAdapter[];
 
@@ -328,16 +425,36 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         }
         const hasGroqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY_3;
         if (hasGroqKey && !fallbackAdapters.some(a => a.constructor.name === "GroqAdapter")) {
-          fallbackAdapters.push(new GroqAdapter("qwen/qwen3-32b"));
+          // ??$$$ newer code
+          fallbackAdapters.push(new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct"));
         }
         if (process.env.CEREBRAS_API_KEY && !fallbackAdapters.some(a => a.constructor.name === "CerebrasAdapter")) {
           fallbackAdapters.push(new CerebrasAdapter(process.env.CEREBRAS_API_KEY, "gpt-oss-120b"));
+        }
+        // ??$$$ newer code - always fallback to local Ollama at the end of the chain
+        try {
+          const localModel = (await getOllamaModel()) || "qwen2.5:3b";
+          fallbackAdapters.push(new OllamaAdapter(localModel));
+        } catch (e) {
+          fallbackAdapters.push(new OllamaAdapter("qwen2.5:3b"));
         }
       }
 
       for (let i = 0; i < fallbackAdapters.length; i++) {
         const currentTryAdapter = fallbackAdapters[i];
         const providerName = currentTryAdapter.constructor.name;
+
+        // ??$$$ newer code - skip cooling providers
+        let providerType = "ollama";
+        if (providerName === "GroqAdapter") providerType = "groq";
+        else if (providerName === "GeminiAdapter") providerType = "gemini";
+        else if (providerName === "CerebrasAdapter") providerType = "cerebras";
+
+        const cooldownUntil = providerCooldowns.get(providerType) || 0;
+        if (cooldownUntil > Date.now()) {
+          console.log(`[Agent2 Failover] Skipping fallback provider ${providerName} due to active cooldown (remains: ${Math.round((cooldownUntil - Date.now()) / 1000)}s)`);
+          continue;
+        }
 
         try {
           console.log(`[Agent2 Failover] Turn ${turns}: Attempting with ${providerName}...`);
@@ -354,11 +471,17 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
             console.log(`[Agent2 Failover] Successfully failed over. Promoting ${providerName} to primary.`);
             adapter = currentTryAdapter;
 
-            let newModelValue = "gemini-2.5-flash";
+            let newModelValue: string;
             if (providerName === "CerebrasAdapter") {
               newModelValue = (currentTryAdapter as any).model || "gpt-oss-120b";
             } else if (providerName === "GroqAdapter") {
               newModelValue = (currentTryAdapter as any).model || "qwen/qwen3-32b";
+            } else if (providerName === "GeminiAdapter") {
+              newModelValue = "gemini-2.5-flash";
+            } else if (providerName === "OllamaAdapter") {
+              newModelValue = (currentTryAdapter as any).model || "ollama/local";
+            } else {
+              newModelValue = providerName;
             }
 
             if (io) {
@@ -397,9 +520,20 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
 
       if (text) {
         console.log(`[Agent2 Debugger] LLM Text/Thinking response:\n${text}`);
+        if (response.usage) {
+          console.log(`[Agent2 Debugger] Token Usage: Prompt ${response.usage.promptTokens} | Completion ${response.usage.completionTokens} | Total ${response.usage.totalTokens}`);
+        }
         await logAndEmit({
           type: "thinking",
-          text
+          text,
+          usage: response.usage
+        });
+      } else if (response.usage) {
+        console.log(`[Agent2 Debugger] Token Usage (tool calls): Prompt ${response.usage.promptTokens} | Completion ${response.usage.completionTokens} | Total ${response.usage.totalTokens}`);
+        await logAndEmit({
+          type: "thinking",
+          text: `[Processing next step...]`,
+          usage: response.usage
         });
       }
 
@@ -515,30 +649,55 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         });
 
         let result: any;
-        try {
-          if (call.name === "save_progress") {
-            result = await saveSessionProgress(sessionId, call.args.type, call.args.data);
-          } else {
-            result = await executeTool(call.name, call.args, sessionId);
-          }
+        const argsStr = JSON.stringify(call.args || {});
+        const duplicateCount = callHistory.filter(h => h.name === call.name && h.argsStr === argsStr).length;
+        callHistory.push({ name: call.name, argsStr });
 
-          console.log(`[Agent2 Debugger] Tool "${call.name}" executed successfully. Output snippet:`, JSON.stringify(result).substring(0, 200));
+        if (call.name === "select_compute" && duplicateCount >= 1) {
+          result = {
+            error: "Duplicate Tool Call: You have already called select_compute with these parameters. Please check the previous tool output for the recommended MCU (e.g., ESP32 DevKit v1 / Raspberry Pi Pico) and proceed to search and add other components in your BOM, then call save_progress(type=\"bom\"). Do not call select_compute again."
+          };
+          console.warn(`[Agent2 Debugger] Intercepted duplicate select_compute call to prevent infinite loop.`);
+        } else if (call.name === "search_library" && duplicateCount >= 3) {
+          result = {
+            error: "Duplicate Search: You have executed this library search query 3 times. Please proceed to fetch part details or save progress."
+          };
+          console.warn(`[Agent2 Debugger] Intercepted duplicate search_library call to prevent infinite loop.`);
+        }
 
+        if (result !== undefined) {
           await logAndEmit({
             type: "tool_call",
             name: call.name,
             status: "done",
             output: result
           });
-        } catch (toolErr: any) {
-          console.error(`[Agent2 Debugger] Tool "${call.name}" execution failed:`, toolErr);
-          result = { error: toolErr.message || "Execution error" };
-          await logAndEmit({
-            type: "tool_call",
-            name: call.name,
-            status: "failed",
-            output: result
-          });
+        } else {
+          try {
+            if (call.name === "save_progress") {
+              result = await saveSessionProgress(sessionId, call.args.type, call.args.data, call.args);
+            } else {
+              result = await executeTool(call.name, call.args, sessionId);
+            }
+
+            console.log(`[Agent2 Debugger] Tool "${call.name}" executed successfully. Output snippet:`, JSON.stringify(result).substring(0, 200));
+
+            await logAndEmit({
+              type: "tool_call",
+              name: call.name,
+              status: "done",
+              output: result
+            });
+          } catch (toolErr: any) {
+            console.error(`[Agent2 Debugger] Tool "${call.name}" execution failed:`, toolErr);
+            result = { error: toolErr.message || "Execution error" };
+            await logAndEmit({
+              type: "tool_call",
+              name: call.name,
+              status: "failed",
+              output: result
+            });
+          }
         }
 
         messages.push({
@@ -547,6 +706,28 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
           tool_call_id: (call as any).id,
           content: result
         });
+      }
+
+      // ??$$$ newer code - save sanitized and length-limited chatHistory to database and prune in-memory messages array to prevent memory leaks and token bloat
+      if (sessionId) {
+        try {
+          // ??$$$ newer code - pass the session object to sanitizeMessageHistory for aggressive phase-based pruning
+          messages = sanitizeMessageHistory(messages, session);
+          if (messages.length > 30) {
+            // Find a safe start index (around the target length) that starts with an "assistant" message
+            let sliceStart = messages.length - 28;
+            while (sliceStart < messages.length && messages[sliceStart].role !== "assistant" && messages[sliceStart].role !== "model") {
+              sliceStart++;
+            }
+            if (sliceStart >= messages.length) {
+              sliceStart = messages.length - 2;
+            }
+            messages = [messages[0], ...messages.slice(sliceStart)];
+          }
+          await NewFlowSession.updateOne({ _id: sessionId }, { $set: { chatHistory: messages } });
+        } catch (e) {
+          console.error("[Agent2] Failed to save and prune chatHistory at turn end:", e);
+        }
       }
     } catch (err: any) {
       console.error("[Agent2 Debugger] Loop error occurred:", err);
@@ -569,6 +750,23 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         } else {
           capacityRetryCount++;
           delaySeconds = Math.min(Math.pow(2, capacityRetryCount) * 2, 60);
+        }
+
+        // ??$$$ newer code - failover without pausing if cooldown is high
+        let activeProviderType = "ollama";
+        const activeAdapterName = adapter.constructor.name;
+        if (activeAdapterName === "GroqAdapter") activeProviderType = "groq";
+        else if (activeAdapterName === "GeminiAdapter") activeProviderType = "gemini";
+        else if (activeAdapterName === "CerebrasAdapter") activeProviderType = "cerebras";
+
+        if (delaySeconds > 15) {
+          console.warn(`[Agent2 Debugger] Delay of ${delaySeconds}s is high. Putting ${activeAdapterName} on cooldown and failing over immediately.`);
+          providerCooldowns.set(activeProviderType, Date.now() + (delaySeconds * 1000));
+          try {
+            await rotationService.handleRateLimit();
+          } catch {}
+          turns--;
+          continue;
         }
 
         console.warn(`[Agent2 Debugger] LLM service unavailable (${isRateLimit ? "Rate Limit" : "Capacity Limit"})! Rotating API key and waiting ${delaySeconds} seconds before retry...`);
@@ -907,13 +1105,17 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   }
   console.log(`[Agent2 Debugger] Loop execution finished for session: ${sessionId}`);
 
-  if (projectId && session!.bom && session!.bom.length > 0) {
-    const bomForPins = session!.bom
-      .filter((b: any) => b.mpn)
-      .map((b: any) => ({ mpn: b.mpn, key: b.key }));
-    const ioRef = (global as any).io;
-    resolveAllPins(bomForPins, String(projectId), ioRef).catch((err: any) => {
-      console.error("[Agent2] resolveAllPins background error:", err.message);
-    });
+    if (projectId && session!.bom && session!.bom.length > 0) {
+      const bomForPins = session!.bom
+        .filter((b: any) => b.mpn)
+        .map((b: any) => ({ mpn: b.mpn, key: b.key }));
+      const ioRef = (global as any).io;
+      resolveAllPins(bomForPins, String(projectId), ioRef).catch((err: any) => {
+        console.error("[Agent2] resolveAllPins background error:", err.message);
+      });
+    }
+  } finally {
+    // ??$$$ newer code - release lock
+    activeSessions.delete(sessionId);
   }
 }

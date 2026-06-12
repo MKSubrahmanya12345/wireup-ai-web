@@ -3,8 +3,6 @@
 import Groq from "groq-sdk";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-// Old code:
-// import { fileURLToPath } from "node:url";
 // ??$$$ newer code
 import { getRegistry, getAIContext } from "./registry.services";
 import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
@@ -142,8 +140,6 @@ const callAI = async (prompt, retryCount = 0) => { // ??$$$ handle retries
 };
 
 const getPresetDir = () => {
-  // Old code:
-  // const here = path.dirname(fileURLToPath(import.meta.url));
   // ??$$$ newer code
   const here = __dirname;
   return path.resolve(here, "../../data/presets");
@@ -553,9 +549,6 @@ ${project?.description || ""}
 PROJECT META:
 ${JSON.stringify(project?.meta || {})}
 
-// Old code:
-// IDEATION STATE:
-// ${JSON.stringify(project?.ideaState || {})}
 // ??$$$ newer code
 IDEATION STATE:
 ${JSON.stringify(project?.ideation?.snapshot || {})}
@@ -574,8 +567,6 @@ ${userPrompt || ""}
 export async function generateArtifactsFromRegistry({ project, userPrompt = "" }) {
   // Deterministic preset(s): no AI call.
   const promptText = String(userPrompt || "");
-  // Old code:
-  // const ideationSummary = String(project?.ideaState?.summary || "");
   // ??$$$ newer code
   const ideationSummary = String(project?.ideation?.snapshot?.corePurpose || "");
   const meta = project?.meta || {};
@@ -585,8 +576,6 @@ export async function generateArtifactsFromRegistry({ project, userPrompt = "" }
     || (
       String(meta?.board || "") === "ARDUINO_MEGA"
       && Number(meta?.componentCount) === 32
-      // Old code:
-      // && String(meta?.stage || "") !== "idea"
       // ??$$$ newer code
       && String(meta?.stage || "") !== "ideation" && String(meta?.stage || "") !== "idea"
     );

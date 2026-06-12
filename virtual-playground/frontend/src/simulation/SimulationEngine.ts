@@ -14,6 +14,7 @@ type WorkerMessage =
   | { type: 'gpio'; pins: Record<string, boolean> }
   | { type: 'lcd'; line1: string; line2: string; backlight: boolean }
   | { type: 'serial'; text: string }
+  | { type: 'servo'; pin: string; angle: number } // ??$$$ newer code
   | { type: 'error'; error: string };
 
 export class SimulationEngine {
@@ -25,12 +26,14 @@ export class SimulationEngine {
   private gpioListeners = new Set<GPIOListener>();
   private serialListeners = new Set<SerialListener>();
   private logListeners = new Set<LogListener>();
+  private servoListeners = new Set<(pin: string, angle: number) => void>(); // ??$$$ newer code
 
   clearListeners() {
     this.lcdListeners.clear();
     this.gpioListeners.clear();
     this.serialListeners.clear();
     this.logListeners.clear();
+    this.servoListeners.clear(); // ??$$$ newer code
   }
 
   onLCDUpdate(listener: LCDListener) {
@@ -47,6 +50,11 @@ export class SimulationEngine {
     this.serialListeners.add(listener);
     return () => this.serialListeners.delete(listener);
   }
+
+  onServoUpdate(listener: (pin: string, angle: number) => void) { // ??$$$ newer code
+    this.servoListeners.add(listener); // ??$$$ newer code
+    return () => this.servoListeners.delete(listener); // ??$$$ newer code
+  } // ??$$$ newer code
 
   onLog(listener: LogListener) {
     this.logListeners.add(listener);
@@ -97,6 +105,13 @@ export class SimulationEngine {
         }
         return;
       }
+
+      if (data.type === 'servo') { // ??$$$ newer code
+        for (const listener of this.servoListeners) { // ??$$$ newer code
+          listener(data.pin, data.angle); // ??$$$ newer code
+        } // ??$$$ newer code
+        return; // ??$$$ newer code
+      } // ??$$$ newer code
 
       if (data.type === 'error') {
         this.emitLog(`[SIM] ${data.error}`, 'system');

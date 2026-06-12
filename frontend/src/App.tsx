@@ -6,7 +6,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuthStore } from "./store/useAuthStore.ts";
 
-const HeroPage = lazy(() => import("./pages/HeroPage.tsx"));
+// ??$$$ newer code
+// const HeroPage = lazy(() => import("./pages/HeroPage.tsx"));
 const AuthPage = lazy(() => import("./pages/AuthPage.tsx"));
 const HomePage = lazy(() => import("./pages/HomePage.tsx"));
 const BuildNewPage = lazy(() => import("./pages/BuildNewPage.tsx"));
@@ -73,25 +74,19 @@ function App(): ReactNode {
       <Suspense fallback={<RouteLoader />}>
         
         <Routes>
-          {/* Public */}
-          <Route path="/" element={<HeroPage />} />
+          {/* ??$$$ newer code - public/home routes render HomePage */}
+          <Route path="/" element={<HomePage />} />
+          <Route path="/home" element={<HomePage />} />
 
           <Route
             path="/auth"
-            element={!authUser ? <AuthPage /> : <Navigate to="/home" />}
+            element={!authUser ? <AuthPage /> : <Navigate to="/" />}
           />
-
-          {/* Protected */}
-          <Route
-            path="/home"
-            element={authUser ? <HomePage /> : <Navigate to="/auth" />}
-          />
-
 
           {/* Project pipeline */}
           <Route
             path="/project/:id"
-            element={authUser ? <BuildNewPage /> : <Navigate to="/auth" />}
+            element={authUser ? <BuildNewPage /> : <Navigate to="/" replace state={{ returnTo: window.location.pathname }} />}
           />
             
           {/* Catch all */}

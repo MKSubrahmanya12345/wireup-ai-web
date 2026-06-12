@@ -1,5 +1,5 @@
 // ??$$$ group 8 - Core Platform & Shared Infrastructure
-import express, { Router, Request, Response, NextFunction } from "express";
+import express, { Router } from "express";
 
 import {
   createProject,
@@ -16,7 +16,9 @@ import { protectRoute } from "../middleware/auth.middleware";
 const router: Router = express.Router();
 
 // project management routes
+// ??$$$ newer code - support both singular /project and plural /projects POST for frontend compatibility
 router.post("/project", protectRoute, createProject);
+router.post("/projects", protectRoute, createProject);
 
 router.get("/projects", protectRoute, getUserProjects);
 

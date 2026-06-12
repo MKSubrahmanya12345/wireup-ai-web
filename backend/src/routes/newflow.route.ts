@@ -13,9 +13,10 @@ import {
   getSessionByProject,
   // ??$$$ newer code
   exportLocalSession,
-  getVirtualProjectData,
   resumeSession,
-  rescueSession
+  rescueSession,
+  // ??$$$ newer code — project-aware AI chat
+  chatSession
 } from "../controllers/newflow.controller";
 
 const router = Router();
@@ -29,7 +30,8 @@ router.post("/new-flow/restart", protectRoute, restartSession);
 router.post("/new-flow/export-local", protectRoute, exportLocalSession);
 router.post("/new-flow/resume", protectRoute, resumeSession);
 router.post("/new-flow/rescue", protectRoute, rescueSession);
-router.get("/new-flow/virtual-project/:sessionId", getVirtualProjectData);
+// ??$$$ newer code — project-aware AI chat
+router.post("/new-flow/chat", protectRoute, chatSession);
 router.get("/new-flow/session/:sessionId", getSession);
 router.get("/new-flow/project-session/:projectId", protectRoute, getSessionByProject);
 

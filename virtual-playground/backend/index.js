@@ -49,13 +49,6 @@ void loop() {
 `
 };
 
-// ??$$$ old code
-/*
-app.get('/api/project', (req, res) => {
-  console.log('[API] GET /api/project requested - serving hardware project schema');
-  res.json(mockProject);
-});
-*/
 // ??$$$ newer code
 import fs from 'fs';
 import path from 'path';
@@ -91,8 +84,6 @@ app.get('/api/project', (req, res) => {
           },
           sketch,
           context,
-          // ??$$$ old code
-          // phases: context.subsystems || [],
           // ??$$$ newer code
           phases: Array.isArray(context.subsystems)
             ? context.subsystems

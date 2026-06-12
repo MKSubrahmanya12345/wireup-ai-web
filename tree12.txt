@@ -1,0 +1,726 @@
+﻿.env.example
+.gitignore
+.vscode
+│   settings.json
+arena.md
+backend
+│   .env
+│   .gitignore
+│   backfill_types.js
+│   data
+│   │   componentRegistry.json
+│   │   componentRegistry.json.backup
+│   │   CRegistry.json
+│   Dockerfile
+│   inspect_db.js
+│   inspect_project.js
+│   nodemon.json
+│   package.json
+│   package-lock.json
+│   scratch
+│   │   inspect-latest.ts
+│   │   inspect-messages.ts
+│   │   inspect-project.ts
+│   │   list_parts.js
+│   │   test-groq-mapping.ts
+│   │   test-groq-model.ts
+│   │   test-groq-tool.ts
+│   │   test-turn4.ts
+│   scratch_inspect.js
+│   shared
+│   │   types
+│   │   │   SimulationBundle.ts
+│   src
+│   │   agents
+│   │   │   architect
+│   │   │   │   architect.agent.ts
+│   │   │   │   architect.prompts.ts
+│   │   │   │   index.ts
+│   │   │   │   mcu.catalog.ts
+│   │   │   discovery
+│   │   │   │   discovery.agent.ts
+│   │   │   │   discovery.prompts.ts
+│   │   │   │   discovery.utils.ts
+│   │   │   │   index.ts
+│   │   │   formulation
+│   │   │   │   formulation.agent.ts
+│   │   │   │   formulation.persistence.ts
+│   │   │   │   formulation.prompts.ts
+│   │   │   │   formulation.types.ts
+│   │   │   │   index.ts
+│   │   │   │   scratch
+│   │   │   │   │   test_fixes.js
+│   │   │   │   tools
+│   │   │   │   │   diagram.tool.ts
+│   │   │   │   │   index.ts
+│   │   │   │   │   mcu.tool.ts
+│   │   │   │   │   milestone.tool.ts
+│   │   │   │   │   save.tool.ts
+│   │   │   │   │   search.tool.ts
+│   │   │   │   │   utils.ts
+│   │   │   │   │   wiring.tool.ts
+│   │   │   shared
+│   │   │   │   adapters
+│   │   │   │   adapters.ts
+│   │   │   │   │   cerebras.ts
+│   │   │   │   │   gemini.ts
+│   │   │   │   │   groq.ts
+│   │   │   │   │   index.ts
+│   │   │   │   │   ollama.ts
+│   │   │   │   jsonRepair.ts
+│   │   │   │   keyRotation.service.ts
+│   │   archive
+│   │   │   api_freeze.json
+│   │   │   baseline_metrics.md
+│   │   │   dependency_report.md
+│   │   │   freeze_api.ts
+│   │   │   legacy
+│   │   │   │   agent2tools.service.legacy.ts
+│   │   │   │   ai.services.legacy.ts
+│   │   │   │   newflow.agent.legacy.ts
+│   │   contracts
+│   │   │   agent.contracts.ts
+│   │   │   index.ts
+│   │   │   project.contracts.ts
+│   │   │   tool.contracts.ts
+│   │   controllers
+│   │   │   assembly.controller.ts
+│   │   │   auth.controller.ts
+│   │   │   build.controller.ts
+│   │   │   components.controller.ts
+│   │   │   generate.controller.ts
+│   │   │   ideation.controller.ts
+│   │   │   library.controller.ts
+│   │   │   newflow.controller.ts
+│   │   │   pipeline.controller.ts
+│   │   │   project.controller.ts
+│   │   │   questions.controller.ts
+│   │   │   shopping.controller.ts
+│   │   │   voice.controller.ts
+│   │   index.ts
+│   │   lib
+│   │   │   arduino-boards.ts
+│   │   │   binPacking.ts
+│   │   │   componentDimensions.ts
+│   │   │   db.ts
+│   │   │   llm.ts
+│   │   │   svgLayout.ts
+│   │   │   utils.ts
+│   │   │   wokwi.ts
+│   │   │   wokwi-components.ts
+│   │   │   wokwi-context.ts
+│   │   │   wokwiDimensionKeyMap.ts
+│   │   middleware
+│   │   │   auth.middleware.ts
+│   │   models
+│   │   │   newFlowSession.model.ts
+│   │   │   part.model.ts
+│   │   │   project.model.ts
+│   │   │   systemConfig.model.ts
+│   │   │   user.model.ts
+│   │   routes
+│   │   │   assembly.route.ts
+│   │   │   auth.route.ts
+│   │   │   build.route.ts
+│   │   │   compile.route.ts
+│   │   │   components.route.ts
+│   │   │   generate.route.ts
+│   │   │   ideation.route.ts
+│   │   │   library.route.ts
+│   │   │   newflow.route.ts
+│   │   │   part.route.ts
+│   │   │   pipeline.route.ts
+│   │   │   playground.route.ts
+│   │   │   project.routes.ts
+│   │   │   questions.route.ts
+│   │   │   shopping.route.ts
+│   │   │   simulation.routes.ts
+│   │   │   voice.route.ts
+│   │   scripts
+│   │   │   check-appdata-local.js
+│   │   │   check-project-data.ts
+│   │   │   check-session.js
+│   │   │   check-session.ts
+│   │   │   check-space.js
+│   │   │   check-space.ts
+│   │   │   convert-model.ts
+│   │   │   migrate-ideation.ts
+│   │   │   reproduce-500.ts
+│   │   │   seed-active-project.ts
+│   │   │   seed-curated-parts.ts
+│   │   │   test-agent2-tools.ts
+│   │   │   test-chat-flow.ts
+│   │   │   test-ideation-endpoint.ts
+│   │   │   test-kicad-regex.ts
+│   │   │   test-library-search.ts
+│   │   │   test-live-thinking.ts
+│   │   │   test-project-by-id.ts
+│   │   services
+│   │   │   agent2tools.declarations.ts
+│   │   │   agent2tools.service.ts
+│   │   │   ai.services.test.ts
+│   │   │   ai.services.ts
+│   │   │   assembly.service.ts
+│   │   │   blender.service.ts
+│   │   │   compileQueue.service.ts
+│   │   │   component-definition.service.ts
+│   │   │   easyeda.service.ts
+│   │   │   gemini.service.ts
+│   │   │   keyRotation.service.ts
+│   │   │   kicad.service.ts
+│   │   │   library.service.ts
+│   │   │   model.service.ts
+│   │   │   modelConversion.service.ts
+│   │   │   newflow.agent.ts
+│   │   │   pin.service.ts
+│   │   │   pinResolver.service.ts
+│   │   │   pipeline.service.ts
+│   │   │   registry.services.ts
+│   │   │   registry-codegen.service.test.ts
+│   │   │   registry-codegen.service.ts
+│   │   │   shopping.service.ts
+│   │   │   snapeda.service.ts
+│   │   │   validation.service.ts
+│   │   │   voice.service.ts
+│   │   │   wokwi-local.service.ts
+│   │   │   wokwi-mcp-client.service.ts
+│   │   │   wokwi-runner.service.ts
+│   │   shared
+│   │   │   types
+│   │   │   │   SimulationBundle.ts
+│   │   simulation
+│   │   │   analyzer
+│   │   │   │   sketchAnalyzer.ts
+│   │   │   archetype
+│   │   │   │   archetypeScorer.ts
+│   │   │   mcu
+│   │   │   │   mcuProfiles.ts
+│   │   │   peripherals
+│   │   │   │   peripheralRegistry.ts
+│   │   │   pins
+│   │   │   │   pinResolver.ts
+│   │   │   SimulationCompiler.ts
+│   │   │   validation
+│   │   │   │   wiringValidator.ts
+│   │   utils
+│   │   │   boardLock.ts
+│   │   │   bom.utils.ts
+│   │   │   parseAIResponse.ts
+│   │   │   validateDiagram.ts
+│   │   │   validateSketch.ts
+│   storage
+│   │   models
+│   │   │   arduino.glb
+│   │   │   arduino_uno.glb
+│   │   │   button.glb
+│   │   │   component_generic.glb
+│   │   │   csa37f72-wlcsp24.glb
+│   │   │   csa37f72-wlcsp24.glb.json
+│   │   │   esp32.glb
+│   │   │   esp8266-nodemcu.glb
+│   │   │   generic.glb
+│   │   │   lcd-16x2-i2c.glb
+│   │   │   led.glb
+│   │   │   resistor.glb
+│   │   │   rp519z311b-e2-f.glb
+│   │   │   sd9p-ra-pc.glb
+│   │   │   sensor.glb
+│   │   │   servo.glb
+│   │   │   tmp36.glb
+│   tsconfig.json
+backend-tree.txt
+churn_output.txt
+claude.md
+drone_1
+│   esp32_firmware.ino
+│   index.html
+│   server.py
+drone_website_controller_1
+│   index.html
+file_churn.js
+frontend
+│   .gitignore
+│   eslint.config.js
+│   index.html
+│   package.json
+│   package-lock.json
+│   public
+│   README.md
+│   src
+│   │   App.tsx
+│   │   assets
+│   │   │   forge logo.png
+│   │   │   hero.png
+│   │   │   logo.jpg
+│   │   │   react.svg
+│   │   │   vite.svg
+│   │   components
+│   │   │   AIReasoningPanel
+│   │   │   │   AIReasoningPanel.tsx
+│   │   │   ChatRichText.tsx
+│   │   │   CircuitDiagram
+│   │   │   │   CircuitDiagram.tsx
+│   │   │   CreateProjectModal.tsx
+│   │   │   DesignChat.tsx
+│   │   │   DiscoveryModal
+│   │   │   │   components
+│   │   │   │   │   ConflictResolution.tsx
+│   │   │   │   │   MilestoneCard.tsx
+│   │   │   │   │   ModelSelector.tsx
+│   │   │   │   │   RateLimitTimer.tsx
+│   │   │   │   DiscoveryModal.tsx
+│   │   │   │   hooks
+│   │   │   │   │   useAutoScroll.ts
+│   │   │   │   │   useDiscoverySession.ts
+│   │   │   │   │   useFormulationSocket.ts
+│   │   │   │   │   useSessionRestore.ts
+│   │   │   │   panels
+│   │   │   │   │   AgentConsole.tsx
+│   │   │   │   │   BomPanel.tsx
+│   │   │   │   │   HardwareAssembly.tsx
+│   │   │   │   │   InspectorPanel.tsx
+│   │   │   │   │   MilestonesPanel.tsx
+│   │   │   │   │   ProgressTracker.tsx
+│   │   │   │   │   ProjectChatPanel.tsx
+│   │   │   │   │   WiringPanel.tsx
+│   │   │   │   phases
+│   │   │   │   │   DiscoveryPhase.tsx
+│   │   │   │   │   FormulationPhase.tsx
+│   │   │   │   selectors
+│   │   │   │   │   conflict.selectors.ts
+│   │   │   │   │   decision.selectors.ts
+│   │   │   │   │   progress.selectors.ts
+│   │   │   │   │   stage.selectors.ts
+│   │   │   │   services
+│   │   │   │   │   discoveryApi.ts
+│   │   │   │   │   formulationApi.ts
+│   │   │   │   │   simulatorApi.ts
+│   │   │   │   types
+│   │   │   │   │   bom.types.ts
+│   │   │   │   │   log.types.ts
+│   │   │   │   │   milestone.types.ts
+│   │   │   │   │   session.types.ts
+│   │   │   │   utils
+│   │   │   │   │   exportData.ts
+│   │   │   │   │   sessionHydration.ts
+│   │   │   │   │   socketEvents.ts
+│   │   │   Forge3D.tsx
+│   │   │   InteractiveNodeGraph.tsx
+│   │   │   PipelineAuditTab.tsx
+│   │   │   ProjectQuestionnaire
+│   │   │   │   ProjectQuestionnaire.tsx
+│   │   │   shared
+│   │   │   │   ErrorBoundary.tsx
+│   │   │   │   ProjectLayout.tsx
+│   │   │   │   StageNav.tsx
+│   │   │   sim
+│   │   │   │   Avr8jsRunner.ts
+│   │   │   │   CodeEditor.tsx
+│   │   │   │   ComponentLibrary.tsx
+│   │   │   │   ComponentLibraryData.tsx
+│   │   │   │   diagramStorage.ts
+│   │   │   │   DiagramViewer.tsx
+│   │   │   │   LibraryManager.tsx
+│   │   │   │   SerialMonitor.tsx
+│   │   │   │   SimCanvas.tsx
+│   │   │   │   SimulatorCard.tsx
+│   │   │   │   SimulatorWorkspace.tsx
+│   │   │   │   types.ts
+│   │   │   │   WireOverlay.tsx
+│   │   │   │   WirePreview.tsx
+│   │   │   Simulator3D.tsx
+│   │   │   ThreeViewport.tsx
+│   │   │   ui
+│   │   │   │   PromptInputDynamicGrow.tsx
+│   │   │   WokwiProofLab.tsx
+│   │   │   WokwiSimulator.tsx
+│   │   hooks
+│   │   │   useCompiler.ts
+│   │   │   useIsMobile.ts
+│   │   │   useMicRecorder.ts
+│   │   │   useVoiceGuidance.ts
+│   │   index.css
+│   │   lib
+│   │   │   axios.ts
+│   │   │   firebase.ts
+│   │   main.tsx
+│   │   pages
+│   │   │   AssemblyPage.tsx
+│   │   │   AuthPage.tsx
+│   │   │   BuildNewPage.tsx
+│   │   │   BuildPage.tsx
+│   │   │   ComponentsPage.tsx
+│   │   │   HeroPage.tsx
+│   │   │   HomePage.tsx
+│   │   │   IdeationPage.tsx
+│   │   │   ShoppingPage.tsx
+│   │   │   Simulator3DPage.tsx
+│   │   store
+│   │   │   useAuthStore.ts
+│   │   │   useProjectStore.ts
+│   │   │   useSimulatorStore.ts
+│   │   │   useThemeStore.ts
+│   │   styles
+│   │   │   desktop.css
+│   │   │   forge3d.css
+│   │   │   mobile.css
+│   │   utils
+│   │   │   physics.ts
+│   tsconfig.app.json
+│   tsconfig.json
+│   tsconfig.node.json
+│   vite.config.ts
+frontend-tree.txt
+frontend-tree2.txt
+gemini.md
+index.html
+INGESTION
+│   backend
+│   │   .env
+│   │   .env.example
+│   │   package.json
+│   │   package-lock.json
+│   │   scripts
+│   │   │   scanAndExport.js
+│   │   src
+│   │   │   app.js
+│   │   │   classifiers
+│   │   │   │   familyClassifier.js
+│   │   │   config
+│   │   │   │   db.js
+│   │   │   │   env.js
+│   │   │   controllers
+│   │   │   │   ingestion.controller.js
+│   │   │   discovery
+│   │   │   │   kicad
+│   │   │   │   │   kicadSymbolExtractor.js
+│   │   │   │   │   sexpr.js
+│   │   │   │   providerRegistry.js
+│   │   │   │   providers
+│   │   │   │   │   base.js
+│   │   │   │   │   emptyProviders.js
+│   │   │   │   │   kicadProvider.js
+│   │   │   domain
+│   │   │   │   families.js
+│   │   │   index.js
+│   │   │   middleware
+│   │   │   │   errorHandler.js
+│   │   │   models
+│   │   │   │   component.model.js
+│   │   │   │   componentVersion.model.js
+│   │   │   │   ingestionJob.model.js
+│   │   │   │   ingestionSetting.model.js
+│   │   │   │   registryCandidate.model.js
+│   │   │   │   registrySnapshot.model.js
+│   │   │   parsers
+│   │   │   │   datasheetFetcher.js
+│   │   │   │   datasheetProcessor.js
+│   │   │   │   htmlParser.js
+│   │   │   │   pdfParser.js
+│   │   │   │   pinExtractor.js
+│   │   │   providers
+│   │   │   │   manualProvider.js
+│   │   │   │   providerRegistry.js
+│   │   │   │   types.js
+│   │   │   registry
+│   │   │   │   defaults.js
+│   │   │   │   registryBuilder.js
+│   │   │   repositories
+│   │   │   │   component.repository.js
+│   │   │   │   componentVersion.repository.js
+│   │   │   │   ingestionJob.repository.js
+│   │   │   │   ingestionSetting.repository.js
+│   │   │   │   registryCandidate.repository.js
+│   │   │   │   registrySnapshot.repository.js
+│   │   │   routes
+│   │   │   │   ingestion.routes.js
+│   │   │   schemas
+│   │   │   │   componentSchemas.js
+│   │   │   services
+│   │   │   │   candidateService.js
+│   │   │   │   discoveryScanService.js
+│   │   │   │   ingestionService.js
+│   │   │   │   registryExportService.js
+│   │   │   │   registrySnapshotService.js
+│   │   │   │   settingsService.js
+│   │   │   utils
+│   │   │   │   asyncHandler.js
+│   │   │   │   hash.js
+│   │   │   │   httpError.js
+│   │   │   │   slugify.js
+│   │   │   │   stableStringify.js
+│   │   │   validators
+│   │   │   │   registryValidator.js
+│   frontend
+│   │   .gitignore
+│   │   eslint.config.js
+│   │   index.html
+│   │   package.json
+│   │   package-lock.json
+│   │   public
+│   │   │   favicon.svg
+│   │   │   icons.svg
+│   │   README.md
+│   │   src
+│   │   │   api
+│   │   │   │   http.js
+│   │   │   │   ingestionApi.js
+│   │   │   App.css
+│   │   │   App.jsx
+│   │   │   assets
+│   │   │   │   hero.png
+│   │   │   │   react.svg
+│   │   │   │   vite.svg
+│   │   │   domain
+│   │   │   │   families.js
+│   │   │   index.css
+│   │   │   main.jsx
+│   │   │   pages
+│   │   │   │   AdminIngestionPage.css
+│   │   │   │   AdminIngestionPage.jsx
+│   │   vite.config.js
+│   makeme.md
+package.json
+package-lock.json
+public
+│   index.html
+scratch
+│   comment_legacy.js
+│   inspect.js
+│   inspect_project.js
+│   search.js
+scripts
+│   dev.cjs
+│   kill-ports.js
+server.js
+shared
+│   types
+│   │   SimulationBundle.ts
+tree.txt
+tree1.txt
+tree12.txt
+virtual-playground
+│   backend
+│   │   .gitignore
+│   │   index.js
+│   │   package.json
+│   │   package-lock.json
+│   frontend
+│   │   .gitignore
+│   │   eslint.config.js
+│   │   index.html
+│   │   package.json
+│   │   package-lock.json
+│   │   postcss.config.js
+│   │   public
+│   │   │   favicon.svg
+│   │   │   icons.svg
+│   │   README.md
+│   │   src
+│   │   │   App.css
+│   │   │   App.tsx
+│   │   │   assets
+│   │   │   │   hero.png
+│   │   │   │   react.svg
+│   │   │   │   vite.svg
+│   │   │   components
+│   │   │   │   behavior
+│   │   │   │   │   BehaviorPlayground.tsx
+│   │   │   │   editor
+│   │   │   │   │   CodeEditor.tsx
+│   │   │   │   layout
+│   │   │   │   │   BottomPanel.tsx
+│   │   │   │   │   RightSidebar.tsx
+│   │   │   │   │   Sidebar.tsx
+│   │   │   │   │   Topbar.tsx
+│   │   │   │   three
+│   │   │   │   │   Arduino.tsx
+│   │   │   │   │   Button.tsx
+│   │   │   │   │   ErrorBoundary.tsx
+│   │   │   │   │   LCD16x2.tsx
+│   │   │   │   │   LED.tsx
+│   │   │   │   │   Resistor.tsx
+│   │   │   │   │   Scene.tsx
+│   │   │   │   │   SchematicView.tsx
+│   │   │   │   │   Wire.tsx
+│   │   │   data
+│   │   │   │   project.ts
+│   │   │   index.css
+│   │   │   main.tsx
+│   │   │   simulation
+│   │   │   │   behavior
+│   │   │   │   │   BehaviorConductor.ts
+│   │   │   │   │   GPIOBus.ts
+│   │   │   │   │   LogicEngine.ts
+│   │   │   │   │   peripherals
+│   │   │   │   │   │   AudioPeripheral.ts
+│   │   │   │   │   │   BatteryPeripheral.ts
+│   │   │   │   │   │   BehaviorButtonPeripheral.ts
+│   │   │   │   │   │   OLEDPeripheral.ts
+│   │   │   │   │   │   VirtualFSPeripheral.ts
+│   │   │   │   │   SimState.ts
+│   │   │   │   │   SimulationManifest.ts
+│   │   │   │   compiler.ts
+│   │   │   │   cpu.worker.ts
+│   │   │   │   peripherals
+│   │   │   │   │   ButtonPeripheral.ts
+│   │   │   │   │   LCDPeripheral.ts
+│   │   │   │   SimulationEngine.ts
+│   │   │   store
+│   │   │   │   useProjectStore.ts
+│   │   │   types
+│   │   │   │   project.ts
+│   │   tailwind.config.js
+│   │   tsconfig.app.json
+│   │   tsconfig.json
+│   │   tsconfig.node.json
+│   │   vite.config.ts
+│   package.json
+│   scripts
+│   │   dev.cjs
+│   shared
+│   │   types
+│   │   │   SimulationBundle.ts
+WireUp-hackathon-
+│   .gitignore
+│   backend
+│   │   .env
+│   │   .env.example
+│   │   data
+│   │   │   componentRegistry.json
+│   │   package.json
+│   │   src
+│   │   │   agents
+│   │   │   │   discovery
+│   │   │   │   │   discovery.agent.ts
+│   │   │   │   │   discovery.prompts.ts
+│   │   │   │   │   discovery.utils.ts
+│   │   │   │   │   index.ts
+│   │   │   │   shared
+│   │   │   │   │   adapters.ts
+│   │   │   │   │   jsonRepair.ts
+│   │   │   │   │   keyRotation.service.ts
+│   │   │   controllers
+│   │   │   │   auth.controller.ts
+│   │   │   │   chat.controller.ts
+│   │   │   │   generate.controller.ts
+│   │   │   │   googleAuth.controller.ts
+│   │   │   │   newflow.controller.ts
+│   │   │   │   project.controller.ts
+│   │   │   │   questions.controller.ts
+│   │   │   │   voice.controller.ts
+│   │   │   index.ts
+│   │   │   lib
+│   │   │   │   db.ts
+│   │   │   │   llm.ts
+│   │   │   │   utils.ts
+│   │   │   │   whisper.manager.ts
+│   │   │   middleware
+│   │   │   │   auth.middleware.ts
+│   │   │   models
+│   │   │   │   project.model.ts
+│   │   │   │   user.model.ts
+│   │   │   routes
+│   │   │   │   auth.route.ts
+│   │   │   │   chat.route.ts
+│   │   │   │   generate.route.ts
+│   │   │   │   newflow.route.ts
+│   │   │   │   project.route.ts
+│   │   │   │   questions.route.ts
+│   │   │   │   voice.route.ts
+│   │   │   services
+│   │   │   │   voice.service.ts
+│   │   │   types
+│   │   │   │   passport.d.ts
+│   │   tsconfig.json
+│   design.md
+│   DESIGN-claude (1).md
+│   frontend
+│   │   .env.example
+│   │   index.html
+│   │   package.json
+│   │   postcss.config.js
+│   │   public
+│   │   │   favicon.jpeg
+│   │   src
+│   │   │   App.tsx
+│   │   │   assets
+│   │   │   │   wireup-logo.jpeg
+│   │   │   components
+│   │   │   │   AIReasoningPanel
+│   │   │   │   │   AIReasoningPanel.tsx
+│   │   │   │   CircuitDiagram
+│   │   │   │   │   CircuitDiagram.tsx
+│   │   │   │   DiscoveryModal
+│   │   │   │   │   components
+│   │   │   │   │   │   ConflictResolution.tsx
+│   │   │   │   │   │   MilestoneCard.tsx
+│   │   │   │   │   │   ModelSelector.tsx
+│   │   │   │   │   │   RateLimitTimer.tsx
+│   │   │   │   │   DiscoveryModal.tsx
+│   │   │   │   │   hooks
+│   │   │   │   │   │   useAutoScroll.ts
+│   │   │   │   │   │   useDiscoverySession.ts
+│   │   │   │   │   │   useFormulationSocket.ts
+│   │   │   │   │   │   useSessionRestore.ts
+│   │   │   │   │   panels
+│   │   │   │   │   │   AgentConsole.tsx
+│   │   │   │   │   │   BomPanel.tsx
+│   │   │   │   │   │   HardwareAssembly.tsx
+│   │   │   │   │   │   InspectorPanel.tsx
+│   │   │   │   │   │   MilestonesPanel.tsx
+│   │   │   │   │   │   ProgressTracker.tsx
+│   │   │   │   │   │   WiringPanel.tsx
+│   │   │   │   │   phases
+│   │   │   │   │   │   DiscoveryPhase.tsx
+│   │   │   │   │   │   FormulationPhase.tsx
+│   │   │   │   │   selectors
+│   │   │   │   │   │   conflict.selectors.ts
+│   │   │   │   │   │   decision.selectors.ts
+│   │   │   │   │   │   progress.selectors.ts
+│   │   │   │   │   │   stage.selectors.ts
+│   │   │   │   │   services
+│   │   │   │   │   │   discoveryApi.ts
+│   │   │   │   │   │   formulationApi.ts
+│   │   │   │   │   │   simulatorApi.ts
+│   │   │   │   │   types
+│   │   │   │   │   │   bom.types.ts
+│   │   │   │   │   │   log.types.ts
+│   │   │   │   │   │   milestone.types.ts
+│   │   │   │   │   │   session.types.ts
+│   │   │   │   │   utils
+│   │   │   │   │   │   exportData.ts
+│   │   │   │   │   │   sessionHydration.ts
+│   │   │   │   │   │   socketEvents.ts
+│   │   │   │   ProjectQuestionnaire
+│   │   │   │   │   ProjectQuestionnaire.tsx
+│   │   │   hooks
+│   │   │   │   useMicRecorder.ts
+│   │   │   index.css
+│   │   │   lib
+│   │   │   │   axios.ts
+│   │   │   main.tsx
+│   │   │   pages
+│   │   │   │   AuthPage.tsx
+│   │   │   │   BuildNewPage.tsx
+│   │   │   │   HomePage.tsx
+│   │   │   store
+│   │   │   │   useAuthStore.ts
+│   │   │   │   useProjectStore.ts
+│   │   │   │   useThemeStore.ts
+│   │   │   vite-env.d.ts
+│   │   tailwind.config.js
+│   │   tsconfig.json
+│   │   tsconfig.node.json
+│   │   vite.config.ts
+│   package.json
+│   package-lock.json
+│   whisper-server
+│   │   server.py
+workflow
+│   .env.example
+│   final_output.txt
+│   package.json
+│   package-lock.json
+│   progress.json
+│   workflow.js

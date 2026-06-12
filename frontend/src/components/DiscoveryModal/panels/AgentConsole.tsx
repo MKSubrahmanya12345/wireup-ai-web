@@ -83,7 +83,7 @@ export const AgentConsole: React.FC<AgentConsoleProps> = ({
                 >
                   <div className="flex justify-between items-center text-[9px] text-zinc-500 mb-1.5">
                     <span className="font-bold text-blue-400 uppercase tracking-wider flex items-center gap-1">
-                      <Cpu className="h-3 w-3" /> Thinking Process
+                      <Cpu className="h-3 w-3" /> Thinking Process {log.usage && `(In: ${log.usage.promptTokens}t | Out: ${log.usage.completionTokens}t)`}
                     </span>
                     <span>{timestampStr}</span>
                   </div>

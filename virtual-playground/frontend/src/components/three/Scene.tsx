@@ -22,7 +22,7 @@ const GenericPart: React.FC<{
   type: string;
   glbUrl?: string;
 }> = ({ position, rotation = [0, 0, 0], componentKey, displayName, type, glbUrl }) => {
-  const { showLabels, selectedComponent, setSelectedComponent } = useProjectStore();
+  const { showLabels, selectedComponent, setSelectedComponent, servoAngles, project } = useProjectStore();
   const isSelected = selectedComponent === componentKey;
   const apiBase = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/api$/, '').replace(/\/$/, '');
   const resolvedModelUrl = useMemo(() => {
@@ -32,15 +32,43 @@ const GenericPart: React.FC<{
     return `${apiBase}/${glbUrl}`;
   }, [apiBase, glbUrl]);
 
-  /* old code
-  const shapeColor = type === 'sensor'
-    ? '#0f766e'
-    : type === 'display'
-      ? '#7c3aed'
-      : type === 'module'
-        ? '#475569'
-        : '#1d4ed8';
-  */
+  const componentAngle = useMemo(() => {
+    if (type !== 'servo' && type !== 'motor') return 0;
+    const wire = (project.wiring || []).find(w => {
+      const from = w.from.split('.')[0].trim().toLowerCase();
+      const to = w.to.split('.')[0].trim().toLowerCase();
+      const k = componentKey.toLowerCase();
+      return from === k || to === k;
+    });
+    if (!wire) return 0;
+
+    const fromParts = wire.from.split('.');
+    const toParts = wire.to.split('.');
+    const mcuPinRaw = fromParts[0].trim().toLowerCase() === 'mcu' || fromParts[0].trim().toLowerCase() === 'arduino'
+      ? fromParts[1]
+      : (toParts[0].trim().toLowerCase() === 'mcu' || toParts[0].trim().toLowerCase() === 'arduino' ? toParts[1] : null);
+
+    if (!mcuPinRaw) return 0;
+
+    let pin = mcuPinRaw.trim().toUpperCase();
+    if (pin.startsWith('GPIO')) pin = `D${pin.slice(4)}`;
+    if (/^\d+$/.test(pin)) pin = `D${pin}`;
+    if (pin === 'RX') pin = 'D0';
+    if (pin === 'TX') pin = 'D1';
+    if (pin === 'SDA') pin = 'A4';
+    if (pin === 'SCL') pin = 'A5';
+
+    const rawAngle = (servoAngles || {})[pin] || 0;
+    return (rawAngle * Math.PI) / 180;
+  }, [type, componentKey, project.wiring, servoAngles]);
+
+  const finalRotation = useMemo(() => {
+    if (type === 'servo' || type === 'motor') {
+      return [rotation[0], rotation[1] + componentAngle, rotation[2]] as [number, number, number];
+    }
+    return rotation;
+  }, [rotation, type, componentAngle]);
+
   // ??$$$ newer code
   const shapeColor = type === 'sensor'
     ? '#0f766e'
@@ -55,7 +83,7 @@ const GenericPart: React.FC<{
   return (
     <group
       position={position}
-      rotation={rotation}
+      rotation={finalRotation}
       onClick={(e) => {
         e.stopPropagation();
         setSelectedComponent(isSelected ? null : componentKey);

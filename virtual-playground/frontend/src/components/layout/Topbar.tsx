@@ -59,9 +59,6 @@ export const Topbar: React.FC = () => {
       </div>
 
       {/* Controls */}
-      {/* old code
-      <div className="flex items-center gap-1 bg-[var(--surface-alt)] border border-[var(--border)] rounded-xl p-1">
-      */}
       {/* ??$$$ newer code: hide controls on mobile */}
       <div className="hidden md:flex items-center gap-1 bg-[var(--surface-alt)] border border-[var(--border)] rounded-xl p-1">
         {/* RUN */}
@@ -141,9 +138,6 @@ export const Topbar: React.FC = () => {
       </div>
 
       {/* Right: telemetry + actions */}
-      {/* old code
-      <div className="flex items-center gap-4 text-xs font-mono border-l border-[var(--border)] pl-4">
-      */}
       {/* ??$$$ newer code: hide right panel on mobile */}
       <div className="hidden md:flex items-center gap-4 text-xs font-mono border-l border-[var(--border)] pl-4">
 

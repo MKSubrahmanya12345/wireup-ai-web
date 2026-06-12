@@ -1,20 +1,70 @@
 // ??$$$
-// ??$$$ old code
-// import NewFlowSession from "../../models/newFlowSession.model";
 // ??$$$ newer code
 import NewFlowSession from "../../models/newFlowSession.model";
 import Project from "../../models/project.model";
 import { parseJsonRecursively } from "../shared/jsonRepair";
 // ??$$$ newer code
+import fs from "fs";
+import path from "path";
 import Part from "../../models/part.model";
 
-export async function saveSessionProgress(sessionId: string, type: string, data: any) {
+// ??$$$ newer code - Determine active phase of formulation
+export function determineActivePhase(session: any): "bom" | "wiring" | "milestone" | "diagram" | "firmware" {
+  const hasBOM = Array.isArray(session.bom) && session.bom.length > 0;
+  const hasWiring = Array.isArray(session.wiring) && session.wiring.length > 0;
+  const hasMilestones = Array.isArray(session.milestones) && session.milestones.length > 0 && !session.milestones.some((m: any) => !m.code || m.code.trim().length === 0);
+  const hasDiagram = session.diagram && Object.keys(session.diagram).length > 0;
+
+  if (!hasBOM) return "bom";
+  if (!hasWiring) return "wiring";
+  if (!hasMilestones) return "milestone";
+  if (!hasDiagram) return "diagram";
+  return "firmware";
+}
+
+// ??$$$ newer code - robust argument mapping and fallback handling for saveSessionProgress
+export async function saveSessionProgress(sessionId: string, type: string, data: any, fullArgs?: any) {
   const session = await NewFlowSession.findById(sessionId);
   if (!session) {
     throw new Error("NewFlowSession not found");
   }
 
+  // ??$$$ newer code - state machine sequence enforcement check
+  const hasBOM = Array.isArray(session.bom) && session.bom.length > 0;
+  const hasWiring = Array.isArray(session.wiring) && session.wiring.length > 0;
+
+  if (type === "wiring" && !hasBOM) {
+    return {
+      saved: false,
+      error: "State Machine Guard Violation: You cannot save wiring until the Bill of Materials (BOM) has been generated and saved."
+    };
+  }
+  if (type === "milestone" && (!hasBOM || !hasWiring)) {
+    return {
+      saved: false,
+      error: "State Machine Guard Violation: You cannot save milestones until the BOM and wiring connections have been generated and saved."
+    };
+  }
+  if (type === "diagram" && (!hasBOM || !hasWiring)) {
+    return {
+      saved: false,
+      error: "State Machine Guard Violation: You cannot save the diagram until the BOM and wiring connections have been generated and saved."
+    };
+  }
+
   let parsedData = parseJsonRecursively(data);
+  if (!parsedData && fullArgs) {
+    if (type === "bom") {
+      parsedData = fullArgs.bom || fullArgs.components || fullArgs.parts || fullArgs.data;
+    } else if (type === "wiring") {
+      parsedData = fullArgs.connections || fullArgs.wiring || fullArgs.wires || fullArgs.data;
+    } else if (type === "milestone") {
+      parsedData = fullArgs.milestones || fullArgs.milestone || fullArgs.steps || fullArgs.data;
+    } else if (type === "diagram") {
+      parsedData = fullArgs.diagram || fullArgs.diagramJson || fullArgs.parts || fullArgs.data;
+    }
+  }
+  parsedData = parseJsonRecursively(parsedData) || {};
 
   const io = (global as any).io;
 
@@ -33,16 +83,29 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
       }
     }
 
+    // ??$$$ newer code - validate and default missing properties for BOM items (rejecting empty keys/partIds/mpns)
     const rawItems = Array.isArray(bomList) ? bomList : [bomList];
+    const validRawItems = rawItems.filter((item: any) => {
+      if (!item || typeof item !== "object") return false;
+      const key = String(item.key || item.id || "").trim();
+      const partId = String(item.partId || item.id || "").trim();
+      const mpn = String(item.mpn || item.partId || "").trim();
+      return key.length > 0 && partId.length > 0 && mpn.length > 0;
+    });
+
+    if (validRawItems.length === 0) {
+      throw new Error("BOM list is empty or invalid. Please ensure the components/BOM array is provided in your tool arguments with valid key, partId, and mpn fields.");
+    }
+
     // ??$$$ newer code - resolve componentType from DB async
-    const normalizedBOM = await Promise.all(rawItems.filter(Boolean).map(async (item: any) => {
-      let key = item.key || item.id || "";
+    const normalizedBOM = await Promise.all(validRawItems.map(async (item: any) => {
+      let key = item.key || item.id || "unknown_key";
       if (key.toLowerCase() === "brain" || key.toLowerCase() === "mcu") {
         key = "mcu";
       }
 
-      let partId = item.partId || item.id || "";
-      let mpn = item.mpn || item.partId || "";
+      let partId = item.partId || item.id || "unknown_part";
+      let mpn = item.mpn || item.partId || "unknown_mpn";
 
       const displayName = item.displayName || item.name || mpn || "Unknown Component";
       const purpose = item.purpose || item.description || "Auxiliary component";
@@ -117,10 +180,26 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
     if (session.wiringMeta?.locked) {
       return { saved: false, error: "Wiring is locked against AI overwrites" };
     }
+    // ??$$$ newer code - validate wiring connection lists defensively
     let rawWiring = Array.isArray(parsedData.connections) ? parsedData.connections : parsedData;
     if (!Array.isArray(rawWiring)) rawWiring = [];
 
-    const normalizedWiring = rawWiring.map((c: any) => {
+    const validConnections = rawWiring.filter((c: any) => {
+      if (!c || typeof c !== "object") return false;
+      const from = String(c.from || "").trim();
+      const to = String(c.to || "").trim();
+      return from.length > 0 && to.length > 0 && from.includes(".") && to.includes(".");
+    });
+
+    if (rawWiring.length > 0 && validConnections.length === 0) {
+      throw new Error("Invalid wiring format. Connections must specify component pin mappings (e.g., 'mcu.GPIO25' or 'dht.SIG').");
+    }
+
+    if (validConnections.length === 0) {
+      throw new Error("Wiring connection list is empty or invalid. Please ensure the connections array is provided in your tool arguments.");
+    }
+
+    const normalizedWiring = validConnections.map((c: any) => {
       let from = c.from || "";
       let to = c.to || "";
 
@@ -187,33 +266,19 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
       }
     }
 
-        const rawList = Array.isArray(milestoneList) ? milestoneList : [milestoneList];
-    // ??$$$ old code
-    /*
-    const normalizedMilestones = rawList
-      .filter((m: any) => m && typeof m === "object")
-      .map((m: any, idx: number) => {
-        return {
-          id: m.id || `milestone_${m.order || idx + 1 || Date.now()}`,
-          order: typeof m.order === "number" ? m.order : (idx + 1),
-          title: m.title || "Untitled Milestone",
-          objective: m.objective || "",
-          subsystem: m.subsystem || "General",
-          partsInvolved: Array.isArray(m.partsInvolved) ? m.partsInvolved : (Array.isArray(m.componentsInvolved) ? m.componentsInvolved : []),
-          wiringInstructions: m.wiringInstructions || "",
-          code: m.code || "",
-          explanation: m.explanation || "",
-          expectedOutput: m.expectedOutput || m.expectedSerialOutput || "",
-          passCondition: m.passCondition || "",
-          commonProblems: Array.isArray(m.commonProblems) ? m.commonProblems : [],
-          simulatable: typeof m.simulatable === "boolean" ? m.simulatable : true,
-          requiredLibraries: Array.isArray(m.requiredLibraries) ? m.requiredLibraries : []
-        };
-      });
-    */
+    // ??$$$ newer code - validate rawList containing milestones, returning error on empty/invalid
+    const rawList = Array.isArray(milestoneList) ? milestoneList : [milestoneList];
+    const validRawList = rawList.filter((m: any) => {
+      if (!m || typeof m !== "object") return false;
+      return m.title || m.objective || m.code || m.order;
+    });
+
+    if (validRawList.length === 0) {
+      throw new Error("Milestone list is empty or invalid. Please ensure the milestones array is provided in your tool arguments.");
+    }
 
     // ??$$$ newer code
-    const normalizedMilestones = rawList
+    const normalizedMilestones = validRawList
       .filter((m: any) => m && typeof m === "object")
       .map((m: any, idx: number) => {
         let code = m.code || "";
@@ -253,14 +318,27 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
           passCondition: m.passCondition || "",
           commonProblems: Array.isArray(m.commonProblems) ? m.commonProblems : [],
           simulatable: typeof m.simulatable === "boolean" ? m.simulatable : true,
-          requiredLibraries: Array.isArray(m.requiredLibraries) ? m.requiredLibraries : []
+          // Normalize requiredLibraries: LLM sometimes sends plain strings like "SPI.h"
+          // but the Mongoose schema expects {name, type, version, installCommand} objects.
+          requiredLibraries: (Array.isArray(m.requiredLibraries) ? m.requiredLibraries : [])
+            .map((lib: any) => {
+              if (typeof lib === "string") {
+                return { name: lib, type: "library_manager", version: null, installCommand: null };
+              }
+              return {
+                name: lib.name || lib.libraryName || lib.library || String(lib),
+                type: lib.type || "library_manager",
+                version: lib.version ?? null,
+                installCommand: lib.installCommand ?? null
+              };
+            })
+            .filter((lib: any) => lib.name)
         };
       });
 
     normalizedMilestones.forEach(m => {
       const existingIdx = session.milestones.findIndex(em =>
         em.id === m.id ||
-        em.order === m.order ||
         em.title.toLowerCase().trim() === m.title.toLowerCase().trim()
       );
       if (existingIdx > -1) {
@@ -272,6 +350,10 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
 
     if (session.milestones.length > 0) {
       session.milestones.sort((a, b) => a.order - b.order);
+      // ??$$$ newer code - sequentially re-order to guarantee collision-free sequence
+      session.milestones.forEach((m, idx) => {
+        m.order = idx + 1;
+      });
     }
     session.markModified("milestones");
 
@@ -295,7 +377,11 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
     if (session.wiringMeta?.locked) {
       return { saved: false, error: "Diagram (Wiring) is locked against AI overwrites" };
     }
+    // ??$$$ newer code - validate diagram data structure
     let diagramData = parsedData.diagramJson || parsedData;
+    if (!diagramData || typeof diagramData !== "object" || Array.isArray(diagramData) || (!Array.isArray(diagramData.parts) && !Array.isArray(diagramData.connections))) {
+      throw new Error("Diagram data is empty or invalid. Please ensure the parts and connections are provided in your tool arguments.");
+    }
     if (diagramData && typeof diagramData === "object") {
       if (Array.isArray(diagramData.parts)) {
         diagramData.parts = diagramData.parts.map((p: any) => {
@@ -346,6 +432,9 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
   if (session.projectId) {
     await syncSessionToProject(session);
   }
+
+  // ??$$$ newer code - sync session data to disk formulation exports directory
+  await syncSessionToDisk(sessionId);
 
   return {
     saved: true,
@@ -423,7 +512,12 @@ async function syncSessionToProject(session: any) {
       simulatable: m.simulatable,
       dependsOn: idx === 0 ? [] : [session.milestones[idx - 1].id],
       debugMessages: [],
-      requiredLibraries: m.requiredLibraries || []
+      requiredLibraries: (m.requiredLibraries || []).map((lib: any) => {
+        if (typeof lib === "string") {
+          return { name: lib, type: "library_manager", version: null, installCommand: null };
+        }
+        return lib;
+      }).filter((lib: any) => lib.name)
     }));
 
     if (project.milestones.length > 0) {
@@ -444,9 +538,111 @@ async function syncSessionToProject(session: any) {
       project.meta.board = session.context.mcu;
     }
 
+    // ??$$$ newer code - sync project.files with the latest auto-generated files from formulation session, preserving manual user files
+    const existingFiles = project.files || [];
+    const generatedNames = new Set([
+      "bom.json",
+      "wiring.json",
+      "milestones.json",
+      "diagram.json",
+      "sketch.ino"
+    ]);
+    if (session.milestones) {
+      session.milestones.forEach((m: any) => {
+        generatedNames.add(`milestone_${m.order}.ino`);
+      });
+    }
+
+    const userFiles = existingFiles.filter((f: any) => !generatedNames.has(f.name));
+
+    const generatedFiles: any[] = [];
+    if (session.bom && session.bom.length > 0) {
+      generatedFiles.push({
+        name: "bom.json",
+        language: "json",
+        content: JSON.stringify(session.bom, null, 2)
+      });
+    }
+    if (session.wiring && session.wiring.length > 0) {
+      generatedFiles.push({
+        name: "wiring.json",
+        language: "json",
+        content: JSON.stringify(session.wiring, null, 2)
+      });
+    }
+    if (session.milestones && session.milestones.length > 0) {
+      generatedFiles.push({
+        name: "milestones.json",
+        language: "json",
+        content: JSON.stringify(session.milestones, null, 2)
+      });
+      session.milestones.forEach((m: any) => {
+        if (m.code && m.code.trim()) {
+          generatedFiles.push({
+            name: `milestone_${m.order}.ino`,
+            language: "arduino",
+            content: m.code
+          });
+        }
+      });
+    }
+    if (session.diagram) {
+      generatedFiles.push({
+        name: "diagram.json",
+        language: "json",
+        content: JSON.stringify(session.diagram, null, 2)
+      });
+    }
+    if (session.finalSketch && session.finalSketch.trim()) {
+      generatedFiles.push({
+        name: "sketch.ino",
+        language: "arduino",
+        content: session.finalSketch
+      });
+    }
+
+    project.files = [...userFiles, ...generatedFiles];
+    project.markModified("files");
+
     await project.save();
     console.log(`[Persistence] Successfully synchronized session progress to project: ${project._id}`);
   } catch (err) {
     console.error(`[Persistence] Failed to sync session to project:`, err);
+  }
+}
+
+// ??$$$ newer code - sync session data to disk formulation exports directory
+export async function syncSessionToDisk(sessionId: string) {
+  try {
+    const session = await NewFlowSession.findById(sessionId);
+    if (!session) return;
+
+    const exportsBaseDir = process.env.FORMULATION_EXPORTS_DIR || "E:\\wireup_formulation_exports";
+    const exportDir = path.join(exportsBaseDir, `session_${sessionId}`);
+    if (!fs.existsSync(exportDir)) {
+      fs.mkdirSync(exportDir, { recursive: true });
+    }
+
+    fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
+    fs.writeFileSync(path.join(exportDir, "requirements.md"), session.requirementsDoc || "", "utf8");
+
+    const sketchCode = session.finalSketch || (
+      [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))
+        .find((m: any) => String(m?.code || "").trim().length > 0)?.code
+    ) || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
+
+    fs.writeFileSync(path.join(exportDir, "sketch.ino"), sketchCode, "utf8");
+    fs.writeFileSync(path.join(exportDir, "sketch.json"), JSON.stringify({
+      code: sketchCode,
+      filename: "sketch.ino"
+    }, null, 2), "utf8");
+
+    console.log(`[Persistence] Synced session data to disk exports: ${exportDir}`);
+  } catch (err: any) {
+    console.error(`[Persistence] Failed to sync session data to disk:`, err);
   }
 }

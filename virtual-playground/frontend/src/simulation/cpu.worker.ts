@@ -455,6 +455,47 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
     const portC = new AVRIOPort(cpu, portCConfig);
     const portD = new AVRIOPort(cpu, portDConfig);
 
+    // ??$$$ newer code — setup PWM tracking for servo motor pulse-width demodulation
+    const pinLastState = new Map<string, boolean>();
+    const pinHighStart = new Map<string, number>();
+
+    const setupPWMTracking = (port: AVRIOPort, portName: 'B' | 'C' | 'D') => {
+      port.addListener(() => {
+        const bits = portName === 'D' ? 8 : 6;
+        for (let bit = 0; bit < bits; bit++) {
+          const pinName = portName === 'D' ? `D${bit}` : (portName === 'B' ? `D${bit + 8}` : `A${bit}`);
+          const ddrRegister = port.portConfig.DDR;
+          const isOutput = Boolean(cpu.data[ddrRegister] & (1 << bit));
+          if (!isOutput) continue;
+          
+          const reg = port.portConfig.PORT;
+          const isHigh = Boolean(cpu.data[reg] & (1 << bit));
+          const last = pinLastState.get(pinName);
+          if (last !== isHigh) {
+            pinLastState.set(pinName, isHigh);
+            const currentCycles = cpu.cycles;
+            if (isHigh) {
+              pinHighStart.set(pinName, currentCycles);
+            } else {
+              const start = pinHighStart.get(pinName);
+              if (start !== undefined) {
+                const durationCycles = currentCycles - start;
+                const pulseUs = durationCycles / 16;
+                if (pulseUs >= 400 && pulseUs <= 2600) {
+                  const angle = Math.round(Math.max(0, Math.min(180, (pulseUs - 544) * 180 / (2400 - 544))));
+                  self.postMessage({ type: 'servo', pin: pinName, angle });
+                }
+              }
+            }
+          }
+        }
+      });
+    };
+
+    setupPWMTracking(portB, 'B');
+    setupPWMTracking(portC, 'C');
+    setupPWMTracking(portD, 'D');
+
     new AVRTimer(cpu, timer0Config);
     new AVRTimer(cpu, timer1Config);
     new AVRTimer(cpu, timer2Config);
@@ -513,6 +554,7 @@ self.onmessage = (event: MessageEvent<WorkerMessage>) => {
 
     nextRunner.tickHandle = self.setInterval(() => {
       try {
+        // ??$$$ newer code - CPU and timer tick loop
         for (let index = 0; index < CYCLES_PER_SLICE; index += 1) {
           avrInstruction(cpu);
           cpu.tick();

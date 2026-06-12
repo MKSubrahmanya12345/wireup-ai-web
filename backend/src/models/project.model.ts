@@ -73,29 +73,6 @@ export interface IIdeationMessage {
 //============================================================
 //============================================================
 
-/* old code
-export interface IIdeation {
-  messages: IIdeationMessage[];
-  brief: string;
-  objective: string;
-  compute: string;
-  phases: Record<string, string>;
-  constraints: string;
-  open: string;
-
-  thinking: string;
-  toolTrace: string;
-
-  readyForComponents: boolean;
-  readyAt: Date | null;
-  readinessReason: string;
-
-  validatorApproved: boolean;
-  validatorFeedback: string;
-
-  validationAttempts: number;
-}
-*/
 // ??$$$
 export interface IIdeation {
   messages: IIdeationMessage[];
@@ -194,13 +171,6 @@ const ideationSchema = new Schema<IIdeation>(
       default: ""
     },
 
-/* old code
-    validationAttempts: {
-      type: Number,
-      default: 0
-    }
-  },
-*/
 // ??$$$
     validationAttempts: {
       type: Number,
@@ -316,23 +286,6 @@ const generationProfileSchema = new Schema<IGenerationProfile>(
   { _id: false }
 );
 
-/* old code
-interface IBomItem {
-  key: string;
-  wokwiPartType: string;
-  displayName: string;
-  qty: number;
-  purpose: string;
-  pinConnections: Array<{
-    pin: string;
-    connectsTo: string;
-  }>;
-  price: number;
-  storeUrl: string;
-  mpn?: string;
-  partId?: string;
-}
-*/
 // ??$$$ newer code
 interface IBomItem {
   key: string;
@@ -363,30 +316,6 @@ interface IBomItem {
   }>;
 }
 
-/* old code
-const bomItemSchema = new Schema<IBomItem>(
-  {
-    key: { type: String, default: "" },
-    wokwiPartType: { type: String, default: "" },
-    displayName: { type: String, default: "" },
-    qty: { type: Number, default: 1 },
-    purpose: { type: String, default: "" },
-
-    pinConnections: [
-      {
-        pin: { type: String, default: "" },
-        connectsTo: { type: String, default: "" }
-      }
-    ],
-
-    price: { type: Number, default: 0 },
-    storeUrl: { type: String, default: "" },
-    mpn: { type: String, default: "" },
-    partId: { type: String, default: "" }
-  },
-  { _id: false }
-);
-*/
 // ??$$$ newer code
 const bomItemSchema = new Schema<IBomItem>(
   {
@@ -664,29 +593,6 @@ export interface IRequiredLibrary {
   installCommand?: string;
 }
 
-/* old code
-export interface IMilestone {
-  id: string;
-  order: number;
-  title: string;
-  objective: string;
-  componentsInvolved: string[];
-  wiringInstructions: string;
-  code: string;
-  explanation: string;
-  test: IMilestoneTest;
-  status: "locked" | "ready" | "in_progress" | "passed" | "failed";
-  userConfirmed: boolean;
-  userNotes: string;
-  compiledHex: string;
-  compilationErrors: any[];
-  serialOutput: string;
-  completedAt: Date | null;
-  simulatable: boolean;
-  dependsOn: string[];
-  debugMessages: IDebugMessage[];
-}
-*/
 // ??$$$ newer code
 export interface IMilestone {
   id: string;
@@ -731,36 +637,6 @@ const debugMessageSchema = new Schema<IDebugMessage>(
   { _id: false }
 );
 
-/* old code
-const milestoneSchema = new Schema<IMilestone>(
-  {
-    id: { type: String, required: true },
-    order: { type: Number, required: true },
-    title: { type: String, default: "" },
-    objective: { type: String, default: "" },
-    componentsInvolved: { type: [String], default: [] },
-    wiringInstructions: { type: String, default: "" },
-    code: { type: String, default: "" },
-    explanation: { type: String, default: "" },
-    test: { type: milestoneTestSchema, required: true },
-    status: {
-      type: String,
-      enum: ["locked", "ready", "in_progress", "passed", "failed"],
-      default: "locked"
-    },
-    userConfirmed: { type: Boolean, default: false },
-    userNotes: { type: String, default: "" },
-    compiledHex: { type: String, default: "" },
-    compilationErrors: { type: [String], default: [] },
-    serialOutput: { type: String, default: "" },
-    completedAt: { type: Date, default: null },
-    simulatable: { type: Boolean, default: true },
-    dependsOn: { type: [String], default: [] },
-    debugMessages: { type: [debugMessageSchema], default: [] }
-  },
-  { _id: false }
-);
-*/
 // ??$$$ newer code
 const milestoneSchema = new Schema<IMilestone>(
   {
@@ -903,12 +779,29 @@ interface IProject {
   pipelineFailures?: any[];
   // ??$$$ newer code
   derivedDependencies?: any;
+  // ??$$$ newer code
+  files?: Array<{
+    name: string;
+    language: string;
+    content: string;
+  }>;
+  activeFile?: string;
 }
 
 export type ProjectDocument = HydratedDocument<IProject>;
 
 const projectSchema = new Schema<IProject>(
   {
+    // ??$$$ newer code
+    files: [
+      {
+        name: { type: String, required: true },
+        language: { type: String, default: "plaintext" },
+        content: { type: String, default: "" },
+      },
+    ],
+    activeFile: { type: String, default: "" },
+
     owner: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -1203,68 +1096,6 @@ const projectSchema = new Schema<IProject>(
   { timestamps: true }
 );
 
-/* old code
-// ??$$$ sanitize legacy message roles before validation
-projectSchema.pre("validate", function (next) {
-  const sanitizeMessages = (msgs: any[]) => {
-    if (!Array.isArray(msgs)) return;
-    for (const m of msgs) {
-      if (m && m.role === "ai") {
-        m.role = "model";
-      }
-    }
-  };
-  sanitizeMessages(this.componentsMessages);
-  sanitizeMessages(this.designMessages);
-  sanitizeMessages(this.projectAiMessages);
-  if (this.ideation && Array.isArray(this.ideation.messages)) {
-    sanitizeMessages(this.ideation.messages);
-  }
-  next();
-});
-*/
-/* old code
-// ??$$$
-projectSchema.pre("validate", function (this: any, next: any) {
-  const sanitizeMessages = (msgs: any[]) => {
-    if (!Array.isArray(msgs)) return;
-    for (const m of msgs) {
-      if (m && m.role === "ai") {
-        m.role = "model";
-      }
-    }
-  };
-  sanitizeMessages(this.componentsMessages);
-  sanitizeMessages(this.designMessages);
-  sanitizeMessages(this.projectAiMessages);
-  if (this.ideation && Array.isArray(this.ideation.messages)) {
-    sanitizeMessages(this.ideation.messages);
-  }
-  next();
-});
-*/
-/* old code
-// ??$$$
-projectSchema.pre("validate", function (this: any, next: any) {
-  const sanitizeMessages = (msgs: any[]) => {
-    if (!Array.isArray(msgs)) return;
-    for (const m of msgs) {
-      if (m && m.role === "ai") {
-        m.role = "model";
-      }
-    }
-  };
-  sanitizeMessages(this.componentsMessages);
-  sanitizeMessages(this.designMessages);
-  sanitizeMessages(this.projectAiMessages);
-  if (this.ideation && Array.isArray(this.ideation.messages)) {
-    sanitizeMessages(this.ideation.messages);
-  }
-  if (typeof next === "function") {
-    next();
-  }
-});
-*/
 // ??$$$
 projectSchema.pre("validate", function (this: any, next: any) {
   const sanitizeMessages = (msgs: any[]) => {

@@ -1,9 +1,5 @@
 // ??$$$ group 2 - Ideation Stage (Phase 1)
 // ??$$$ NEW FLOW
-// ??$$$ old code
-/*
-import mongoose from "mongoose";
-*/
 // ??$$$ newer code
 import mongoose from "mongoose";
 import * as fs from "fs";
@@ -48,17 +44,6 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
     throw new Error("NewFlowSession not found");
   }
 
-  // ??$$$ old code
-  /*
-  let parsedData = data;
-  if (typeof data === "string") {
-    try {
-      parsedData = JSON.parse(data);
-    } catch (e) {
-      console.error("[Agent2] Failed to parse stringified progress data:", e);
-    }
-  }
-  */
   // ??$$$ newer code
   let parsedData = parseJsonRecursively(data);
 
@@ -637,9 +622,6 @@ function sanitizeMessageHistory(messages: any[]): any[] {
 // ??$$$ NEW FLOW
 // ??$$$ newer code — Added isResume flag
 export async function runAgent2(sessionId: string, modelName: string, isResume = false) {
-  /* old code
-  const session = await NewFlowSession.findById(sessionId);
-  */
   // ??$$$ newer code - let declaration to allow reloading the session document from DB later
   let session = await NewFlowSession.findById(sessionId);
   if (!session) {
@@ -665,10 +647,6 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
       ...logObj,
       timestamp: new Date()
     };
-    /* old code
-    session.agentLog.push(logItem);
-    await session.save();
-    */
     // ??$$$ newer code - load fresh session document to avoid VersionError
     const freshSession = await NewFlowSession.findById(sessionId);
     if (freshSession) {
@@ -979,17 +957,6 @@ Open Questions Resolved: ${session.qaHistory.map((h: { question: any; answer: an
         });
       }
 
-      /* old code
-      if (calls.length === 0) {
-        // No tools called, agent is done
-        console.log("[Agent2 Debugger] Formulation complete. No further tools called.");
-        await logAndEmit({
-          type: "decision",
-          text: "Agent has finalized the project formulation."
-        });
-        break;
-      }
-      */
 
       // ??$$$ newer code — enforce complete formulation pipeline before exiting loop
       if (calls.length === 0) {
@@ -1009,16 +976,6 @@ Open Questions Resolved: ${session.qaHistory.map((h: { question: any; answer: an
         const hasDiagram = session!.diagram && Object.keys(session!.diagram).length > 0;
 
         if (hasBOM && hasWiring && hasMilestones && hasDiagram) {
-          // ??$$$ old code
-          /*
-          console.log("[Agent2 Debugger] Formulation complete. No further tools called.");
-          await logAndEmit({
-            type: "decision",
-            text: "Agent has finalized the project formulation."
-          });
-          formulationSuccessful = true; // ??$$$ newer code
-          break;
-          */
           // ??$$$ newer code
           const milestonesWithoutCode = session!.milestones?.filter(
             (m: any) => !m.code || m.code.trim().length === 0
@@ -1035,18 +992,6 @@ Open Questions Resolved: ${session.qaHistory.map((h: { question: any; answer: an
             continue;
           }
 
-          /* old code
-          const hasFinalSketch = updatedSession?.finalSketch && updatedSession.finalSketch.trim().length > 0;
-          if (!hasFinalSketch) {
-            console.log("[Agent2 Debugger] All milestones have code, but final integrated sketch is missing. Prompting final sketch generation...");
-            messages.push({ role: "assistant", content: text || "Continuing..." });
-            messages.push({
-              role: "user",
-              content: `All milestones have code. Now generate the final complete sketch.ino that integrates all subsystems into one working project. Call generate_final_sketch with the objective, mcu, allMilestones, bom, and wiring.`
-            });
-            continue;
-          }
-          */
           // ??$$$ newer code - call generate_final_sketch directly to avoid a full LLM turn and save tokens
           const hasFinalSketch = session!.finalSketch && session!.finalSketch.trim().length > 0;
           if (!hasFinalSketch) {
@@ -1335,11 +1280,6 @@ Open Questions Resolved: ${session.qaHistory.map((h: { question: any; answer: an
     console.error("[Agent2 Debugger] Failed to create project document from session:", err);
   }
 
-  /* old code
-  session.projectId = projectId;
-  session.phase2Complete = true;
-  await session.save();
-  */
   // ??$$$ newer code - load fresh session document to save completion status and avoid VersionError
   const freshSession = await NewFlowSession.findById(sessionId);
   if (freshSession) {

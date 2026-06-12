@@ -7,9 +7,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import fs from "fs";
 import path from "path";
 import Groq from "groq-sdk"; // ??$$$
+import { getOllamaModel } from "../agents/shared/adapters/ollama"; // ??$$$ newer code
 import rotationService from "../services/keyRotation.service";
-// ??$$$ old code
-// import NewFlowSession from "../models/newFlowSession.model";
 // ??$$$ newer code
 import NewFlowSession from "../models/newFlowSession.model";
 import Project from "../models/project.model";
@@ -157,16 +156,6 @@ const mapSessionToVirtualProject = (session: any) => {
     const purpose = String(item?.purpose || "");
     const typeHint = `${displayName} ${purpose}`.toLowerCase();
 
-    /* old code
-    let componentType = "module";
-    if (item?.key === "mcu" || /arduino|esp32|pico|teensy|controller|microcontroller/.test(typeHint)) {
-      componentType = "microcontroller";
-    } else if (/\bled\b|neopixel|ws2812/.test(typeHint)) {
-      componentType = "led";
-    } else if (/button|switch|push/.test(typeHint)) {
-      componentType = "button";
-    }
-    */
     // ??$$$ newer code - strictly data-driven component classification with safety net
     let componentType = item?.type || "module";
 
@@ -188,23 +177,6 @@ const mapSessionToVirtualProject = (session: any) => {
       }
     }
 
-    /* old code
-const pins = Array.isArray(item?.pins) && item.pins.length > 0
-  ? item.pins.map((pin: any, pinIndex: number) => {
-    const fallback = pickPinPosition(pinIndex);
-    return {
-      id: String(pin?.id || pin?.name || `P${pinIndex + 1}`),
-      x: Number.isFinite(pin?.x_mm) ? Number(pin.x_mm) / 10 : fallback.x,
-      y: Number.isFinite(pin?.z_mm) ? Number(pin.z_mm) / 10 : fallback.y,
-      z: Number.isFinite(pin?.y_mm) ? Number(pin.y_mm) / 10 : fallback.z,
-      type: String(pin?.type || "signal")
-    };
-  })
-  : [
-    { id: "P1", x: -0.25, y: 0.02, z: -0.2, type: "signal" },
-    { id: "P2", x: 0.25, y: 0.02, z: 0.2, type: "signal" }
-  ];
-*/
     // ??$$ newer code
     const pins = Array.isArray(item?.pins) && item.pins.length > 0
       ? item.pins.map((pin: any, pinIndex: number) => {
@@ -238,15 +210,6 @@ const pins = Array.isArray(item?.pins) && item.pins.length > 0
     };
   });
 
-  /* old code
-const mappedWiring = wiring
-  .map((wire: any) => ({
-    from: String(wire?.from || ""),
-    to: String(wire?.to || ""),
-    color: String(wire?.color || "#1d4ed8")
-  }))
-  .filter((wire: any) => wire.from && wire.to);
-*/
   // ??$$ newer code
   const mappedWiring = wiring
     .map((wire: any) => {
@@ -260,20 +223,6 @@ const mappedWiring = wiring
     })
     .filter((wire: any) => wire.from && wire.to);
 
-  // ??$$$ old code
-  /*
-  const byOrder = [...milestones].sort((a: any, b: any) => Number(a?.order || 0) - Number(b?.order || 0));
-  const firstCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
-  const sketch = firstCodeMilestone?.code
-    || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
-  */
-  /* old code
-  // ??$$$ newer code
-  const byOrder = [...milestones].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
-  const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
-  const sketch = latestCodeMilestone?.code
-    || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
-  */
   // ??$$$
   const byOrder = [...milestones].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
   const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
@@ -306,16 +255,6 @@ const mappedWiring = wiring
       buttonInitialState: false
     },
     sketch,
-    // ??$$$ old code
-    /*
-    context: {
-      mcu: context?.mcu || "",
-      powerSource: context?.powerSource || "",
-      connectivity: context?.connectivity || "",
-      constraints: Array.isArray(context?.constraints) ? context.constraints : []
-    },
-    phases: Array.isArray(context?.subsystems) ? context.subsystems : [],
-    */
     // ??$$$ newer code
     context: {
       mcu: context?.mcu || "",
@@ -346,23 +285,28 @@ const mappedWiring = wiring
 
 export const AGENT1_SYSTEM_PROMPT = `You are a product discovery agent. Your goal is to guide the user to extract their initial project requirements and compile them into a detailed plain-text Markdown Project Requirements Document (PRD).
 
-Ask the user ONE question at a time to discover their project ideas, requirements, constraints, environment, and user interactions.
+// ??$$$ newer code - ask up to 3 questions at once, optimize Q&A speed
+Ask the user at most 3 questions at once (typically 1, 2, or 3, grouped logically) to discover their project ideas, requirements, constraints, environment, and user interactions. Do not ask more than 3 questions at once. Format them as a numbered list.
 Only ask questions a non-engineer/end-user can answer.
 Never ask technical questions about microcontrollers, protocols, interfaces, pin numbers, or specific ICs — those will be handled by the backend formulation agent. Focus exclusively on the behavioral features, purpose, target audience, budget, power environment (battery vs wall plug), and physical form.
 
-After each answer, assess if you have enough information to write the requirements document. If not, generate the next question and provide 3 suggested options (Option A, Option B, Option C) that cover common answers, plus letting the user type their own choice.
-Once you have enough context (usually after 4-6 questions), set done to true, set question to "", and write a comprehensive, high-quality Markdown Project Requirements Document in requirementsDoc. The PRD must specify the project purpose, key features, target physical behavior, and user flow in clear, normal text.
+After each answer, assess if you have enough information to write the requirements document. If not, generate the next question (or set of up to 3 questions) and provide 3 suggested options (Option A, Option B, Option C) that represent cohesive packages answering the questions collectively (e.g. Option A: 'Indoors, USB powered, Sound alerts', Option B: 'Outdoors, Battery powered, LED blink alerts'), plus letting the user type their own custom answer.
+
+OPTIMIZATIONS FOR SPEED:
+1. Fast-Pathing: If the user's initial idea is detailed enough or the Q&A history gives you enough context to establish the behavior and features, set "done" to true immediately. Do not ask redundant questions. Finish the Q&A in 1-2 turns if the user's intent is clear.
+2. Lazy PRD Compilation: Do NOT generate the full Markdown Project Requirements Document in 'requirementsDoc' during intermediate turns (set it to an empty string or a very brief draft under 50 words). Only generate the comprehensive, detailed Markdown PRD in 'requirementsDoc' when 'done' is true. This saves significant generation time.
+3. Proactive Defaults: Assume standard defaults for non-critical features (e.g., USB powered, indoor usage, standard temperature/humidity range) rather than asking for confirmation on every detail.
 
 Reply ONLY with this JSON structure, no markdown wrap, no backticks:
 {
-  "question": "next question to ask or empty string if done",
+  "question": "next question(s) to ask or empty string if done",
   "options": ["Option A", "Option B", "Option C"],
   "done": false,
   "requirementsDoc": "full markdown PRD text here when done is true, otherwise empty"
 }`;
 
 // ??$$$ newer code - Helper to call LLM for Discovery Agent with robust failover
-// QnA / Discovery Session ONLY uses Groq (GROQ_API_KEY & GROQ_API_FALLBACK)
+// ??$$$ newer code - QnA / Discovery Session default model uses Groq Llama 4 Scout with Ollama fallback
 async function executeDiscoveryCall(modelName: string, promptText: string): Promise<any> {
   const keys = [
     process.env.GROQ_API_KEY,
@@ -370,37 +314,64 @@ async function executeDiscoveryCall(modelName: string, promptText: string): Prom
     process.env.GROQ_API_KEY_3
   ].filter(Boolean) as string[];
 
-  if (keys.length === 0) {
-    throw new Error("No Groq API keys found in environment variables.");
+  let lastError: any = null;
+  const actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+
+  if (keys.length > 0) {
+    for (const apiKey of keys) {
+      try {
+        console.log(`[Discovery QnA] Calling Groq with key starting: ${apiKey.substring(0, 8)}...`);
+        const client = new Groq({ apiKey });
+        const completion = await client.chat.completions.create({
+          model: actualModel,
+          messages: [
+            { role: "system", content: AGENT1_SYSTEM_PROMPT },
+            { role: "user", content: promptText }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        });
+
+        const text = completion.choices[0]?.message?.content?.trim() || "";
+        const clean = text.replace(/```json|```/g, "").trim();
+        return JSON.parse(clean);
+      } catch (err) {
+        console.error(`[Discovery QnA Groq Attempt failed with key starting ${apiKey.substring(0, 8)}]:`, err);
+        lastError = err;
+      }
+    }
   }
 
-  let lastError: any = null;
-  const actualModel = "qwen/qwen3-32b";
-
-  for (const apiKey of keys) {
-    try {
-      console.log(`[Discovery QnA] Calling Groq with key starting: ${apiKey.substring(0, 8)}...`);
-      const client = new Groq({ apiKey });
-      const completion = await client.chat.completions.create({
-        model: actualModel,
+  // ??$$$ newer code - Fallback to local Ollama if Groq fails or no keys exist
+  try {
+    const localModel = (await getOllamaModel()) || "qwen2.5:3b";
+    console.log(`[Discovery QnA Fallback] Calling Ollama local model: ${localModel}...`);
+    const response = await fetch("http://localhost:11434/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: localModel,
         messages: [
           { role: "system", content: AGENT1_SYSTEM_PROMPT },
           { role: "user", content: promptText }
         ],
         response_format: { type: "json_object" },
         temperature: 0.7
-      });
-
-      const text = completion.choices[0]?.message?.content?.trim() || "";
+      })
+    });
+    if (response.ok) {
+      const json = await response.json() as any;
+      const text = json?.choices?.[0]?.message?.content?.trim() || "";
       const clean = text.replace(/```json|```/g, "").trim();
       return JSON.parse(clean);
-    } catch (err) {
-      console.error(`[Discovery QnA Groq Attempt failed with key starting ${apiKey.substring(0, 8)}]:`, err);
-      lastError = err;
+    } else {
+      const txt = await response.text();
+      throw new Error(`Ollama fallback returned status ${response.status}: ${txt}`);
     }
+  } catch (ollamaErr: any) {
+    console.error(`[Discovery QnA Ollama Fallback failed]:`, ollamaErr);
+    throw new Error(`Groq QnA call failed (${lastError?.message || 'No Groq keys'}) and Ollama fallback failed: ${ollamaErr.message || ollamaErr}`);
   }
-
-  throw new Error(`Groq QnA call failed with all provided keys. Last error: ${lastError?.message || lastError}`);
 }
 
 // ??$$$ newer code - Helper to call LLM for Discovery Agent directly
@@ -441,19 +412,6 @@ export const startSession = async (req: Request, res: Response) => {
 
     const userId = (req as any).user?._id;
 
-    // ??$$$ old code
-    /*
-    const session = new NewFlowSession({
-      owner: userId,
-      selectedModel: model,
-      idea,
-      qaHistory: [],
-      phase1Complete: false,
-      phase2Complete: false
-    });
-
-    await session.save();
-    */
     // ??$$$ newer code
     const project = new Project({
       owner: userId,
@@ -463,9 +421,6 @@ export const startSession = async (req: Request, res: Response) => {
         isAgentic: true
       },
       stageStatus: {
-        /* old code
-        ideation: "in_progress",
-        */
         // ??$$$ newer code
         ideation: "ready",
         components: "locked",
@@ -510,7 +465,8 @@ export const startSession = async (req: Request, res: Response) => {
     session.requirementsDoc = response.requirementsDoc || "";
     session.phase1Complete = !!response.done;
     if (session.phase1Complete) {
-      session.selectedModel = "ollama/minimax-m3:cloud";
+      // ??$$$ newer code
+      session.selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
     }
 
     session.pipelineStages = {
@@ -578,7 +534,8 @@ export const answerQuestion = async (req: Request, res: Response) => {
     session.requirementsDoc = response.requirementsDoc || session.requirementsDoc || "";
     session.phase1Complete = !!response.done;
     if (session.phase1Complete) {
-      session.selectedModel = "ollama/minimax-m3:cloud";
+      // ??$$$ newer code
+      session.selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
     }
 
     session.pipelineStages = {
@@ -664,7 +621,8 @@ export const proceedSession = async (req: Request, res: Response) => {
     }
 
     session.phase1Complete = true;
-    session.selectedModel = "ollama/minimax-m3:cloud";
+    // ??$$$ newer code
+    session.selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
     await session.save();
 
     // ??$$$ newer code — Sync skip/proceed state and PRD to Project document in real-time
@@ -731,7 +689,8 @@ export const formulateSession = async (req: Request, res: Response) => {
     // ??$$$ newer code
     await ensureSessionOwnership(session, req);
 
-    session.selectedModel = "ollama/minimax-m3:cloud"; // ??$$ Force Ollama for Formulation
+    // ??$$$ newer code
+    session.selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
     await session.save();
 
     // ??$$$ newer code — Sync components generation state to Project
@@ -755,13 +714,8 @@ export const formulateSession = async (req: Request, res: Response) => {
     );
 
     // Run Agent 2 formulation loop in the background
-    /* old code
-    runAgent2(sessionId, "ollama/minimax-m3:cloud").catch(err => {
-      console.error("[Agent2 Background Execution Error]:", err);
-    });
-    */
     // ??$$$ newer code
-    runAgent2(sessionId, "ollama/minimax-m3:cloud", hasProgress).catch(err => {
+    runAgent2(sessionId, "meta-llama/llama-4-scout-17b-16e-instruct", hasProgress).catch(err => {
       console.error("[Agent2 Background Execution Error]:", err);
     });
 
@@ -810,7 +764,8 @@ export const restartSession = async (req: Request, res: Response) => {
       session.requirementsDoc = response.requirementsDoc || "";
       session.phase1Complete = !!response.done;
       if (session.phase1Complete) {
-        session.selectedModel = "ollama/minimax-m3:cloud";
+        // ??$$$ newer code
+        session.selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
       }
 
       await session.save();
@@ -826,7 +781,8 @@ export const restartSession = async (req: Request, res: Response) => {
       });
     }
 
-    session.selectedModel = "ollama/minimax-m3:cloud";
+    // ??$$$ newer code
+    session.selectedModel = "meta-llama/llama-4-scout-17b-16e-instruct";
 
     if (requirementsDoc) {
       session.requirementsDoc = requirementsDoc;
@@ -852,18 +808,6 @@ export const restartSession = async (req: Request, res: Response) => {
       openQuestions: Array.isArray(context.openQuestions) ? context.openQuestions : []
     };
 
-    // ??$$$ old code
-    /*
-    // Reset formulation progress fields
-    session.agentLog = [];
-    session.bom = [];
-    session.wiring = [];
-    session.milestones = [];
-    session.phase2Complete = false;
-    session.projectId = null;
-
-    await session.save();
-    */
 
     // ??$$$ newer code
     session.agentLog = [];
@@ -894,7 +838,8 @@ export const restartSession = async (req: Request, res: Response) => {
     }
 
     // Trigger fresh Agent 2 loop
-    runAgent2(sessionId, "ollama/minimax-m3:cloud").catch(err => {
+    // ??$$$ newer code
+    runAgent2(sessionId, "meta-llama/llama-4-scout-17b-16e-instruct").catch(err => {
       console.error("[Agent2 Restart Background Execution Error]:", err);
     });
 
@@ -937,18 +882,6 @@ export const getSessionByProject = async (req: Request, res: Response) => {
       });
 
       // Populate context from project details
-      // ??$$$ old code
-      /*
-      session.context = {
-        corePurpose: (project as any).ideation.objective || project.description || "",
-        mcu: (project as any).ideation.compute || "",
-        subsystems: (project as any).ideation.phases ? Object.keys((project as any).ideation.phases) : [],
-        constraints: (project as any).ideation.constraints ? [(project as any).ideation.constraints] : [],
-        powerSource: "",
-        connectivity: "",
-        openQuestions: (project as any).ideation.open ? [(project as any).ideation.open] : []
-      };
-      */
       // ??$$$ newer code
       session.context = {
         corePurpose: (project as any).ideation.objective || project.description || "",
@@ -1002,14 +935,6 @@ export const exportLocalSession = async (req: Request, res: Response) => {
       fs.mkdirSync(exportDir, { recursive: true });
     }
 
-    // ??$$$ old code
-    /*
-    fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
-    fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
-    fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
-    fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
-    fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
-    */
     // ??$$$ newer code
     fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
@@ -1018,20 +943,6 @@ export const exportLocalSession = async (req: Request, res: Response) => {
     fs.writeFileSync(path.join(exportDir, "context.json"), JSON.stringify(session.context || {}, null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "requirements.md"), session.requirementsDoc || "", "utf8");
 
-    // ??$$$ old code
-    /*
-    const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(a?.order || 0) - Number(b?.order || 0));
-    const firstCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
-    const sketchCode = firstCodeMilestone?.code
-      || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
-    */
-    // ??$$$ old code
-    /*
-    const byOrder = [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0));
-    const latestCodeMilestone = byOrder.find((m: any) => String(m?.code || "").trim().length > 0);
-    const sketchCode = latestCodeMilestone?.code
-      || "void setup() {\n  Serial.begin(9600);\n}\n\nvoid loop() {\n  delay(1000);\n}\n";
-    */
     // ??$$$ newer code
     const sketchCode = session.finalSketch || (
       [...(session.milestones || [])].sort((a: any, b: any) => Number(b?.order || 0) - Number(a?.order || 0))
@@ -1092,11 +1003,6 @@ export const resumeSession = async (req: Request, res: Response) => {
     // ??$$$ newer code
     await ensureSessionOwnership(session, req);
 
-    /* old code
-    // Reset session errors and set status back to active
-    session.status = "formulating";
-    await session.save();
-    */
 
     // Trigger runAgent2 in the background with isResume = true
     const model = session.selectedModel || "gemini-2.5-flash";
@@ -1154,3 +1060,306 @@ export const rescueSession = async (req: Request, res: Response) => {
     return res.status(500).json({ error: err.message || "Failed to rescue formulation session." });
   }
 };
+
+
+// ??$$$ newer code — Upgraded Llama 4 Scout Copilot with dynamic BOM/wiring/sketch/milestones mutation tools & Socket.io updates
+export const chatSession = async (req: Request, res: Response) => {
+  const { sessionId, message, history = [] } = req.body;
+  if (!sessionId || !message?.trim()) {
+    return res.status(400).json({ error: "sessionId and message are required." });
+  }
+
+  try {
+    const session = await NewFlowSession.findById(sessionId);
+    if (!session) return res.status(404).json({ error: "Session not found." });
+
+    const bomSummary = Array.isArray((session as any).bom) && (session as any).bom.length > 0
+      ? (session as any).bom.map((b: any) => `- ${b.displayName || b.key} (${b.purpose || ""})`).join("\n")
+      : "BOM not yet finalised.";
+
+    const wiringSummary = Array.isArray((session as any).wiring) && (session as any).wiring.length > 0
+      ? (session as any).wiring.map((w: any) => `  ${w.from} → ${w.to}`).join("\n")
+      : "Wiring not yet finalised.";
+
+    const ctx: any = (session as any).context || {};
+    const prd: string = (session as any).requirementsDoc || "";
+
+    const systemPrompt = [
+      "You are an expert hardware engineer assistant and copilot embedded inside WireUp.AI.",
+      "You have full knowledge of the current project being formulated and you can directly perform changes using your tools.",
+      "",
+      `Project Idea: ${(session as any).idea || ctx.corePurpose || "Unknown"}`,
+      `MCU / Brain: ${ctx.mcu || "Determining..."}`,
+      `Power Source: ${ctx.powerSource || "Not specified"}`,
+      "",
+      "Current Bill of Materials (BOM):",
+      bomSummary,
+      "",
+      "Current Wiring Connections:",
+      wiringSummary,
+      "",
+      prd ? `Requirements Document (PRD):\n${prd.slice(0, 1200)}` : "",
+      "",
+      "You have the ability to make changes directly using function calls/tools:",
+      "- `update_bom`: Call this if the user wants to add, remove, or modify components in their BOM.",
+      "- `update_wiring`: Call this if the user wants to update, add, or remove wiring connections.",
+      "- `update_sketch`: Call this to directly update the sketch code (sketch.ino).",
+      "- `update_milestones`: Call this to update the project build milestones.",
+      "",
+      "Answer the user's hardware question or change request concisely. Keep explanations short (2–5 sentences max) unless asked for details.",
+      "When performing a change, explain what was changed and call the appropriate tool with the updated state.",
+    ].filter(Boolean).join("\n");
+
+    const messages: any[] = [
+      { role: "system", content: systemPrompt },
+      ...((history || []).slice(-10).map((h: any) => ({ role: h.role, content: h.content }))),
+      { role: "user", content: message.trim() }
+    ];
+
+    let reply = "";
+    try {
+      const groq = await rotationService.getClient();
+      const tools = [
+        {
+          type: "function",
+          function: {
+            name: "update_bom",
+            description: "Updates the project Bill of Materials (BOM). Use this to add, remove, or modify components.",
+            parameters: {
+              type: "object",
+              properties: {
+                bom: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      key: { type: "string" },
+                      partId: { type: "string" },
+                      mpn: { type: "string" },
+                      displayName: { type: "string" },
+                      purpose: { type: "string" },
+                      qty: { type: "number" },
+                      price: { type: "number" },
+                      subsystem: { type: "string" },
+                      interfaces: { type: "array", items: { type: "string" } },
+                      glbUrl: { type: "string" },
+                      type: { type: "string" }
+                    },
+                    required: ["key", "displayName", "purpose"]
+                  }
+                }
+              },
+              required: ["bom"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "update_wiring",
+            description: "Updates the wiring connections netlist.",
+            parameters: {
+              type: "object",
+              properties: {
+                wiring: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      from: { type: "string" },
+                      to: { type: "string" },
+                      net: { type: "string" },
+                      color: { type: "string" }
+                    },
+                    required: ["from", "to", "net"]
+                  }
+                }
+              },
+              required: ["wiring"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "update_sketch",
+            description: "Updates the main Arduino sketch code (sketch.ino).",
+            parameters: {
+              type: "object",
+              properties: {
+                sketch: { type: "string" }
+              },
+              required: ["sketch"]
+            }
+          }
+        },
+        {
+          type: "function",
+          function: {
+            name: "update_milestones",
+            description: "Updates the milestones sequence.",
+            parameters: {
+              type: "object",
+              properties: {
+                milestones: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      id: { type: "string" },
+                      order: { type: "number" },
+                      title: { type: "string" },
+                      objective: { type: "string" },
+                      subsystem: { type: "string" },
+                      partsInvolved: { type: "array", items: { type: "string" } },
+                      wiringInstructions: { type: "string" },
+                      code: { type: "string" },
+                      explanation: { type: "string" },
+                      expectedOutput: { type: "string" },
+                      passCondition: { type: "string" },
+                      commonProblems: { type: "array", items: { type: "string" } },
+                      simulatable: { type: "boolean" },
+                      requiredLibraries: {
+                        type: "array",
+                        items: {
+                          type: "object",
+                          properties: {
+                            name: { type: "string" },
+                            type: { type: "string" },
+                            version: { type: "string" },
+                            installCommand: { type: "string" }
+                          },
+                          required: ["name"]
+                        }
+                      }
+                    },
+                    required: ["id", "order", "title", "objective", "code"]
+                  }
+                }
+              },
+              required: ["milestones"]
+            }
+          }
+        }
+      ];
+
+      const completion = await groq.chat.completions.create({
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        messages,
+        tools: tools as any,
+        tool_choice: "auto",
+        temperature: 0.4,
+        max_tokens: 1024,
+      });
+
+      const choice = completion.choices?.[0];
+      reply = choice?.message?.content?.trim() || "";
+
+      const toolCalls = choice?.message?.tool_calls;
+      if (toolCalls && toolCalls.length > 0) {
+        let bomUpdated = false;
+        let wiringUpdated = false;
+        let sketchUpdated = false;
+        let milestonesUpdated = false;
+
+        for (const call of toolCalls) {
+          const name = call.function.name;
+          const args = JSON.parse(call.function.arguments);
+
+          if (name === "update_bom" && args.bom) {
+            session.bom = args.bom;
+            bomUpdated = true;
+          } else if (name === "update_wiring" && args.wiring) {
+            session.wiring = args.wiring;
+            wiringUpdated = true;
+          } else if (name === "update_sketch" && args.sketch) {
+            session.finalSketch = args.sketch;
+            sketchUpdated = true;
+          } else if (name === "update_milestones" && args.milestones) {
+            session.milestones = args.milestones;
+            milestonesUpdated = true;
+          }
+        }
+
+        // Save session updates
+        await session.save();
+
+        // Sync with linked Project if exists
+        if (session.projectId) {
+          const project = await Project.findById(session.projectId);
+          if (project) {
+            if (bomUpdated) {
+              project.bom = session.bom as any;
+              project.markModified("bom");
+            }
+            if (wiringUpdated) {
+              project.bom.forEach((bomItem: any) => {
+                const matchingConns = (session.wiring || []).filter((c: any) => c.to.startsWith(bomItem.key));
+                bomItem.pinConnections = matchingConns.map((c: any) => ({
+                  pin: c.to.split(".")[1] || "",
+                  connectsTo: c.from
+                }));
+              });
+              project.markModified("bom");
+            }
+            if (sketchUpdated) {
+              project.sketch = session.finalSketch || "";
+              project.markModified("sketch");
+            }
+            if (milestonesUpdated) {
+              project.milestones = session.milestones as any;
+              project.markModified("milestones");
+            }
+            await project.save();
+          }
+        }
+
+        // Emit Socket.io updates in real time
+        const io = (global as any).io;
+        if (io) {
+          const room = sessionId.toString();
+          if (bomUpdated) {
+            io.to(room).emit("agent2:bom_update", { bom: session.bom });
+          }
+          if (wiringUpdated) {
+            io.to(room).emit("agent2:wiring_update", { wiring: session.wiring });
+          }
+          if (sketchUpdated) {
+            io.to(room).emit("agent2:final_sketch_update", { finalSketch: session.finalSketch });
+          }
+          if (milestonesUpdated) {
+            io.to(room).emit("agent2:milestone_update", { milestones: session.milestones, milestone: session.milestones });
+          }
+        }
+
+        if (!reply) {
+          reply = "I have successfully updated the project configuration as requested.";
+        }
+      }
+    } catch (groqErr: any) {
+      console.warn("[chatSession] Groq failed, trying Gemini:", groqErr.message);
+      try {
+        const geminiKey = process.env.GEMINI_API_KEY || "";
+        if (geminiKey) {
+          const genAI = new GoogleGenerativeAI(geminiKey);
+          const genModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+          const prompt = messages.map(m => `${m.role === "system" ? "[SYSTEM]" : m.role === "user" ? "User" : "Assistant"}: ${m.content}`).join("\n\n");
+          const result = await genModel.generateContent(prompt);
+          reply = result.response.text()?.trim() || "";
+        }
+      } catch (gemErr: any) {
+        console.error("[chatSession] Both LLMs failed:", gemErr.message);
+      }
+    }
+
+    if (!reply) {
+      reply = "I'm having trouble connecting to the AI engine right now. Please try again in a moment.";
+    }
+
+    return res.json({ reply });
+  } catch (err: any) {
+    console.error("chatSession failed:", err);
+    return res.status(500).json({ error: err.message || "Chat failed." });
+  }
+};
+

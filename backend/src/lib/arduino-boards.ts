@@ -78,11 +78,6 @@ export const ESP32_DEVKIT_V1_PIN_DEFINITIONS = {
 };
 
 const getBoardSignalText = (project = {}, userInput = "") => {
-  // Old code:
-  // return [
-  //   project?.description,
-  //   project?.ideaState?.summary,
-  //   project?.ideaState?.requirements,
   // ??$$$ newer code
   return [
     project?.description,

@@ -36,8 +36,6 @@ export const generateLayout = async (project, sizePreference, overrides) => {
 
   // Gather components to place
   // 1. The main board
-  // Old code:
-  // const boardType = project.generationProfile?.board || project.extractedContext?.board || 'ARDUINO_UNO';
   // ??$$$ newer code
   const boardType = project.generationProfile?.board || project.ideation?.snapshot?.computeCore || 'ARDUINO_UNO';
   const boardKey = resolveDimensionKey(boardType, null);

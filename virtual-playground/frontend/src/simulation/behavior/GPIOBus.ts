@@ -1,5 +1,5 @@
 // ??$$$ newer code - GPIOBus implementation for Behavior simulation
-type PinValue = boolean | number; // boolean for digital, 0-255 for DAC/PWM
+type PinValue = boolean | number | string; // ??$$$ newer code - support string for protocols
 type PinListener = (value: PinValue) => void;
 
 export class GPIOBus {

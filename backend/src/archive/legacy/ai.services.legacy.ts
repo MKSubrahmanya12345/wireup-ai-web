@@ -15,21 +15,6 @@ type IdeationNormalized = {
   extractedContext: Record<string, any>;
   architectureState: Record<string, any>;
 };
-/* old code
-// ??$$$ newer code
-import Groq from "groq-sdk";
-import { getAIContext, getRegistry } from "./registry.services";
-import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
-import { formatWokwiComponentCatalogForPrompt, findUnsupportedPartTypesInText } from "../lib/wokwi-components";
-*/
-/* old code
-// ??$$$
-import Groq from "groq-sdk";
-import { getAIContext, getRegistry } from "./registry.services";
-import rotationService from "./keyRotation.service"; // ??$$$ Key rotation
-import { formatWokwiComponentCatalogForPrompt, findUnsupportedPartTypesInText } from "../lib/wokwi-components";
-import { buildWokwiEvidenceText } from "./wokwi-runner.service";
-*/
 // ??$$$
 import Groq from "groq-sdk";
 import { getAIContext, getRegistry } from "./registry.services";
@@ -740,49 +725,6 @@ const FALLBACK_MODEL = process.env.GROQ_MODEL_1 || "llama-3.3-70b-versatile"; //
 /*
 COMMON CALL
 */
-/* old code
-const callAI = async (prompt, model = null, retryCount = 0, offset = 0) => { // ??$$$ added offset
-  const selectedModel = model || QWEN_MODEL; // ??$$$ default to Qwen
-  const groq = await rotationService.getClient(offset); // ??$$$ use offset for key selection
-
-  const baseArgs = {
-    model: selectedModel,
-    messages: [
-      { role: "system", content: "Return ONLY valid JSON. No markdown. No prose. No <think>." },
-      { role: "user", content: prompt }
-    ],
-    temperature: 0.2
-  };
-
-  try {
-    let res;
-    try {
-      res = await groq.chat.completions.create({
-        ...baseArgs,
-        response_format: { type: "json_object" }
-      });
-    } catch {
-      res = await groq.chat.completions.create(baseArgs);
-    }
-    return res.choices[0].message.content.trim();
-  } catch (err) {
-    // ??$$$ Handle 429 Rate Limit or Error
-    if ((err?.status === 429 || err?.status === 400) && retryCount < 3) {
-      console.warn(`[callAI] Error with ${selectedModel} (status ${err?.status}). Retrying...`);
-      
-      // If Qwen failed, try the fallback model on the next retry
-      const nextModel = (selectedModel === QWEN_MODEL) ? FALLBACK_MODEL : selectedModel;
-      
-      if (err?.status === 429) {
-        await rotationService.handleRateLimit();
-      }
-      
-      return await callAI(prompt, nextModel, retryCount + 1, offset);
-    }
-    throw err;
-  }
-};
-*/
 // ??$$$
 const callAI = async (prompt, model = null, retryCount = 0, offset = 0) => {
   const selectedModel = model || QWEN_MODEL;
@@ -1451,17 +1393,6 @@ const normalizeGeneratedAssetsOutput = (raw) => {
   };
 };
 
-// Old code:
-// const collectProjectDataText = (project = {}) => {
-//   return [
-//     project?.description || "",
-//     project?.ideaState?.summary || "",
-//     ...(project?.ideaState?.requirements || []),
-//     project?.componentsState?.architecture || "",
-//     ...(project?.componentsState?.components || []),
-//     ...(project?.componentsState?.apiEndpoints || [])
-//   ].join(" ").toLowerCase();
-// };
 // ??$$$ newer code
 const collectProjectDataText = (project = {}) => {
   return [
@@ -1496,8 +1427,6 @@ const isSimonProjectFromData = (project = {}) => {
 };
 
 const buildSimonGameSketchFromData = (project = {}) => {
-  // Old code:
-  // const title = project?.ideaState?.summary?.trim() || "Simon Game for Arduino with Score display";
   // ??$$$ newer code
   const title = project?.ideation?.snapshot?.corePurpose?.trim() || "Simon Game for Arduino with Score display";
 
@@ -2138,8 +2067,6 @@ export const processComponents = async (project, userInput) => {
   // If context alone is > 15000 chars, it might be too big (~3750 tokens).
   if (contextString.length > 15000) {
     // Basic pruning: only keep controllers and components mentioned in ideation/context
-    // Old code:
-    // const mentioned = (project.description + messagesText + JSON.stringify(project.ideaState)).toLowerCase();
     // ??$$$ newer code
     const mentioned = (project.description + messagesText + JSON.stringify(project.ideation?.snapshot || {})).toLowerCase();
     registryContext = registryContext.filter(c => 
@@ -2636,10 +2563,6 @@ const normalizeComponentsOutput = (raw, project, fallbackReply = "I generated co
     reply,
     architectureState: normalizeArchitectureState(raw?.architectureState, {
       project,
-      // Old code:
-      // summary: project?.ideaState?.summary || "",
-      // requirements: project?.ideaState?.requirements || [],
-      // unknowns: project?.ideaState?.unknowns || []
       // ??$$$ newer code
       summary: project?.ideation?.snapshot?.corePurpose || "",
       requirements: project?.ideation?.snapshot?.constraints || [],

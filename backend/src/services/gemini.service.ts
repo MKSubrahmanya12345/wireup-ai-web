@@ -398,35 +398,6 @@ export const callGeminiValidator = async (
 };
 
 // ??$$$
-/* old code
-export const MILESTONE_GENERATOR_PROMPT = `You are a curriculum design agent.
-Your job is to generate milestone builds for a MERN stack hardware project builder.
-Analyze the project objective, compute core, BOM list, ideation phases, and the user's skillLevel.
-The user's skillLevel will be one of: "beginner", "intermediate", "experienced".
-
-Break down the project's build phase into sequential or parallel milestones. Each milestone must test a specific subsystem before complete integration.
-
-Rules:
-1. The first milestone (order === 1) MUST have status "ready" and all others MUST have status "locked".
-2. Each milestone must have fields:
-   - "id": a unique string (e.g. "milestone_1", "milestone_2")
-   - "order": number starting from 1
-   - "title": a concise title
-   - "objective": what this milestone builds/tests
-   - "componentsInvolved": array of keys from the BOM
-   - "wiringInstructions": clear step-by-step wiring instructions. For beginners: be very step-by-step and explanatory. For experienced users: be compact and point out pin numbers and voltage specifications directly.
-   - "code": the C++/Arduino sketch or MicroPython code required to run this subsystem. Make sure it compiles, fits the MCU, and includes appropriate comments based on skill level.
-   - "explanation": a concise educational explanation. Adjust details based on skillLevel.
-   - "test": an object containing:
-     - "expectedSerialOutput": expected string printed to Serial monitor (or described output)
-     - "passCondition": what indicates a pass (e.g. "Distance prints correctly every second")
-     - "commonProblems": array of strings listing common troubleshooting steps
-   - "simulatable": boolean. Set to false when the milestone involves physical-only actions (motor spin, RC pairing, sensor physical placement, soldering) that cannot be represented in Wokwi simulation. Set to true for all MCU code + sensor reading milestones that have Wokwi equivalents.
-   - "dependsOn": array of milestone IDs that must be completed before this milestone can be started. E.g. milestone_2 depends on ["milestone_1"].
-   - "debugMessages": empty array []
-
-Respond ONLY with a JSON array containing the list of milestones, nothing else. No markdown, no triple backticks.`;
-*/
 // ??$$$ newer code
 export const MILESTONE_GENERATOR_PROMPT = `You are a curriculum design agent.
 Your job is to generate milestone builds for a MERN stack hardware project builder.

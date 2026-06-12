@@ -97,41 +97,6 @@ export interface IPart extends Document {
   updatedAt: Date;
 }
 
-/* old code
-const partSchema = new Schema<IPart>(
-  {
-    mpn: { type: String, required: true, unique: true, index: true },
-    name: { type: String, required: true },
-    manufacturer: { type: String, required: true },
-    description: { type: String, default: "" },
-    imageUrl: { type: String, default: "" },
-    datasheetUrl: { type: String, default: "" },
-    specs: { type: Schema.Types.Mixed, default: {} },
-    available: { type: Number, default: 0 },
-    price: { type: Number, default: 0 },
-    category: { type: String, default: "" },
-    wokwiPartType: { type: String, default: "" },
-    isCurated: { type: Boolean, default: true },
-    glbUrl: { type: String, default: "" },
-    snapedaId: { type: String, default: "" },
-    pins: {
-      type: [{
-        id: { type: String, required: true },
-        name: { type: String, required: true },
-        x_mm: { type: Number, default: 0 },
-        y_mm: { type: Number, default: 0 },
-        z_mm: { type: Number, default: 0 },
-        type: { type: String, default: "digital" }
-      }],
-      default: []
-    },
-    pinsCachedAt: { type: Date, default: null }
-  },
-  {
-    timestamps: true
-  }
-);
-*/
 
 // ??$$$ Extended Part Schema with ingestion fields
 const partSchema = new Schema<IPart>(

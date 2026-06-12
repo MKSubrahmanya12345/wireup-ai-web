@@ -60,8 +60,6 @@ router.get('/project', (req: Request, res: Response) => {
           },
           sketch,
           context,
-          // ??$$$ old code
-          // phases: context.subsystems || [],
           // ??$$$ newer code
           phases: Array.isArray(context.subsystems)
             ? context.subsystems

@@ -24,8 +24,6 @@ export interface IQaHistory {
 
 // ??$$$ NEW FLOW
 export interface IAgentLog {
-  // ??$$$ old code
-  // type: "thinking" | "tool_call" | "decision" | "error" | "context_received";
   // ??$$$ newer code
   type: "thinking" | "tool_call" | "decision" | "error" | "context_received" | "rate_limit";
   name?: string;
@@ -33,6 +31,7 @@ export interface IAgentLog {
   input?: any;
   output?: any;
   text?: string;
+  usage?: any;
   timestamp: Date;
 }
 
@@ -121,6 +120,8 @@ export interface INewFlowSession extends Document {
   blueprint?: any;
   pipelineFailures?: any[];
   derivedDependencies?: any;
+  // ??$$$ newer code
+  chatHistory?: any[];
 }
 
 const qaHistorySchema = new Schema<IQaHistory>({
@@ -145,8 +146,6 @@ const qaHistorySchema = new Schema<IQaHistory>({
 
 // ??$$$ NEW FLOW
 const agentLogSchema = new Schema<IAgentLog>({
-  // ??$$$ old code
-  // type: { type: String, enum: ["thinking", "tool_call", "decision", "error", "context_received"], required: true },
   // ??$$$ newer code
   type: { type: String, enum: ["thinking", "tool_call", "decision", "error", "context_received", "rate_limit"], required: true },
   name: { type: String },
@@ -154,6 +153,7 @@ const agentLogSchema = new Schema<IAgentLog>({
   input: { type: Schema.Types.Mixed },
   output: { type: Schema.Types.Mixed },
   text: { type: String },
+  usage: { type: Schema.Types.Mixed }, // ??$$$ newer code
   timestamp: { type: Date, default: Date.now }
 }, { _id: false });
 
@@ -216,7 +216,8 @@ const milestoneSchema = new Schema<INewFlowMilestone>({
   passCondition: { type: String, default: "" },
   commonProblems: [{ type: String }],
   simulatable: { type: Boolean, default: true },
-  requiredLibraries: [{ type: requiredLibrarySchema, default: [] }]
+  // ??$$$ newer code
+  requiredLibraries: { type: [requiredLibrarySchema], default: [] }
 }, { _id: false });
 
 // ??$$$ newer code
@@ -265,7 +266,9 @@ const newFlowSessionSchema = new Schema<INewFlowSession>({
   // ??$$$ newer code
   blueprint: { type: Schema.Types.Mixed, default: null },
   derivedDependencies: { type: Schema.Types.Mixed, default: () => ({}) },
-  pipelineFailures: { type: [Schema.Types.Mixed], default: [] }
+  pipelineFailures: { type: [Schema.Types.Mixed], default: [] },
+  // ??$$$ newer code
+  chatHistory: { type: [Schema.Types.Mixed], default: [] }
 });
 
 const NewFlowSession = mongoose.model<INewFlowSession>("NewFlowSession", newFlowSessionSchema);

@@ -247,6 +247,7 @@ interface ProjectState {
   lcdLine2: string;
   lcdBacklight: boolean;
   gpioPins: Record<string, boolean>;
+  servoAngles: Record<string, number>; // ??$$$ newer code
   logs: LogEntry[];
   selectedFile: string;
   selectedComponent: string | null;
@@ -283,6 +284,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   lcdLine2: EMPTY_LCD_LINE,
   lcdBacklight: false,
   gpioPins: {},
+  servoAngles: {}, // ??$$$ newer code
   logs: [],
   selectedFile: 'sketch.ino',
   selectedComponent: null,
@@ -308,6 +310,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       lcdLine2: EMPTY_LCD_LINE,
       lcdBacklight: false,
       gpioPins: {},
+      servoAngles: {}, // ??$$$ newer code
       voltage: 0,
       cpuUsage: 0
     });
@@ -327,7 +330,8 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         lcdLine1: EMPTY_LCD_LINE,
         lcdLine2: EMPTY_LCD_LINE,
         lcdBacklight: false,
-        gpioPins: {}
+        gpioPins: {},
+        servoAngles: {} // ??$$$ newer code
       });
       get().addLog('[SYSTEM] Simulation paused', 'system');
       return;
@@ -380,7 +384,15 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       });
     });
 
-
+    // ??$$$ newer code — subscribe to servo updates
+    simulationEngine.onServoUpdate((pin, angle) => {
+      set((state) => ({
+        servoAngles: {
+          ...state.servoAngles,
+          [pin]: angle
+        }
+      }));
+    });
 
     simulationEngine.onSerial((text) => {
       get().addLog(text, inferLogType(text));
@@ -486,6 +498,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
       lcdLine2: EMPTY_LCD_LINE,
       lcdBacklight: false,
       gpioPins: {},
+      servoAngles: {}, // ??$$$ newer code
       voltage: 0,
       cpuUsage: 0
     });

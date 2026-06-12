@@ -1,8 +1,5 @@
 // ??$$$ newer code - AudioPeripheral utilizing Web Audio API and event pins
 import { gpioBus } from '../GPIOBus';
-/* old code
-import { SimulationManifest } from '../SimulationManifest';
-*/
 // ??$$$ newer code
 import type { SimulationManifest } from '../SimulationManifest';
 

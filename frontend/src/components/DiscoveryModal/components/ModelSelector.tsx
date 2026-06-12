@@ -1,7 +1,7 @@
 // components/ModelSelector.tsx
-// ??$$$ newer code - VSCode Styled IDE Settings configuration view
+// ??$$$ newer code - Breathing Neon / Playfair Display style (Image 3 target)
 import React from "react";
-import { HardDrive, Layers, Cpu, Settings, Play, Sliders } from "lucide-react";
+import { HardDrive, Layers } from "lucide-react";
 
 interface ModelSelectorProps {
   dark: boolean;
@@ -16,160 +16,179 @@ interface ModelSelectorProps {
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
-  dark,
-  textHead,
-  textSub,
   initialIdea,
   model,
   setModel,
   hybridPrimary,
   setHybridPrimary,
-  handleStartSession
+  handleStartSession,
 }) => {
+  const isOllama = model === "ollama/minimax-m3:cloud";
+  const isHybrid = model === "hybrid";
+
   return (
-    <div className="flex h-full w-full bg-[#1e1e1e] text-zinc-300 font-mono text-xs select-none">
-      
-      {/* Settings Side Navigation */}
-      <aside className="w-56 shrink-0 bg-[#252526] border-r border-[#2d2d2d] flex flex-col p-2 space-y-1">
-        <div className="px-2 py-1.5 text-[9px] uppercase font-bold text-zinc-500 tracking-wider">
-          Configuration Categories
+    <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-6 bg-[#0a0a0f]">
+
+      {/* ??$$$ newer code - Breathing neon glow orb same as homepage */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="glow-orb" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-lg">
+
+        {/* Badge */}
+        <div className="flex justify-center mb-8">
+          <span
+            className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-1.5 text-[0.72rem] font-semibold uppercase tracking-widest text-[rgba(238,232,240,0.66)]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#c8a0e0] opacity-60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-[#c8a0e0]" />
+            </span>
+            AI Hardware Studio
+          </span>
         </div>
-        <button className="w-full flex items-center gap-2 rounded px-2.5 py-1.5 bg-[#1e1e1e] text-white border-l-2 border-[#007acc] text-left">
-          <Sliders className="w-3.5 h-3.5 text-[#007acc]" />
-          <span>Pipeline Setup</span>
-        </button>
-        <button className="w-full flex items-center gap-2 rounded px-2.5 py-1.5 hover:bg-[#2d2d2d] text-zinc-400 hover:text-zinc-200 text-left cursor-not-allowed opacity-50">
-          <Cpu className="w-3.5 h-3.5" />
-          <span>MCU Pinout Config</span>
-        </button>
-        <button className="w-full flex items-center gap-2 rounded px-2.5 py-1.5 hover:bg-[#2d2d2d] text-zinc-400 hover:text-zinc-200 text-left cursor-not-allowed opacity-50">
-          <Settings className="w-3.5 h-3.5" />
-          <span>Tool Guardrails</span>
-        </button>
-      </aside>
 
-      {/* Main Settings Panel */}
-      <main className="flex-1 flex flex-col overflow-y-auto p-8 max-w-3xl">
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider mb-1 flex items-center gap-1.5">
-              <Settings className="w-4 h-4 text-[#007acc]" /> Configure Your AI Build Pipeline
-            </h2>
-            <p className="text-[10px] text-zinc-500">
-              Set up the orchestration engine and targets for project generation.
-            </p>
-          </div>
+        {/* Heading */}
+        <div className="text-center mb-10">
+          <h2
+            className="text-[clamp(2.2rem,4vw,3rem)] font-normal leading-[1.08] mb-4 text-[#f0f0f5]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            Configure your{" "}
+            <em style={{ fontFamily: "var(--font-serif)", fontStyle: "italic" }}>
+              build pipeline
+            </em>
+          </h2>
+          <p
+            className="text-sm leading-relaxed"
+            style={{ color: "rgba(238,232,240,0.46)", fontFamily: "var(--font-display)" }}
+          >
+            Building{" "}
+            <span className="font-semibold text-[#f0f0f5]">"{initialIdea}"</span>
+            <br />
+            Choose your AI engine, then launch.
+          </p>
+        </div>
 
-          <div className="h-px bg-[#2d2d2d]" />
+        {/* Mode cards */}
+        <div className="space-y-3 mb-6">
 
-          {/* Config Field: Target Idea */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">
-              Active Project Scope
-            </label>
-            <div className="w-full rounded border border-[#3c3c3c] bg-black/40 px-3 py-2 text-white font-mono text-[11px]">
-              "{initialIdea || "smart-pot-project"}"
+          {/* Pure Ollama */}
+          <button
+            id="mode-pure-ollama"
+            onClick={() => setModel("ollama/minimax-m3:cloud")}
+            className={`group w-full flex items-center gap-5 rounded-2xl border p-5 text-left transition-all duration-200 ${
+              isOllama
+                ? "border-[#c8a0e0]/40 bg-[#c8a0e0]/8 shadow-lg shadow-[#c8a0e0]/10"
+                : "border-white/[0.07] bg-white/[0.025] hover:border-[#c8a0e0]/25 hover:bg-white/[0.04]"
+            }`}
+          >
+            <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+              isOllama
+                ? "border-[#c8a0e0]/40 bg-[#c8a0e0]/15 text-[#c8a0e0]"
+                : "border-white/10 bg-white/5 text-[#8888a8]"
+            }`}>
+              <HardDrive className="h-5 w-5" />
             </div>
-            <p className="text-[9px] text-zinc-650">
-              The project brief used by agents to determine component libraries.
-            </p>
-          </div>
-
-          {/* Config Field: Selection mode */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide block">
-              Orchestrator Execution Mode
-            </label>
-            
-            <div className="grid grid-cols-2 gap-4">
-              {/* Option 1: Pure Ollama */}
-              <button
-                type="button"
-                id="mode-pure-ollama"
-                onClick={() => setModel("ollama/minimax-m3:cloud")}
-                className={`flex flex-col gap-2 rounded border p-4 text-left transition-all ${
-                  model === "ollama/minimax-m3:cloud"
-                    ? "border-[#007acc] bg-[#252526] text-white"
-                    : "border-[#2d2d2d] bg-[#1a1a1a] text-zinc-400 hover:border-[#3c3c3c] hover:bg-[#202020]"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <HardDrive className={`w-4 h-4 ${model === "ollama/minimax-m3:cloud" ? "text-[#007acc]" : "text-zinc-550"}`} />
-                  <span className="font-bold text-[11px]">Pure Ollama</span>
-                </div>
-                <p className="text-[9px] text-zinc-500 leading-normal">
-                  minimax-m3:cloud · 100% local models. Zero API limits, low latency.
-                </p>
-                <div className="mt-auto pt-2 flex items-center gap-1.5 text-[9px] font-semibold text-[#007acc]">
-                  <span className={`w-2 h-2 rounded-full border ${model === "ollama/minimax-m3:cloud" ? "bg-[#007acc] border-[#007acc]" : "border-[#3c3c3c]"}`} />
-                  <span>{model === "ollama/minimax-m3:cloud" ? "Active" : "Select Mode"}</span>
-                </div>
-              </button>
-
-              {/* Option 2: Hybrid */}
-              <button
-                type="button"
-                id="mode-hybrid"
-                onClick={() => setModel("hybrid")}
-                className={`flex flex-col gap-2 rounded border p-4 text-left transition-all ${
-                  model === "hybrid"
-                    ? "border-[#007acc] bg-[#252526] text-white"
-                    : "border-[#2d2d2d] bg-[#1a1a1a] text-zinc-400 hover:border-[#3c3c3c] hover:bg-[#202020]"
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Layers className={`w-4 h-4 ${model === "hybrid" ? "text-[#007acc]" : "text-zinc-550"}`} />
-                  <span className="font-bold text-[11px]">Hybrid Cloud</span>
-                </div>
-                <p className="text-[9px] text-zinc-500 leading-normal">
-                  GROQ → GROQ_FALLBACK → Cerebras → Ollama. Automatic API failover.
-                </p>
-                <div className="mt-auto pt-2 flex items-center gap-1.5 text-[9px] font-semibold text-[#007acc]">
-                  <span className={`w-2 h-2 rounded-full border ${model === "hybrid" ? "bg-[#007acc] border-[#007acc]" : "border-[#3c3c3c]"}`} />
-                  <span>{model === "hybrid" ? "Active" : "Select Mode"}</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Sub Option: Hybrid Primary Provider */}
-          {model === "hybrid" && (
-            <div className="p-4 rounded border border-[#2d2d2d] bg-[#252526]/50 space-y-2">
-              <label className="text-[9px] font-bold text-zinc-400 uppercase tracking-wide block">
-                Primary Cloud Provider (Fallback Target)
-              </label>
-              <select
-                id="hybrid-primary-select"
-                value={hybridPrimary}
-                onChange={(e) => setHybridPrimary(e.target.value)}
-                className="w-full rounded border border-[#3c3c3c] bg-black px-3 py-1.5 text-[10px] text-zinc-200 outline-none focus:border-[#007acc]"
-              >
-                <option value="qwen/qwen3-32b">Groq · Llama 4 Scout</option>
-                <option value="qwen/qwen3-32b">Groq · Qwen3-32B</option>
-                <option value="gpt-oss-120b">Cerebras · gpt-oss-120b</option>
-                <option value="zai-glm-4.7">Cerebras · zai-glm-4.7</option>
-              </select>
-              <p className="text-[9px] text-zinc-500">
-                Primary model used for reasoning and wire assembly validation logic.
+            <div className="flex-1 min-w-0">
+              <p className={`text-[0.95rem] font-semibold tracking-tight ${isOllama ? "text-[#e0c8f5]" : "text-[#f0f0f5]"}`}>
+                Pure Ollama
+              </p>
+              <p className="text-xs mt-0.5 text-[#8888a8]">
+                minimax-m3:cloud · 100% local · Zero API limits
               </p>
             </div>
-          )}
+            <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+              isOllama ? "border-[#c8a0e0] bg-[#c8a0e0]" : "border-white/20"
+            }`}>
+              {isOllama && (
+                <svg className="h-2.5 w-2.5 text-black" fill="none" viewBox="0 0 12 12">
+                  <path d="M3.5 7L5.5 9L8.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              )}
+            </div>
+          </button>
 
-          <div className="h-px bg-[#2d2d2d] pt-2" />
-
-          {/* Start build session CTA */}
-          <div className="pt-2">
+          {/* Hybrid Cloud */}
+          <div className={`w-full rounded-2xl border transition-all duration-200 overflow-hidden ${
+            isHybrid
+              ? "border-[#c8a0e0]/40 bg-[#c8a0e0]/8 shadow-lg shadow-[#c8a0e0]/10"
+              : "border-white/[0.07] bg-white/[0.025] hover:border-[#c8a0e0]/25 hover:bg-white/[0.04]"
+          }`}>
             <button
-              onClick={handleStartSession}
-              className="flex items-center justify-center gap-2 rounded bg-[#007acc] hover:bg-[#0062a3] px-6 py-2.5 text-xs font-bold text-white transition-all active:scale-[0.98]"
+              id="mode-hybrid"
+              onClick={() => setModel("hybrid")}
+              className="w-full flex items-center gap-5 p-5 text-left"
             >
-              <Play className="w-3.5 h-3.5 text-white" />
-              <span>Start AI Build Session</span>
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border transition-colors ${
+                isHybrid
+                  ? "border-[#c8a0e0]/40 bg-[#c8a0e0]/15 text-[#c8a0e0]"
+                  : "border-white/10 bg-white/5 text-[#8888a8]"
+              }`}>
+                <Layers className="h-5 w-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`text-[0.95rem] font-semibold tracking-tight ${isHybrid ? "text-[#e0c8f5]" : "text-[#f0f0f5]"}`}>
+                  Hybrid Cloud
+                </p>
+                <p className="text-xs mt-0.5 text-[#8888a8]">
+                  GROQ → GROQ_FALLBACK → Cerebras → Ollama
+                </p>
+              </div>
+              <div className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                isHybrid ? "border-[#c8a0e0] bg-[#c8a0e0]" : "border-white/20"
+              }`}>
+                {isHybrid && (
+                  <svg className="h-2.5 w-2.5 text-black" fill="none" viewBox="0 0 12 12">
+                    <path d="M3.5 7L5.5 9L8.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
             </button>
+
+            {isHybrid && (
+              <div className="px-5 pb-5 border-t border-[#c8a0e0]/15">
+                <label className="text-[10px] font-semibold uppercase tracking-widest block mt-4 mb-2 text-[#8888a8]">
+                  Primary Cloud Provider
+                </label>
+                <select
+                  id="hybrid-primary-select"
+                  value={hybridPrimary}
+                  onChange={e => setHybridPrimary(e.target.value)}
+                  className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm outline-none text-[#f0f0f5] focus:border-[#c8a0e0]/50 transition-colors"
+                >
+                  <option value="meta-llama/llama-4-scout-17b-16e-instruct" className="bg-[#111118]">Groq · Llama 4 Scout</option>
+                  <option value="qwen/qwen3-32b" className="bg-[#111118]">Groq · Qwen3-32B</option>
+                  <option value="gpt-oss-120b" className="bg-[#111118]">Cerebras · gpt-oss-120b</option>
+                  <option value="zai-glm-4.7" className="bg-[#111118]">Cerebras · zai-glm-4.7</option>
+                </select>
+                <p className="text-[10px] mt-2 leading-relaxed text-[#8888a8]/60">
+                  Auto-failover: GROQ_API_KEY → GROQ_API_FALLBACK → CEREBRAS_API_KEY → Ollama
+                </p>
+              </div>
+            )}
           </div>
         </div>
-      </main>
 
+        {/* CTA */}
+        <button
+          onClick={handleStartSession}
+          className="group w-full flex items-center justify-center gap-3 rounded-2xl bg-white px-6 py-4 text-[0.95rem] font-semibold text-black hover:bg-white/90 transition-all active:scale-[0.99] shadow-xl shadow-black/30"
+        >
+          <svg className="h-5 w-5 transition-transform group-hover:translate-x-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          Start AI Build
+        </button>
+
+        {/* Footnote */}
+        <p className="mt-5 text-center text-[10px] text-[#8888a8]/50" style={{ fontFamily: "var(--font-sans)" }}>
+          Discovery → Component Sourcing → Wiring → Curriculum — fully automated
+        </p>
+
+      </div>
     </div>
   );
 };

@@ -1,18 +1,11 @@
 // ??$$$ newer code - BehaviorConductor coordinates the lifecycle, peripherals, and bus
 import { GPIOBus, gpioBus } from './GPIOBus';
-/* old code
-import { SimulationManifest } from './SimulationManifest';
-*/
-// ??$$$ newer code
 import type { SimulationManifest } from './SimulationManifest';
 import { AudioPeripheral } from './peripherals/AudioPeripheral';
 import { VirtualFSPeripheral } from './peripherals/VirtualFSPeripheral';
 import { BehaviorButtonPeripheral } from './peripherals/BehaviorButtonPeripheral';
 import { BatteryPeripheral } from './peripherals/BatteryPeripheral';
-/* old code
-import { SimState } from './SimState';
-*/
-// ??$$$ newer code
+import { LogicEngine } from './LogicEngine';
 import type { SimState } from './SimState';
 
 export class BehaviorConductor {
@@ -22,6 +15,7 @@ export class BehaviorConductor {
   private serialInterval: any = null;
   private serialIndex = 0;
   private stateChangeInterval: any = null;
+  private logicEngine: LogicEngine | null = null;
 
   // Peripherals
   public audioPeripheral: AudioPeripheral;
@@ -65,6 +59,14 @@ export class BehaviorConductor {
     this.bus.reset();
     this.serialIndex = 0;
 
+    // Initialize LogicEngine if rules exist
+    if (this.manifest.logicRules && this.manifest.logicRules.length > 0) {
+      this.logicEngine = new LogicEngine(this.manifest.logicRules, this.bus, (text) => {
+        callbacks.onSerialLine(text);
+      });
+      this.logicEngine.start();
+    }
+
     // Reset SimState
     this.simState = {
       trackName: '',
@@ -85,23 +87,45 @@ export class BehaviorConductor {
       }
     }
 
-    // Wire up LED peripherals — subscribe to their GPIO pins on the bus
-    const outputStates: Record<string, boolean> = {};
+    // Wire up outputs (LEDs, Servos) — subscribe to their GPIO pins on the bus
+    const outputStates: Record<string, any> = {};
     for (const peripheral of this.manifest.peripherals) {
-      if (peripheral.type === 'LEDIndicator') {
+      if (peripheral.type === 'LEDIndicator' || peripheral.type === 'ServoMotor') {
         const pin = peripheral.config.gpioPin;
         const label = peripheral.config.label || peripheral.key;
-        outputStates[label] = false;
+        if (peripheral.type === 'ServoMotor') {
+          outputStates[label] = 0;
+        } else {
+          outputStates[label] = false;
+        }
+        
         if (pin) {
           this.bus.on(pin, (val) => {
-            const isOn = peripheral.config.activeHigh ? val === true || val === 1 : val === false || val === 0;
-            const changed = outputStates[label] !== isOn;
-            outputStates[label] = isOn;
-            if (changed) {
-              this.simState.outputStates = { ...outputStates };
-              callbacks.onSerialLine(`[OUTPUT] ${label} → ${isOn ? 'ON' : 'OFF'}`);
-              callbacks.onStateUpdate({ ...this.simState });
-              callbacks.onOLEDUpdate();
+            if (peripheral.type === 'ServoMotor') {
+              let angle = 0;
+              if (typeof val === 'number') {
+                angle = val;
+              } else if (typeof val === 'boolean') {
+                angle = val ? 90 : 0;
+              }
+              const changed = outputStates[label] !== angle;
+              outputStates[label] = angle;
+              if (changed) {
+                this.simState.outputStates = { ...outputStates };
+                callbacks.onSerialLine(`[OUTPUT] Servo "${label}" → ${angle}°`);
+                callbacks.onStateUpdate({ ...this.simState });
+                callbacks.onOLEDUpdate();
+              }
+            } else {
+              const isOn = peripheral.config.activeHigh ? val === true || val === 1 : val === false || val === 0;
+              const changed = outputStates[label] !== isOn;
+              outputStates[label] = isOn;
+              if (changed) {
+                this.simState.outputStates = { ...outputStates };
+                callbacks.onSerialLine(`[OUTPUT] ${label} → ${isOn ? 'ON' : 'OFF'}`);
+                callbacks.onStateUpdate({ ...this.simState });
+                callbacks.onOLEDUpdate();
+              }
             }
           });
         }
@@ -109,24 +133,32 @@ export class BehaviorConductor {
     }
     this.simState.outputStates = { ...outputStates };
 
-    // For generic-io: wire buttons to drive LED outputs (1 button → 1 LED toggle)
+    // For generic-io: wire buttons to drive outputs (LEDs or Servos)
     if (this.manifest.archetype !== 'audio-device') {
       const buttons = this.manifest.peripherals.filter(p => p.type === 'ClickButton');
-      const leds = this.manifest.peripherals.filter(p => p.type === 'LEDIndicator');
-      const ledStates = new Map<string, boolean>(); // ledKey -> current state
+      const outputs = this.manifest.peripherals.filter(p => p.type === 'LEDIndicator' || p.type === 'ServoMotor');
+      const outputStatesMap = new Map<string, any>(); // key -> current state
 
       for (let i = 0; i < buttons.length; i++) {
         const btn = buttons[i];
-        const led = leds[i] || leds[0]; // pair button to LED by index, fallback to first LED
-        if (!btn?.config.gpioPin || !led?.config.gpioPin) continue;
+        const out = outputs[i] || outputs[0]; // pair button to output by index, fallback to first output
+        if (!btn?.config.gpioPin || !out?.config.gpioPin) continue;
 
         this.bus.on(btn.config.gpioPin, (val) => {
           // Trigger on falling edge (button pressed = LOW)
           if (val === false || val === 0) {
-            const current = ledStates.get(led.key) ?? false;
-            const next = !current;
-            ledStates.set(led.key, next);
-            this.bus.write(led.config.gpioPin, next);
+            if (out.type === 'ServoMotor') {
+              const currentAngle = outputStatesMap.get(out.key) ?? 0;
+              // Toggle between 0 and 90 degrees
+              const nextAngle = currentAngle === 90 ? 0 : 90;
+              outputStatesMap.set(out.key, nextAngle);
+              this.bus.write(out.config.gpioPin, nextAngle);
+            } else {
+              const current = outputStatesMap.get(out.key) ?? false;
+              const next = !current;
+              outputStatesMap.set(out.key, next);
+              this.bus.write(out.config.gpioPin, next);
+            }
           }
         });
       }
@@ -266,6 +298,10 @@ export class BehaviorConductor {
     if (this.buttonPeripheral) {
       this.buttonPeripheral.destroy();
       this.buttonPeripheral = null;
+    }
+    if (this.logicEngine) {
+      this.logicEngine.stop();
+      this.logicEngine = null;
     }
     this.audioPeripheral.destroy();
     this.bus.reset();

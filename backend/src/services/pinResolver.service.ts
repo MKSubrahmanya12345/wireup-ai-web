@@ -2,10 +2,6 @@
 // ??$$$ NEW FLOW — Pin Resolver Service
 // Resolves SnapEDA pin metadata for BOM items after Agent 2 completes
 // Runs in background — never blocks BOM response to frontend
-// ??$$$ old code
-// import Part from "../models/part.model";
-// import { searchSnapEDA, getPinMetadata, SnapEdaPin } from "./snapeda.service";
-// import { cacheModelLocally } from "./modelConversion.service";
 // ??$$$ newer code
 import mongoose from "mongoose";
 import Part from "../models/part.model";
@@ -27,6 +23,45 @@ function isPinCacheValid(pinsCachedAt: Date | null | undefined): boolean {
 function getFallbackPins(mpn: string): any[] {
   const norm = mpn.toUpperCase();
   
+  if (norm.includes("ARDUINO") || norm.includes("UNO") || norm.includes("ATMEGA328")) {
+    const pinNames = [
+      "D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13",
+      "A0", "A1", "A2", "A3", "A4", "A5", "5V", "3V3", "GND", "RESET", "AREF"
+    ];
+    return pinNames.map((name, idx) => ({
+      id: name,
+      name: name,
+      x_mm: idx * 2.54,
+      y_mm: 0,
+      z_mm: 0,
+      type: name.includes("GND") ? "gnd" : (name.includes("5V") || name.includes("3V3") ? "power" : (name.startsWith("A") ? "analog" : "digital"))
+    }));
+  }
+
+  if (norm.includes("SERVO") || norm.includes("SG90") || norm.includes("MOTOR")) {
+    const pinNames = ["PWM", "VCC", "GND"];
+    return pinNames.map((name, idx) => ({
+      id: name,
+      name: name,
+      x_mm: idx * 2.54,
+      y_mm: 0,
+      z_mm: 0,
+      type: name === "GND" ? "gnd" : (name === "VCC" ? "power" : "digital")
+    }));
+  }
+
+  if (norm.includes("BUTTON") || norm.includes("SWITCH") || norm.includes("TACTILE")) {
+    const pinNames = ["SIG", "GND", "VCC"];
+    return pinNames.map((name, idx) => ({
+      id: name,
+      name: name,
+      x_mm: idx * 2.54,
+      y_mm: 0,
+      z_mm: 0,
+      type: name === "GND" ? "gnd" : (name === "VCC" ? "power" : "digital")
+    }));
+  }
+
   if (norm.includes("ESP8266") || norm.includes("NODEMCU")) {
     const pinNames = [
       "A0", "GND", "VU", "S3", "S2", "S1", "SC", "SO", "SK", "GND", "3V3", "EN", "RST", "GND", "VIN",
@@ -101,25 +136,14 @@ export async function resolvePins(
     // Step 1: Find Part in MongoDB
     let part = await Part.findOne({ mpn }).lean() as any;
 
-    // ??$$$ old code
-    /*
-    // Step 2: Return cached if fresh
-    if (part && part.pins && part.pins.length > 0 && isPinCacheValid(part.pinsCachedAt)) {
-      console.log(`[PinResolver] Cache hit for "${mpn}" (${part.pins.length} pins)`);
-
-      if (io) {
-        io.to(projectId).emit("pins:ready", {
-          projectId,
-          bomKey,
-          pins: part.pins
-        });
-      }
-      return part.pins;
-    }
-    */
     // ??$$$ newer code
-    // Step 2: Return cached if fresh, and sync models
-    if (part && part.pins && part.pins.length > 0 && isPinCacheValid(part.pinsCachedAt)) {
+    // Step 2: Return cached if fresh, and sync models. Bypass if cached pins are the generic fallback.
+    const isGenericFallback = part && part.pins && part.pins.length === 4 &&
+      part.pins.some((p: any) => p.id === "IO1") &&
+      part.pins.some((p: any) => p.id === "IO2");
+
+    // ??$$$ newer code - check for validity and bypass generic fallback cache entries
+    if (part && part.pins && part.pins.length > 0 && isPinCacheValid(part.pinsCachedAt) && !isGenericFallback) {
       console.log(`[PinResolver] Cache hit for "${mpn}" (${part.pins.length} pins)`);
 
       if (projectId) {
@@ -185,31 +209,6 @@ export async function resolvePins(
       pins = getFallbackPins(mpn);
     }
 
-    // ??$$$ old code
-    /*
-    // Also download & cache GLB model locally if not already cached
-    let glbUrl = part?.glbUrl || "";
-    if (!glbUrl) {
-      const lowercaseMpn = mpn.toLowerCase();
-      let sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
-      if (lowercaseMpn.includes("arduino-uno") || lowercaseMpn.includes("uno")) {
-        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
-      } else if (lowercaseMpn.includes("esp8266") || lowercaseMpn.includes("nodemcu")) {
-        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
-      } else if (lowercaseMpn.includes("led")) {
-        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/led.glb";
-      } else if (lowercaseMpn.includes("resistor")) {
-        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/resistor.glb";
-      } else if (lowercaseMpn.includes("lcd")) {
-        sourceUrl = "https://raw.githubusercontent.com/Wokwi/wokwi-features/master/3d/uno.glb";
-      }
-      try {
-        glbUrl = await cacheModelLocally(mpn, sourceUrl);
-      } catch (err) {
-        glbUrl = sourceUrl;
-      }
-    }
-    */
     // ??$$$ newer code — map directly to local/standard models to bypass 404 remote fetch failures
     let glbUrl = part?.glbUrl || "";
     if (!glbUrl) {
@@ -227,22 +226,6 @@ export async function resolvePins(
       }
     }
 
-    // ??$$$ old code
-    /*
-    // Step 5: Save to MongoDB Part document
-    await Part.findOneAndUpdate(
-      { mpn },
-      {
-        $set: {
-          snapedaId,
-          pins,
-          glbUrl,
-          pinsCachedAt: new Date()
-        }
-      },
-      { upsert: false } // only update existing parts, never create phantom parts
-    );
-    */
     // ??$$$ newer code — update Part document, and also Project and Session models
     await Part.findOneAndUpdate(
       { mpn },
@@ -388,61 +371,6 @@ export function getComponentPins(wokwiPartType: string): Record<string, string> 
   return { SIG: "SIG", VCC: "VCC", GND: "GND" };
 }
 
-/* old code
-export function resolveWiring(bom: any[], mcu: string): IWiringConnection[] {
-  const connections: IWiringConnection[] = [];
-  let connCounter = 1;
-
-  const assignPin = (fromPin: string, toPin: string, net: string, color: string, desc: string) => {
-    connections.push({
-      id: `conn_${connCounter++}`,
-      from: fromPin,
-      to: toPin,
-      net,
-      color,
-      description: desc
-    });
-  };
-
-  const isEsp32 = (mcu || "").toLowerCase().includes("esp32");
-
-  bom.forEach((p: any) => {
-    if (p.role === "controller") return;
-
-    const pKey = p.key;
-    const pName = (p.name || p.mpn || "").toLowerCase();
-
-    if (pName.includes("mpu6050") || pName.includes("gyro") || pName.includes("i2c")) {
-      // I2C mapping
-      assignPin(`mcu.${isEsp32 ? "GPIO21" : "A4"}`, `${pKey}.SDA`, "I2C_SDA", "#0066ff", "I2C data line");
-      assignPin(`mcu.${isEsp32 ? "GPIO22" : "A5"}`, `${pKey}.SCL`, "I2C_SCL", "#ffcc00", "I2C clock line");
-      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "VCC power supply");
-      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
-    } else if (pName.includes("led")) {
-      assignPin("mcu.GPIO13", `${pKey}.A`, "LED_ANODE", "#00ccff", "LED Anode Control");
-      assignPin("mcu.GND", `${pKey}.C`, "POWER_GND", "#000000", "LED Cathode Ground");
-    } else if (pName.includes("dht")) {
-      assignPin("mcu.GPIO15", `${pKey}.SDA`, "DHT_DATA", "#00ccff", "DHT data signal");
-      assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "DHT VCC");
-      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "DHT Ground");
-    } else if (pName.includes("button") || pName.includes("switch") || pName.includes("tact")) {
-      assignPin(`mcu.${isEsp32 ? "GPIO2" : "D2"}`, `${pKey}.SIG`, "BUTTON_SIG", "#00cc66", "Button signal input");
-      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Button Ground");
-    } else if (pName.includes("servo") || pName.includes("motor")) {
-      assignPin(`mcu.${isEsp32 ? "GPIO4" : "D4"}`, `${pKey}.PWM`, "SERVO_PWM", "#ff6600", "Servo control line");
-      assignPin(`mcu.${isEsp32 ? "3V3" : "5V"}`, `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Servo VCC");
-      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Servo Ground");
-    } else {
-      // Generic defaults
-      assignPin("mcu.GPIO4", `${pKey}.SIG`, "SIGNAL", "#00ccff", "Signal line");
-      assignPin("mcu.3V3", `${pKey}.VCC`, "POWER_VCC", "#ff0000", "Power VCC");
-      assignPin("mcu.GND", `${pKey}.GND`, "POWER_GND", "#000000", "Ground");
-    }
-  });
-
-  return connections;
-}
-*/
 // ??$$$ newer code
 export function resolveWiring(bom: any[], mcu: string): IWiringConnection[] {
   const connections: IWiringConnection[] = [];

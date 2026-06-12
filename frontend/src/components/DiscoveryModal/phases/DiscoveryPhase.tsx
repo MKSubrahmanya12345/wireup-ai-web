@@ -1,7 +1,30 @@
 // phases/DiscoveryPhase.tsx
-// ??$$$ newer code - VSCode Styled Discovery Phase Q&A interface
-import React from "react";
-import { Cpu, HardDrive, Layers, AlertTriangle, Play, Send, CheckCircle2 } from "lucide-react";
+// ??$$$ newer code - All-questions-at-once Q&A with chip options (Image 2 pattern)
+import React, { useState, useEffect, useRef } from "react";
+// ??$$$ newer code - import Cpu for playground/simulation button icons
+import { Play, CheckCircle2, Cpu } from "lucide-react";
+
+/* ── palette — matches ProjectQuestionnaire exactly ──────────────────────── */
+const Q = {
+  bg:       "#0a0a0f",
+  card:     "#111118",
+  border:   "rgba(255,255,255,0.09)",
+  borderHi: "rgba(255,255,255,0.20)",
+  chip:     "#16161e",
+  chipSel:  "rgba(200,160,224,0.18)",
+  chipSelB: "rgba(200,160,224,0.5)",
+  text:     "#f0f0f5",
+  textDim:  "#8888a8",
+  textMid:  "#9ea3b0",
+  accent:   "#c8a0e0",
+  mono:     "JetBrains Mono, ui-monospace, monospace",
+  sans:     "var(--font-sans)",
+};
+
+interface QAEntry {
+  question: string;
+  answer: string;
+}
 
 export function DiscoveryPhase(props: any) {
   const {
@@ -10,7 +33,6 @@ export function DiscoveryPhase(props: any) {
     answerText,
     setAnswerText,
     submitting,
-    context,
     requirementsDoc,
     qaHistory,
     handleAnswer,
@@ -18,117 +40,364 @@ export function DiscoveryPhase(props: any) {
     setPhase,
     setShouldAutoFormulate,
     handleRestartDiscovery,
+    // ??$$$ newer code - destruct simulation and playground handlers
+    sessionId,
+    handleGoToSimulator,
+    handleGoToBehaviorSim,
   } = props;
 
+  // ??$$$ newer code — local answers for all-at-once display
+  const [answers, setAnswers] = useState<Record<number, string>>({});
+  const [customText, setCustomText] = useState<Record<number, string>>({});
+
+  // Build a list of all Q entries (history + current question if present)
+  const allQuestions: QAEntry[] = [...(qaHistory || [])];
+
+  // Current question index in the full list
+  const currentIdx = allQuestions.length;
+  const hasCurrentQuestion = Boolean(question);
+
+  // Scroll to bottom when new question arrives
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [question, qaHistory]);
+
+  const handlePick = (opt: string) => {
+    if (opt === "Other / Custom") {
+      // focus the text input
+      const el = document.getElementById("discovery-custom-input");
+      if (el) el.focus();
+    } else {
+      handleAnswer(opt);
+    }
+  };
+
+  const handleCustomSubmit = () => {
+    const val = answerText.trim();
+    if (val) handleAnswer(val);
+  };
+
   return (
-    <div className="flex h-full w-full bg-[#1e1e1e] text-zinc-300 font-mono text-xs select-none overflow-hidden">
-      
-      {/* Q&A Left Stage */}
-      <div className="flex-1 flex flex-col justify-between p-8 overflow-y-auto">
-        <div className="max-w-xl mx-auto w-full my-auto space-y-6">
-          {question ? (
-            <>
-              <div className="space-y-2">
-                <span className="inline-flex items-center gap-1 bg-[#007acc]/15 px-2 py-0.5 rounded text-[10px] font-bold text-[#007acc] border border-[#007acc]/20">
-                  SYSTEM PROMPT QUESTION
+    <div style={{ display: "flex", height: "100%", overflow: "hidden", background: Q.bg }}>
+
+      {/* ── Left: Q&A Feed ─────────────────────────────────────────────── */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+
+        {/* Header */}
+        {/* ??$$$ newer code - Flex header with simulation & playground buttons */}
+        <div style={{
+          padding: "16px 24px 12px",
+          borderBottom: `1px solid ${Q.border}`,
+          flexShrink: 0,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+        }}>
+          <div>
+            <p style={{
+              fontFamily: Q.mono, fontSize: 12, fontWeight: 700,
+              letterSpacing: "0.12em", textTransform: "uppercase" as const,
+              color: Q.text, marginBottom: 4,
+            }}>
+              Project Discovery
+            </p>
+            <p style={{ fontFamily: Q.mono, fontSize: 10, color: Q.textDim, lineHeight: 1.5, margin: 0 }}>
+              Answer questions to customise hardware architecture, or skip to use AI defaults.
+            </p>
+          </div>
+          {sessionId && (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={handleGoToSimulator}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: "#007acc", border: "none", borderRadius: 4,
+                  padding: "6px 12px", cursor: "pointer",
+                  fontFamily: Q.mono, fontSize: 10, fontWeight: 700,
+                  color: "#fff", textTransform: "uppercase" as const,
+                  transition: "background 0.15s"
+                }}
+              >
+                <Play size={10} fill="currentColor" />
+                Playground
+              </button>
+              <button
+                onClick={handleGoToBehaviorSim}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5,
+                  background: Q.chip, border: `1px solid ${Q.borderHi}`, borderRadius: 4,
+                  padding: "6px 12px", cursor: "pointer",
+                  fontFamily: Q.mono, fontSize: 10, fontWeight: 700,
+                  color: Q.textMid, textTransform: "uppercase" as const,
+                  transition: "all 0.15s"
+                }}
+              >
+                <Cpu size={10} color="#fbbf24" />
+                Behavior Sim
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Questions feed */}
+        <div
+          ref={scrollRef}
+          style={{ flex: 1, overflowY: "auto", padding: "16px 24px 24px" }}
+          className="ide-scroll"
+        >
+          {/* ??$$$ newer code — previously answered questions (from qaHistory) */}
+          {allQuestions.map((entry: QAEntry, i: number) => (
+            <div
+              key={i}
+              style={{
+                marginBottom: 24,
+                padding: "14px 16px",
+                background: Q.chip,
+                border: `1px solid ${Q.border}`,
+                borderRadius: 6,
+                opacity: 0.7,
+              }}
+            >
+              <p style={{ fontFamily: Q.mono, fontSize: 11, color: Q.textDim, marginBottom: 6 }}>
+                <span style={{ color: Q.textDim, marginRight: 8 }}>{i + 1}.</span>
+                {entry.question}
+              </p>
+              <div style={{
+                display: "inline-flex", alignItems: "center", gap: 6,
+                background: `${Q.chipSel}`, border: `1px solid ${Q.chipSelB}`,
+                borderRadius: 4, padding: "4px 10px",
+              }}>
+                <CheckCircle2 size={10} color={Q.accent} />
+                <span style={{ fontFamily: Q.mono, fontSize: 11, color: Q.accent, fontWeight: 600 }}>
+                  {entry.answer}
                 </span>
-                <h2 className="text-base font-bold text-white leading-normal">
+              </div>
+            </div>
+          ))}
+
+          {/* Current active question */}
+          {hasCurrentQuestion ? (
+            <div style={{ marginBottom: 8 }}>
+              {/* Question label */}
+              <div style={{ marginBottom: 12 }}>
+                <span style={{
+                  fontFamily: Q.mono, fontSize: 10, fontWeight: 700,
+                  letterSpacing: "0.1em", textTransform: "uppercase" as const,
+                  color: Q.accent, background: `${Q.chipSel}`,
+                  border: `1px solid ${Q.chipSelB}`, borderRadius: 4,
+                  padding: "3px 8px", display: "inline-block", marginBottom: 10,
+                }}>
+                  Question {currentIdx + 1}
+                </span>
+                <h2 style={{
+                  fontFamily: Q.mono, fontSize: 13, fontWeight: 600,
+                  color: Q.text, lineHeight: 1.55, margin: 0,
+                }}>
                   {question}
                 </h2>
               </div>
 
-              {/* Option Chips */}
+              {/* Option chips grid */}
               {options.length > 0 && (
-                <div className="grid grid-cols-2 gap-3">
-                  {[...options, "Other / Custom"].map((opt, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => {
-                        if (opt === "Other / Custom") {
-                          const inputEl = document.getElementById("custom-input-field");
-                          if (inputEl) inputEl.focus();
-                        } else {
-                          handleAnswer(opt);
-                        }
-                      }}
-                      disabled={submitting}
-                      className={`rounded border p-3 text-left font-medium transition-all active:scale-[0.98] ${
-                        opt === "Other / Custom"
-                          ? "border-dashed border-[#3c3c3c] bg-black/20 text-zinc-500 hover:border-[#007acc] hover:text-white"
-                          : "border-[#2d2d2d] bg-[#252526] text-zinc-300 hover:border-[#007acc] hover:bg-[#2d2d2d]"
-                      }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
+                  {[...options, "Other / Custom"].map((opt: string, idx: number) => {
+                    const isOther = opt === "Other / Custom";
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handlePick(opt)}
+                        disabled={submitting}
+                        style={{
+                          padding: "10px 14px",
+                          background: isOther ? "transparent" : Q.chip,
+                          border: `1px ${isOther ? "dashed" : "solid"} ${isOther ? Q.borderHi : Q.border}`,
+                          borderRadius: 5,
+                          cursor: "pointer",
+                          textAlign: "left" as const,
+                          fontFamily: Q.mono,
+                          fontSize: 11,
+                          color: isOther ? Q.textDim : Q.textMid,
+                          transition: "all 0.12s",
+                          lineHeight: 1.4,
+                          opacity: submitting ? 0.5 : 1,
+                        }}
+                        onMouseOver={e => {
+                          e.currentTarget.style.borderColor = Q.accent;
+                          e.currentTarget.style.color = Q.text;
+                        }}
+                        onMouseOut={e => {
+                          e.currentTarget.style.borderColor = isOther ? Q.borderHi : Q.border;
+                          e.currentTarget.style.color = isOther ? Q.textDim : Q.textMid;
+                        }}
+                      >
+                        {opt}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
-              {/* Custom Text Answer input */}
-              <div className="space-y-3">
-                <div className="flex gap-2 rounded border border-[#3c3c3c] bg-black px-3 py-2 focus-within:border-[#007acc] transition-colors">
-                  <input
-                    id="custom-input-field"
-                    type="text"
-                    value={answerText}
-                    onChange={(e) => setAnswerText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && answerText.trim()) {
-                        handleAnswer(answerText);
-                      }
-                    }}
-                    placeholder="Provide a custom definition or details..."
-                    disabled={submitting}
-                    className="flex-1 bg-transparent text-[11px] text-zinc-200 placeholder-zinc-650 outline-none font-mono"
-                  />
-                  <button
-                    onClick={() => handleAnswer(answerText)}
-                    disabled={submitting || !answerText.trim()}
-                    className="rounded bg-[#007acc] p-1.5 text-white hover:bg-[#0062a3] transition-colors disabled:bg-[#2d2d2d] disabled:text-zinc-600"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={handleProceed}
-                    disabled={submitting}
-                    className="flex items-center gap-1 text-[10px] text-[#007acc] hover:text-[#0062a3] transition-colors font-bold uppercase tracking-wider"
-                  >
-                    <Play className="h-3 w-3" /> Skip Q&A & Formulation
-                  </button>
-                  <span className="text-[9px] text-zinc-600 uppercase">Phase 1 of 2</span>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="rounded border border-[#2d2d2d] bg-[#252526] p-6 space-y-5">
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 border-b border-[#2d2d2d] pb-2">
-                  <CheckCircle2 className="h-4.5 w-4.5 text-[#007acc]" />
-                  <h2 className="text-xs font-bold text-white uppercase tracking-wider">Project Requirements Document (PRD)</h2>
-                </div>
-                <div className="max-h-80 overflow-y-auto rounded border border-[#2d2d2d] bg-black/45 p-4 text-[11px] text-zinc-300 font-mono leading-relaxed whitespace-pre-wrap select-text">
-                  {requirementsDoc || "No requirements document generated yet."}
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    setPhase(2);
-                    setShouldAutoFormulate(true);
+              {/* Custom text input */}
+              <div style={{
+                display: "flex", gap: 8,
+                background: "#0a0a0f",
+                border: `1px solid ${Q.border}`,
+                borderRadius: 5, padding: "8px 12px",
+                marginBottom: 12,
+                transition: "border-color 0.15s",
+              }}
+                onFocus={e => e.currentTarget.style.borderColor = Q.accent}
+                onBlur={e => e.currentTarget.style.borderColor = Q.border}
+              >
+                <input
+                  id="discovery-custom-input"
+                  type="text"
+                  value={answerText}
+                  onChange={e => setAnswerText(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === "Enter" && answerText.trim()) handleCustomSubmit();
                   }}
-                  className="flex-1 flex items-center justify-center gap-2 rounded bg-[#007acc] py-2.5 text-xs font-bold text-white hover:bg-[#0062a3] transition-all active:scale-[0.98]"
+                  placeholder="Type a custom answer…"
+                  disabled={submitting}
+                  style={{
+                    flex: 1, background: "transparent",
+                    border: "none", outline: "none",
+                    fontFamily: Q.mono, fontSize: 11,
+                    color: Q.text,
+                  }}
+                />
+                <button
+                  onClick={handleCustomSubmit}
+                  disabled={submitting || !answerText.trim()}
+                  style={{
+                    background: answerText.trim() && !submitting ? Q.accent : "transparent",
+                    border: `1px solid ${answerText.trim() && !submitting ? Q.accent : Q.border}`,
+                    borderRadius: 4, padding: "4px 12px",
+                    cursor: answerText.trim() && !submitting ? "pointer" : "not-allowed",
+                    fontFamily: Q.mono, fontSize: 10, fontWeight: 700,
+                    color: answerText.trim() && !submitting ? "#000" : Q.textDim,
+                    transition: "all 0.15s",
+                  }}
                 >
-                  <Play className="h-3.5 w-3.5" />
-                  <span>Proceed to AI Build</span>
+                  Send
                 </button>
+              </div>
 
+              {/* Skip button */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <button
+                  onClick={handleProceed}
+                  disabled={submitting}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    fontFamily: Q.mono, fontSize: 10, fontWeight: 700,
+                    color: Q.accent, letterSpacing: "0.08em",
+                    textTransform: "uppercase" as const,
+                    display: "flex", alignItems: "center", gap: 6,
+                    opacity: submitting ? 0.5 : 1,
+                  }}
+                >
+                  <Play size={10} />
+                  Skip Q&A → Formulate
+                </button>
+                <span style={{ fontFamily: Q.mono, fontSize: 9, color: Q.textDim }}>
+                  Phase 1 of 2
+                </span>
+              </div>
+            </div>
+          ) : (
+            /* Discovery completed — show PRD */
+            <div style={{
+              background: Q.chip, border: `1px solid ${Q.border}`,
+              borderRadius: 6, padding: 20, marginTop: 8,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, paddingBottom: 12, borderBottom: `1px solid ${Q.border}` }}>
+                <CheckCircle2 size={16} color={Q.accent} />
+                <h2 style={{ fontFamily: Q.mono, fontSize: 12, fontWeight: 700, color: Q.text, textTransform: "uppercase" as const, letterSpacing: "0.08em" }}>
+                  Project Requirements Document (PRD)
+                </h2>
+              </div>
+              <div style={{
+                maxHeight: 300, overflowY: "auto",
+                background: "rgba(0,0,0,0.4)", border: `1px solid ${Q.border}`,
+                borderRadius: 4, padding: "12px 14px",
+                fontFamily: Q.mono, fontSize: 11,
+                color: Q.textMid, lineHeight: 1.7,
+                whiteSpace: "pre-wrap" as const,
+              }} className="ide-scroll">
+                {requirementsDoc || "No requirements document generated yet."}
+              </div>
+
+              {/* ??$$$ newer code - PRD footer buttons with Playground & Behavior Sim */}
+              <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+                <button
+                  onClick={() => { setPhase(2); setShouldAutoFormulate(true); }}
+                  style={{
+                    flex: "1 1 auto", minWidth: 140, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                    background: Q.accent, border: "none", borderRadius: 5,
+                    padding: "10px 20px", cursor: "pointer",
+                    fontFamily: Q.mono, fontSize: 12, fontWeight: 700,
+                    color: "#000", textTransform: "uppercase" as const, letterSpacing: "0.06em",
+                    transition: "background 0.15s",
+                  }}
+                >
+                  <Play size={13} />
+                  Proceed to AI Build
+                </button>
+                {sessionId && (
+                  <>
+                    <button
+                      onClick={handleGoToSimulator}
+                      style={{
+                        flex: "1 1 auto", minWidth: 110, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        background: "#007acc", border: "none", borderRadius: 5,
+                        padding: "10px 16px", cursor: "pointer",
+                        fontFamily: Q.mono, fontSize: 12, fontWeight: 700,
+                        color: "#fff", textTransform: "uppercase" as const, letterSpacing: "0.06em",
+                        transition: "background 0.15s",
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.background = "#0062a3"; }}
+                      onMouseOut={e => { e.currentTarget.style.background = "#007acc"; }}
+                    >
+                      <Play size={13} fill="currentColor" />
+                      Playground
+                    </button>
+                    <button
+                      onClick={handleGoToBehaviorSim}
+                      style={{
+                        flex: "1 1 auto", minWidth: 110, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+                        background: Q.chip, border: `1px solid ${Q.borderHi}`, borderRadius: 5,
+                        padding: "10px 16px", cursor: "pointer",
+                        fontFamily: Q.mono, fontSize: 12, fontWeight: 700,
+                        color: Q.textMid, textTransform: "uppercase" as const, letterSpacing: "0.06em",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseOver={e => { e.currentTarget.style.borderColor = Q.accent; e.currentTarget.style.color = Q.text; }}
+                      onMouseOut={e => { e.currentTarget.style.borderColor = Q.borderHi; e.currentTarget.style.color = Q.textMid; }}
+                    >
+                      <Cpu size={13} color="#fbbf24" />
+                      Behavior Sim
+                    </button>
+                  </>
+                )}
                 <button
                   onClick={handleRestartDiscovery}
-                  className="rounded border border-[#3c3c3c] bg-[#1e1e1e] px-4 py-2.5 text-xs font-bold text-zinc-300 hover:border-[#007acc] hover:bg-[#2d2d2d] transition-all"
+                  style={{
+                    flex: "1 1 auto", minWidth: 110,
+                    background: "transparent",
+                    border: `1px solid ${Q.border}`,
+                    borderRadius: 5, padding: "10px 20px",
+                    cursor: "pointer", fontFamily: Q.mono, fontSize: 12,
+                    fontWeight: 600, color: Q.textDim,
+                    textTransform: "uppercase" as const, letterSpacing: "0.06em",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseOver={e => { e.currentTarget.style.borderColor = Q.borderHi; e.currentTarget.style.color = Q.text; }}
+                  onMouseOut={e => { e.currentTarget.style.borderColor = Q.border; e.currentTarget.style.color = Q.textDim; }}
                 >
                   Restart Q&A
                 </button>
@@ -138,33 +407,57 @@ export function DiscoveryPhase(props: any) {
         </div>
       </div>
 
-      {/* Live Context Right Sidebar */}
-      <aside className="w-80 border-l border-[#2d2d2d] bg-[#252526] p-5 overflow-y-auto space-y-4">
-        <div>
-          <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-3">
-            Discovery History
-          </h3>
-          <div className="space-y-3">
-            {qaHistory && qaHistory.length > 0 ? (
-              qaHistory.map((item: any, i: number) => (
-                <div key={i} className="rounded border border-[#2d2d2d] bg-[#1e1e1e] p-3 space-y-2">
-                  <div className="text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
-                    Question {i + 1}
-                  </div>
-                  <div className="text-[10px] text-zinc-300 leading-normal">
-                    {item.question}
-                  </div>
-                  <div className="text-[10px] font-bold text-[#007acc] bg-[#007acc]/5 px-2 py-1 rounded border border-[#007acc]/10">
-                    {item.answer}
-                  </div>
+      {/* ??$$$ newer code — Right: Q&A History Sidebar ─────────────────── */}
+      <aside style={{
+        width: 280, flexShrink: 0,
+        borderLeft: `1px solid ${Q.border}`,
+        background: Q.chip,
+        display: "flex", flexDirection: "column",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          padding: "14px 16px 10px",
+          borderBottom: `1px solid ${Q.border}`,
+          flexShrink: 0,
+        }}>
+          <p style={{ fontFamily: Q.mono, fontSize: 9, fontWeight: 700, color: Q.textDim, textTransform: "uppercase" as const, letterSpacing: "0.12em" }}>
+            Answered · {allQuestions.length} / {allQuestions.length + (hasCurrentQuestion ? 1 : 0)}
+          </p>
+        </div>
+
+        <div style={{ flex: 1, overflowY: "auto", padding: "12px 14px" }} className="ide-scroll">
+          {allQuestions.length === 0 ? (
+            <p style={{ fontFamily: Q.mono, fontSize: 10, color: Q.textDim, textAlign: "center", paddingTop: 40, fontStyle: "italic" }}>
+              No questions answered yet.
+            </p>
+          ) : (
+            allQuestions.map((entry: QAEntry, i: number) => (
+              <div
+                key={i}
+                style={{
+                  marginBottom: 12,
+                  padding: "10px 12px",
+                  background: "rgba(0,0,0,0.3)",
+                  border: `1px solid ${Q.border}`,
+                  borderRadius: 5,
+                }}
+              >
+                <div style={{ fontFamily: Q.mono, fontSize: 9, color: Q.textDim, fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.08em", marginBottom: 5 }}>
+                  Q{i + 1}
                 </div>
-              ))
-            ) : (
-              <div className="text-[10px] text-zinc-650 italic text-center py-8">
-                No questions answered yet.
+                <div style={{ fontFamily: Q.mono, fontSize: 10, color: Q.textMid, lineHeight: 1.5, marginBottom: 6 }}>
+                  {entry.question}
+                </div>
+                <div style={{
+                  fontFamily: Q.mono, fontSize: 10, fontWeight: 700, color: Q.accent,
+                  background: `${Q.chipSel}`, border: `1px solid ${Q.chipSelB}`,
+                  borderRadius: 3, padding: "3px 8px", display: "inline-block",
+                }}>
+                  {entry.answer}
+                </div>
               </div>
-            )}
-          </div>
+            ))
+          )}
         </div>
       </aside>
     </div>

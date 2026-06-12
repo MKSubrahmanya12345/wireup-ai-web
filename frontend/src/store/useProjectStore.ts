@@ -49,6 +49,13 @@ export type Milestone = {
   debugMessages: DebugMessage[];
 };
 
+// ??$$$ newer code
+export interface ProjectFile {
+  name: string;
+  language: string;
+  content: string;
+}
+
 export type Project = {
   _id?: string;
   description?: string;
@@ -57,15 +64,14 @@ export type Project = {
   diagram?: any;
   assemblyLayout?: any;
   // ??$$$ newer code
+  files?: ProjectFile[];
+  activeFile?: string;
+  // ??$$$ newer code
   nodeCoordinates?: any;
   // ??$$$ Milestones
   milestones?: Milestone[];
   milestonesGenerated?: boolean;
   activeMilestoneId?: string | null;
-  // Old code:
-  // messages?: any[];
-  // ideaState?: any;
-  // extractedContext?: { ... };
   // ??$$$ newer code
   ideation?: {
     messages?: Array<{ role: "user" | "model"; content: string; timestamp?: string | Date }>;
@@ -203,6 +209,11 @@ type ProjectState = {
   validateSerial: (projectId: string, milestoneId: string, actualOutput: string) => Promise<any>;
   // ??$$$ newer code - V1 State Propagation
   toggleArtifactLock: (artifactType: "bom" | "wiring" | "sketch", locked: boolean) => Promise<void>;
+  // ??$$$ newer code
+  currentProject: Project | null;
+  updateFile: (projectId: string, fileName: string, content: string) => Promise<void>;
+  addFile: (projectId: string, file: ProjectFile) => Promise<void>;
+  setActiveFile: (projectId: string, fileName: string) => Promise<void>;
 };
 
 const DEFAULT_STAGES: Record<StageKey, StageStatus> = {
@@ -216,6 +227,7 @@ const DEFAULT_STAGES: Record<StageKey, StageStatus> = {
 
 export const useProjectStore = create<ProjectState>((set, get) => ({
   project: null,
+  currentProject: null, // ??$$$ newer code
   projectId: null,
   stageStatuses: DEFAULT_STAGES,
   isLoading: false,
@@ -236,6 +248,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
       set({
         project,
+        currentProject: project, // ??$$$ newer code
         projectId,
         stageStatuses: project.stageStatus || DEFAULT_STAGES,
         isLoading: false,
@@ -261,9 +274,11 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
 
       const status = res.data?.stageStatus || {};
 
+      // ??$$$ newer code
       set((state) => ({
         stageStatuses: { ...state.stageStatuses, ...status },
         project: res.data,
+        currentProject: res.data,
       }));
     } catch {
       // silent
@@ -302,14 +317,19 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         { withCredentials: true }
       );
 
-      set((state) => ({
-        project: state.project
+      // ??$$$ newer code
+      set((state) => {
+        const nextProj = state.project
           ? {
               ...state.project,
               bom: res.data?.updatedBom ?? state.project.bom,
             }
-          : state.project,
-      }));
+          : state.project;
+        return {
+          project: nextProj,
+          currentProject: nextProj,
+        };
+      });
 
       set((state) => ({
         stageStatuses: {
@@ -340,16 +360,21 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         { withCredentials: true }
       );
 
-      set((state) => ({
-        project: state.project
+      // ??$$$ newer code
+      set((state) => {
+        const nextProj = state.project
           ? {
               ...state.project,
               bom: res.data?.bom ?? state.project.bom,
               diagram: res.data?.diagram ?? state.project.diagram,
               nodeCoordinates: res.data?.nodeCoordinates ?? state.project.nodeCoordinates,
             }
-          : state.project,
-      }));
+          : state.project;
+        return {
+          project: nextProj,
+          currentProject: nextProj,
+        };
+      });
 
       set((state) => ({
         stageStatuses: {
@@ -373,15 +398,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     const { projectId } = get();
     if (!projectId) return;
 
-    set((state) => ({
-      project: state.project
+    // ??$$$ newer code
+    set((state) => {
+      const nextProj = state.project
         ? {
             ...state.project,
             sketch,
             diagram: diagram ?? state.project.diagram,
           }
-        : state.project,
-    }));
+        : state.project;
+      return {
+        project: nextProj,
+        currentProject: nextProj,
+      };
+    });
 
     try {
       const res = await axiosInstance.post(
@@ -390,26 +420,36 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         { withCredentials: true }
       );
 
-      set((state) => ({
-        project: state.project
+      // ??$$$ newer code
+      set((state) => {
+        const nextProj = state.project
           ? {
               ...state.project,
               sketch: res.data?.sketch ?? sketch,
               diagram: res.data?.diagram ?? diagram ?? state.project.diagram,
             }
-          : state.project,
-      }));
+          : state.project;
+        return {
+          project: nextProj,
+          currentProject: nextProj,
+        };
+      });
     } catch (err) {
       console.error("[useProjectStore] updateSketch error:", err);
     }
   },
 
+  // ??$$$ newer code
   updateDiagram: (diagram) => {
-    set((state) => ({
-      project: state.project
+    set((state) => {
+      const nextProj = state.project
         ? { ...state.project, diagram }
-        : state.project,
-    }));
+        : state.project;
+      return {
+        project: nextProj,
+        currentProject: nextProj,
+      };
+    });
   },
 
   regenerateAssembly: async (sizePreference = "pocket", overrides = {}) => {
@@ -423,15 +463,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         { withCredentials: true }
       );
 
-      set((state) => ({
-        project: state.project
+      // ??$$$ newer code
+      set((state) => {
+        const nextProj = state.project
           ? {
               ...state.project,
               assemblyLayout:
                 res.data?.assemblyLayout ?? state.project.assemblyLayout,
             }
-          : state.project,
-      }));
+          : state.project;
+        return {
+          project: nextProj,
+          currentProject: nextProj,
+        };
+      });
 
       await get().refreshStageStatus();
       return res.data;
@@ -444,6 +489,7 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   clearProject: () =>
     set({
       project: null,
+      currentProject: null, // ??$$$ newer code
       projectId: null,
       stageStatuses: DEFAULT_STAGES,
       isLoading: false,
@@ -474,34 +520,6 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     );
   },
 
-  // Old code:
-  // ideationReadiness: () => {
-  //   const ctx = get().project?.extractedContext || {};
-  //   const fields = [
-  //     "board",
-  //     "sensors",
-  //     "outputs",
-  //     "connectivity",
-  //     "power",
-  //     "projectSummary",
-  //   ] as const;
-  // 
-  //   if (ctx.confidence && typeof ctx.confidence === "object") {
-  //     const vals = fields.map((f) => Number(ctx.confidence?.[f] ?? 0));
-  //     return Math.round(
-  //       (vals.reduce((a, b) => a + b, 0) / fields.length) * 100
-  //     );
-  //   }
-  // 
-  //   const filled = fields.filter((f) => {
-  //     const v = (ctx as any)[f];
-  //     if (!v) return false;
-  //     if (Array.isArray(v)) return v.length > 0;
-  //     return String(v).trim().length > 0;
-  //   });
-  // 
-  //   return Math.round((filled.length / fields.length) * 100);
-  // },
   // ??$$$ Commented out old snapshot-based readiness per Section 9 instructions
   // ideationReadiness: () => {
   //   const snap = get().project?.ideation?.snapshot || {};
@@ -531,15 +549,20 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const res = await axiosInstance.post(`/build/${projectId}/milestones/generate`, {}, { withCredentials: true });
-      set((state) => ({
-        isLoading: false,
-        project: state.project ? { 
+      // ??$$$ newer code
+      set((state) => {
+        const nextProj = state.project ? { 
           ...state.project, 
           milestones: res.data.milestones, 
           milestonesGenerated: true, 
           activeMilestoneId: res.data.activeMilestoneId 
-        } : null
-      }));
+        } : null;
+        return {
+          isLoading: false,
+          project: nextProj,
+          currentProject: nextProj
+        };
+      });
     } catch (err: any) {
       set({ isLoading: false, error: err?.response?.data?.error || "Failed to generate milestones" });
       throw err;
@@ -549,13 +572,18 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   loadMilestones: async (projectId) => {
     try {
       const res = await axiosInstance.get(`/build/${projectId}/milestones`, { withCredentials: true });
-      set((state) => ({
-        project: state.project ? { 
+      // ??$$$ newer code
+      set((state) => {
+        const nextProj = state.project ? { 
           ...state.project, 
           milestones: res.data.milestones, 
           activeMilestoneId: res.data.activeMilestoneId 
-        } : null
-      }));
+        } : null;
+        return {
+          project: nextProj,
+          currentProject: nextProj
+        };
+      });
     } catch (err) {
       console.error("Failed to load milestones", err);
     }
@@ -564,11 +592,14 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
   updateMilestone: async (projectId, milestoneId, updates) => {
     try {
       const res = await axiosInstance.put(`/build/${projectId}/milestones/${milestoneId}`, updates, { withCredentials: true });
+      // ??$$$ newer code
       set((state) => {
         if (!state.project || !state.project.milestones) return {};
         const updated = state.project.milestones.map(m => m.id === milestoneId ? res.data : m);
+        const nextProj = { ...state.project, milestones: updated };
         return {
-          project: { ...state.project, milestones: updated }
+          project: nextProj,
+          currentProject: nextProj
         };
       });
     } catch (err) {
@@ -676,9 +707,65 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         { [metaKey]: { locked } },
         { withCredentials: true }
       );
-      set({ project: res.data });
+      set({ project: res.data, currentProject: res.data });
     } catch (err) {
       console.error("[useProjectStore] toggleArtifactLock error:", err);
+    }
+  },
+
+  // ??$$$ newer code
+  updateFile: async (projectId, fileName, content) => {
+    const project = get().project;
+    if (!project) return;
+
+    const updatedFiles = (project.files || []).map((f) =>
+      f.name === fileName ? { ...f, content } : f
+    );
+    const updatedProj = { ...project, files: updatedFiles };
+    set({ project: updatedProj, currentProject: updatedProj });
+
+    try {
+      await axiosInstance.put(`/project/${projectId}`, { files: updatedFiles }, { withCredentials: true });
+    } catch {
+      // optimistic update — silently fail
+    }
+  },
+
+  // ??$$$ newer code
+  addFile: async (projectId, file) => {
+    const project = get().project;
+    if (!project) return;
+
+    const files = project.files || [];
+    const exists = files.find(f => f.name === file.name);
+    const updatedFiles = exists
+      ? files.map(f => f.name === file.name ? { ...f, ...file } : f)
+      : [...files, file];
+
+    const newActiveFile = exists ? (project.activeFile || "") : file.name;
+    const updatedProj = { ...project, files: updatedFiles, activeFile: newActiveFile };
+    set({ project: updatedProj, currentProject: updatedProj });
+
+    try {
+      await axiosInstance.put(`/project/${projectId}`, {
+        files: updatedFiles,
+        activeFile: file.name,
+      }, { withCredentials: true });
+    } catch {
+      // silently fail
+    }
+  },
+
+  // ??$$$ newer code
+  setActiveFile: async (projectId, fileName) => {
+    const project = get().project;
+    if (!project) return;
+    const updatedProj = { ...project, activeFile: fileName };
+    set({ project: updatedProj, currentProject: updatedProj });
+    try {
+      await axiosInstance.put(`/project/${projectId}`, { activeFile: fileName }, { withCredentials: true });
+    } catch {
+      // silently fail
     }
   },
 }));

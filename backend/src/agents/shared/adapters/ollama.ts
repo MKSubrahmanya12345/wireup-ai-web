@@ -46,6 +46,8 @@ export class OllamaAdapter implements LLMAdapter {
       })
     ];
 
+
+    // ??$$$ newer code - Over-optimized Ollama parameters for prompt caching, token reduction, and active memory retention
     const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -55,9 +57,17 @@ export class OllamaAdapter implements LLMAdapter {
         tools: tools.length > 0 ? tools : undefined,
         tool_choice: tools.length > 0 ? "auto" : undefined,
         temperature: 0.2,
-        options: { num_ctx: 8192 }
+        keep_alive: "24h", // Keeps model in memory for 24 hours to eliminate load/unload delay
+        options: {
+          num_ctx: 8192, // Sufficient context window
+          num_predict: 2048, // Prevent run-away generation loops
+          mirostat: 0, // Disable mirostat to speed up token generation
+          repeat_penalty: 1.1, // Control repetition penalty
+          top_p: 0.9 // Restrict candidate pool slightly to improve coherence
+        }
       })
     });
+
 
     if (!response.ok) {
       const errText = await response.text();
@@ -86,7 +96,13 @@ export class OllamaAdapter implements LLMAdapter {
             args: parsedArgs
           };
         });
-      }
+      },
+      // ??$$$ newer code - Ollama token usage statistics
+      usage: data.usage ? {
+        promptTokens: data.usage.prompt_tokens || 0,
+        completionTokens: data.usage.completion_tokens || 0,
+        totalTokens: data.usage.total_tokens || 0
+      } : undefined
     };
   }
 }

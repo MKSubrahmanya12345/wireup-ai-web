@@ -1,8 +1,5 @@
 // ??$$$ newer code - BehaviorButtonPeripheral keyboard and click listener with clean cleanup
 import { gpioBus } from '../GPIOBus';
-/* old code
-import { SimulationManifest } from '../SimulationManifest';
-*/
 // ??$$$ newer code
 import type { SimulationManifest } from '../SimulationManifest';
 

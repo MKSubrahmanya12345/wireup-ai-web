@@ -28,6 +28,11 @@ import libraryRoutes from "./routes/library.route";
 import newflowRoutes from "./routes/newflow.route";
 import partRoutes from "./routes/part.route";
 import playgroundRoutes from "./routes/playground.route";
+// ??$$$ newer code
+import simulationRoutes from "./routes/simulation.routes";
+// ??$$$ newer code
+import generateRoutes from "./routes/generate.route";
+import questionRoutes from "./routes/questions.route"; // ??$$$ newer code
 import { exec as cbExec } from "child_process";
 import { promisify } from "util";
 import { existsSync } from "fs";
@@ -113,7 +118,12 @@ app.use("/api", compileRoutes);
 app.use("/api", libraryRoutes);
 app.use("/api", newflowRoutes);
 app.use("/api", partRoutes);
+// ??$$$ newer code
+app.use("/api", simulationRoutes);
 app.use("/api/playground", playgroundRoutes);
+// ??$$$ newer code
+app.use("/api", generateRoutes);
+app.use("/api", questionRoutes); // ??$$$ newer code
 
 // ??$$$ Serve locally cached 3D models from E: and backend storage folder
 const modelsDir = "E:\\wireup_formulation_exports\\models";
@@ -131,6 +141,24 @@ if (!fs.existsSync(storageModelsDir)) {
     fs.mkdirSync(storageModelsDir, { recursive: true });
   } catch (e) { }
 }
+
+// ??$$$ newer code — ensure fallback model assets are populated to resolve 404s
+const fallbackFiles = ["generic.glb", "arduino.glb", "led.glb", "resistor.glb", "button.glb", "component_generic.glb", "servo.glb", "sensor.glb", "arduino_uno.glb", "esp32.glb"];
+const sourceGlb = path.join(storageModelsDir, "tmp36.glb");
+if (fs.existsSync(sourceGlb)) {
+  for (const filename of fallbackFiles) {
+    const dest = path.join(storageModelsDir, filename);
+    if (!fs.existsSync(dest)) {
+      try {
+        fs.copyFileSync(sourceGlb, dest);
+        console.log(`[models] Populated fallback model asset: ${filename}`);
+      } catch (err: any) {
+        console.error(`[models] Failed to copy fallback model ${filename}:`, err.message);
+      }
+    }
+  }
+}
+
 app.use("/models", express.static(storageModelsDir));
 
 // ??$$$ Expose component registry to frontend (used by Simulator3D to get pin defs + component metadata)
@@ -181,70 +209,6 @@ interface GenerateRequestBody {
  * GENERATE ROUTE
  * -----------------------
  */
-app.post(
-  "/api/generate",
-  async (req: Request<{}, {}, GenerateRequestBody>, res: Response) => {
-    try {
-      const {
-        prompt,
-        model = "qwen/qwen3-32b",
-        apiKey,
-        existingObjects = [],
-      } = req.body;
-
-      if (!prompt) {
-        return res.status(400).json({ error: "Prompt is required" });
-      }
-
-      let groq;
-
-      try {
-        groq = getGroqClient(apiKey);
-      } catch (err: any) {
-        return res.status(401).json({ error: err.message });
-      }
-
-      let userMessage = `Generate 3D layout for: "${prompt}".\n`;
-
-      if (existingObjects.length > 0) {
-        userMessage +=
-          "Arrange components without overlap:\n";
-
-        existingObjects.forEach((obj) => {
-          userMessage += `- ${obj.name} (${obj.id}) size=${obj.dimensions.join(
-            ","
-          )} pos=${obj.position.join(",")}\n`;
-        });
-      } else {
-        userMessage += "Create full standalone assembly.";
-      }
-
-      const completion = await groq.chat.completions.create({
-        model,
-        messages: [
-          { role: "user", content: userMessage },
-        ],
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-        max_tokens: 4000,
-      });
-
-      const content = completion.choices[0]?.message?.content;
-
-      if (!content) {
-        return res.status(500).json({ error: "Empty response from Groq" });
-      }
-
-      const parsed = JSON.parse(content);
-      return res.json(parsed);
-    } catch (err: any) {
-      console.error("Generate error:", err);
-      return res.status(500).json({
-        error: err.message || "Internal server error",
-      });
-    }
-  }
-);
 
 
 

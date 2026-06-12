@@ -1,7 +1,4 @@
 // ??$$$ newer code - OLED drawing peripheral for behavior playground
-/* old code
-import { SimState } from '../SimState';
-*/
 // ??$$$ newer code
 import type { SimState } from '../SimState';
 

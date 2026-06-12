@@ -8,17 +8,6 @@ import { RightSidebar } from './components/layout/RightSidebar';
 import { BottomPanel } from './components/layout/BottomPanel';
 import { Scene } from './components/three/Scene';
 import { CodeEditor } from './components/editor/CodeEditor';
-/* old code
-import {
-  Play,
-  Cpu,
-  Layers,
-  Terminal,
-  Sparkles,
-  ChevronRight,
-  Code
-} from 'lucide-react';
-*/
 // ??$$$ newer code: added FolderOpen and Settings icons for mobile layout toggles
 import {
   Play,
@@ -73,9 +62,6 @@ const buildPlaygroundProject = (rawProject: any) => {
   const bom = Array.isArray(rawProject?.bom) ? rawProject.bom : [];
   const wiring = Array.isArray(rawProject?.wiring) ? rawProject.wiring : [];
   const milestones = Array.isArray(rawProject?.milestones) ? rawProject.milestones : [];
-  /* old code
-  const componentCount = Math.max(bom.length, 1);
-  */
 
   // ??$$$ newer code: Expand BOM items by quantity
   const normalizedBom: any[] = [];
@@ -152,10 +138,6 @@ const buildPlaygroundProject = (rawProject: any) => {
       ledInitialState: Boolean(rawProject?.editableJson?.ledInitialState ?? false),
       buttonInitialState: Boolean(rawProject?.editableJson?.buttonInitialState ?? false)
     },
-    // ??$$$ old code
-    /*
-    sketch: String(rawProject?.sketch || ''),
-    */
     // ??$$$ newer code
     sketch: String(
       rawProject?.sketch ||
@@ -171,12 +153,6 @@ const buildPlaygroundProject = (rawProject: any) => {
   };
 };
 function App() {
-  /* old code
-  const { currentTab, setTab, loadProject, addLog } = useProjectStore();
-  const [viewMode, setViewMode] = useState<'split' | 'three' | 'code'>('split');
-  const [loadingRemoteProject, setLoadingRemoteProject] = useState(false);
-  const [remoteLoadError, setRemoteLoadError] = useState<string | null>(null);
-  */
   // ??$$$ newer code: added mobile tracking states and drawer toggle states
   const { currentTab, setTab, loadProject, addLog } = useProjectStore();
   const [viewMode, setViewMode] = useState<'split' | 'three' | 'code'>('split');
@@ -225,20 +201,6 @@ function App() {
         }
 
         if (!loadedProject && sessionId) {
-          // ??$$$ old code
-          /*
-          const res = await fetch(`${apiBaseUrl}/new-flow/virtual-project/${sessionId}`, {
-            method: 'GET',
-            credentials: 'include'
-          });
-
-          if (!res.ok) {
-            throw new Error(`Failed to load formulation payload (${res.status})`);
-          }
-
-          const data = await res.json();
-          loadedProject = data?.project || null;
-          */
           // ??$$$ newer code
           try {
             const res = await fetch(`${apiBaseUrl}/new-flow/virtual-project/${sessionId}`, {
@@ -254,8 +216,6 @@ function App() {
           }
 
           if (!loadedProject) {
-            // ??$$$ old code
-            // const res = await fetch(`http://localhost:5001/api/project?sessionId=${sessionId}`);
             // ??$$$ newer code: Use consolidated playground route
             const res = await fetch(`${apiBaseUrl}/playground/project?sessionId=${sessionId}`);
             if (res.ok) {
@@ -456,78 +416,6 @@ function App() {
     );
   }
 
-  // old code:
-  // return (
-  //   <div className="h-screen w-screen flex flex-col bg-[var(--bg)] text-[var(--text)] overflow-hidden font-sans relative">
-  //     {loadingRemoteProject && (
-  //       <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-  //         <div className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl px-8 py-5 text-sm font-semibold text-[var(--heading)] shadow-2xl">
-  //           Loading formulated project…
-  //         </div>
-  //       </div>
-  //     )}
-  // 
-  //     <Topbar />
-  // 
-  //     {/* body row — must be min-h-0 so it doesn't overflow the viewport */}
-  //     <div className="flex-1 flex min-h-0 overflow-hidden">
-  //       <Sidebar />
-  // 
-  //       {/* centre column */}
-  //       <div className="flex-1 flex flex-col min-w-0 min-h-0 overflow-hidden bg-[var(--bg)]">
-  // 
-  //         {/* view-mode switcher */}
-  //         <div className="h-8 flex-shrink-0 bg-[var(--surface)] border-b border-[var(--border)] flex items-center px-4 gap-1 select-none">
-  //           <span className="text-[var(--text-muted)] font-sans text-[10px] uppercase tracking-widest mr-3">View</span>
-  //           {(['split', 'three', 'code'] as const).map((mode) => {
-  //             const labels = { split: 'Split View', three: '3D Only', code: 'Code Only' };
-  //             return (
-  //               <button
-  //                 key={mode}
-  //                 onClick={() => setViewMode(mode)}
-  //                 className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-  //                   viewMode === mode
-  //                     ? 'bg-indigo-100 dark:bg-indigo-500/15 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-500/30'
-  //                     : 'text-[var(--text-muted)] hover:text-[var(--heading)] hover:bg-black/5 dark:hover:bg-white/5'
-  //                 }`}
-  //               >
-  //                 {labels[mode]}
-  //               </button>
-  //             );
-  //           })}
-  //         </div>
-  // 
-  //         {/* canvas area — flex-1 min-h-0 is essential to prevent overflow */}
-  //         <div className="flex-1 min-h-0 flex overflow-hidden">
-  //           {viewMode === 'split' && (
-  //             <>
-  //               <div className="w-1/2 h-full flex flex-col min-w-0 overflow-hidden border-r border-[var(--border)]">
-  //                 <CodeEditor />
-  //               </div>
-  //               <div className="w-1/2 h-full relative min-w-0 overflow-hidden">
-  //                 <Scene />
-  //               </div>
-  //             </>
-  //           )}
-  //           {viewMode === 'three' && (
-  //             <div className="w-full h-full relative overflow-hidden">
-  //               <Scene />
-  //             </div>
-  //           )}
-  //           {viewMode === 'code' && (
-  //             <div className="w-full h-full flex flex-col overflow-hidden">
-  //               <CodeEditor />
-  //             </div>
-  //           )}
-  //         </div>
-  // 
-  //         <BottomPanel />
-  //       </div>
-  // 
-  //       <RightSidebar />
-  //     </div>
-  //   </div>
-  // );
 
   // ??$$$ newer code: Responsive application layout and controls
   return (

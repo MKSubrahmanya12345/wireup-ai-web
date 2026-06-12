@@ -3,8 +3,6 @@
 // ??$$$ FORGE: BuildPage.tsx — Stage 3: Milestone Runner & Debug Workspace
 // Three-panel: Milestone Sidebar | Code/Simulator Workspace | Test/Debug Coach
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
-// ??$$$ old code
-// import { useParams, useNavigate } from 'react-router-dom';
 // ??$$$ newer code
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { axiosInstance } from '../lib/axios';
@@ -85,16 +83,6 @@ export default function BuildPage() {
     notes: ''
   });
 
-  // ??$$$ old code
-  /*
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
-    const view = params.get('view');
-    if (tab) setCenterTab(tab);
-    if (view) setSimView(view);
-  }, []);
-  */
   // ??$$$ newer code - parse query parameters using useSearchParams hook to automatically open 3D simulator on redirect
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -176,27 +164,6 @@ export default function BuildPage() {
     }, 1200);
   };
 
-  /* old code
-  // Compile milestone code
-  const handleCompileMilestone = async () => {
-    if (!milestone) return;
-    setCompilingLocal(true);
-    try {
-      // Save code first
-      await updateMilestone(id, milestone.id, { code: localCode });
-      const result = await compileMilestone(id, milestone.id);
-      if (result?.success) {
-        toast.success("Compiled successfully!");
-      } else {
-        toast.error("Compilation failed. Check terminal.");
-      }
-    } catch (err) {
-      toast.error("Compilation request failed.");
-    } finally {
-      setCompilingLocal(false);
-    }
-  };
-  */
   // ??$$$ newer code - Compile milestone with auto debug coach pre-fill and manual libs validation checks
   const handleCompileMilestone = async () => {
     if (!milestone) return;

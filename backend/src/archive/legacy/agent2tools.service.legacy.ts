@@ -736,8 +736,6 @@ async function executeGenerateWiring(args: any) {
 }
 
 // TOOL 10: generate_milestone
-// ??$$$ old code
-// async function executeGenerateMilestone(args: any) {
 // ??$$$ newer code
 async function executeGenerateMilestone(args: any, sessionId?: string) {
   // ??$$$
@@ -759,13 +757,6 @@ async function executeGenerateMilestone(args: any, sessionId?: string) {
       const NewFlowSession = require("../models/newFlowSession.model").default;
       const session = await NewFlowSession.findById(sessionId);
       if (session && session.milestones) {
-        // ??$$$ old code
-        // const prevCount = previousMilestones ? previousMilestones.length : 0;
-        // const order = prevCount + 1;
-        // const existing = session.milestones.find((m: any) => 
-        //   m.title === title || 
-        //   (m.order === order && m.subsystem === subsystem)
-        // );
         // ??$$$ newer code
         const order = typeof args.order === "number" ? args.order : (previousMilestones?.length ?? 0) + 1;
         const existing = session.milestones.find((m: any) => {
@@ -1210,166 +1201,6 @@ async function executeSaveProgress(args: any, sessionId: string) {
 }
 
 
-/* old code
-async function executeGenerateFinalSketch(args: any, sessionId?: string) {
-  const objective = args.objective;
-  const mcu = args.mcu;
-  const allMilestones = parseIfString(args.allMilestones);
-  const bom = parseIfString(args.bom);
-  const wiring = parseIfString(args.wiring);
-
-  try {
-    let modelName = "llama-3.3-70b-versatile";
-    if (sessionId) {
-      try {
-        const NewFlowSession = require("../models/newFlowSession.model").default;
-        const session = await NewFlowSession.findById(sessionId);
-        if (session && session.selectedModel) {
-          modelName = session.selectedModel;
-        }
-      } catch (e) {
-        console.error("[Agent2] Failed to read session model for final sketch:", e);
-      }
-    }
-
-    const systemPrompt = "Return ONLY valid Arduino .ino code. No markdown, no prose, no <think>. Only code.";
-    const userPrompt = `You are an embedded systems expert. Given the following project objective, components, wiring, and milestone codes, generate a single final complete Arduino sketch that integrates all functionality.
-    
-    Objective: ${objective}
-    MCU: ${mcu}
-    BOM: ${JSON.stringify(bom)}
-    Wiring: ${JSON.stringify(wiring)}
-    Milestones with code:
-    ${JSON.stringify(allMilestones?.map((m: any) => ({ order: m.order, title: m.title, code: m.code })))}
-    
-    Return ONLY valid Arduino .ino code. No markdown, no explanation. Just the code.`;
-
-    let raw = "";
-    const useGemini = modelName.toLowerCase().includes("gemini");
-    const useDeepSeek = modelName.toLowerCase().includes("deepseek");
-    const useOllama = modelName.toLowerCase().includes("ollama");
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-
-    if (useGemini && geminiApiKey) {
-      console.log("[Agent2Tools] Generating final sketch using Gemini directly...");
-      const genAI = new GoogleGenerativeAI(geminiApiKey);
-      const geminiModel = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        systemInstruction: systemPrompt,
-        generationConfig: { temperature: 0.2 }
-      });
-      const result = await geminiModel.generateContent(userPrompt);
-      raw = result.response.text().trim();
-    } else if (useDeepSeek) {
-      const deepseekApiKey = process.env.DEEPSEEK_API_KEY;
-      if (!deepseekApiKey) throw new Error("DEEPSEEK_API_KEY is missing in env");
-      console.log("[Agent2Tools] Generating final sketch using DeepSeek directly...");
-      const response = await fetch("https://api.deepseek.com/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${deepseekApiKey}`
-        },
-        body: JSON.stringify({
-          model: "deepseek-chat",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.2
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`DeepSeek API call failed: ${response.statusText} - ${errText}`);
-      }
-
-      const data: any = await response.json();
-      raw = data.choices[0]?.message?.content?.trim() || "";
-    } else if (useOllama) {
-      const modelTag = modelName.split("/")[1] || "qwen2.5:3b";
-      console.log(`[Agent2Tools] Generating final sketch locally using Ollama (${modelTag})...`);
-      const response = await fetch("http://localhost:11434/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          model: modelTag,
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.2,
-          options: {
-            num_ctx: 8192
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Ollama API call failed: ${response.statusText} - ${errText}`);
-      }
-
-      const data: any = await response.json();
-      raw = data.choices[0]?.message?.content?.trim() || "";
-    } else {
-      try {
-        console.log(`[Agent2Tools] Generating final sketch using Groq (${modelName})...`);
-        const groq = await rotationService.getClient();
-        const completion = await groq.chat.completions.create({
-          model: modelName.toLowerCase().includes("qwen") ? "qwen/qwen3-32b" : "llama-3.3-70b-versatile",
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: userPrompt }
-          ],
-          temperature: 0.2
-        });
-        raw = completion.choices[0]?.message?.content?.trim() || "";
-      } catch (err: any) {
-        console.warn("[Agent2Tools] Groq final sketch generation failed. Trying Gemini fallback...", err.message || err);
-        if (geminiApiKey) {
-          const genAI = new GoogleGenerativeAI(geminiApiKey);
-          const geminiModel = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
-            systemInstruction: systemPrompt,
-            generationConfig: { temperature: 0.2 }
-          });
-          const result = await geminiModel.generateContent(userPrompt);
-          raw = result.response.text().trim();
-        } else {
-          throw err;
-        }
-      }
-    }
-
-    let generatedCode = raw;
-    if (generatedCode.includes("```")) {
-      generatedCode = generatedCode.replace(/```(cpp|ino|arduino|c)?/gi, "").replace(/```/g, "").trim();
-    }
-
-    if (sessionId) {
-      const NewFlowSession = require("../models/newFlowSession.model").default;
-      const session = await NewFlowSession.findById(sessionId);
-      if (session) {
-        session.finalSketch = generatedCode;
-        await session.save();
-        const io = (global as any).io;
-        if (io) {
-          io.to(sessionId).emit("agent2:final_sketch_update", { finalSketch: generatedCode });
-        }
-      }
-    }
-
-    return { success: true, code: generatedCode };
-  } catch (err: any) {
-    console.error("executeGenerateFinalSketch failed:", err);
-    return { success: false, error: err.message };
-  }
-}
-*/
 // ??$$$ newer code - cache check for final sketch, API retry backoff wraps
 async function executeGenerateFinalSketch(args: any, sessionId?: string) {
   const objective = args.objective;
@@ -1574,8 +1405,6 @@ export async function executeTool(
     case "generate_wiring":
       return executeGenerateWiring(args);
     case "generate_milestone":
-      // ??$$$ old code
-      // return executeGenerateMilestone(args);
       // ??$$$ newer code
       return executeGenerateMilestone(args, sessionId);
     case "generate_diagram_json":

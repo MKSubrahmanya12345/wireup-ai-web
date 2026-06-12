@@ -349,10 +349,6 @@ export const GEMINI_AGENT2_TOOLS = {
       parameters: {
         type: SchemaType.OBJECT,
         properties: {
-          sessionId: {
-            type: SchemaType.STRING,
-            description: "Project session/database ID"
-          },
           type: {
             type: SchemaType.STRING,
             description: "Type of data being saved",
@@ -363,7 +359,7 @@ export const GEMINI_AGENT2_TOOLS = {
             description: "The data payload as a serialized JSON string (required)"
           }
         },
-        required: ["sessionId", "type", "data"]
+        required: ["type", "data"]
       }
     },
     // ??$$$ newer code

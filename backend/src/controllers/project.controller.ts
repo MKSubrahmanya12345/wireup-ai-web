@@ -38,19 +38,14 @@ interface UpdateProjectBody {
   bomMeta?: any;
   wiringMeta?: any;
   sketchMeta?: any;
+  files?: any[];
+  activeFile?: string;
 }
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────
 
-// Old code:
-// const isIdeaFinalized = (project: any): boolean => {
-//   return (
-//     Boolean(project?.ideaState?.summary?.trim()) &&
-//     (project?.ideaState?.unknowns?.length ?? 0) === 0
-//   );
-// };
 // ??$$$ newer code
 const isIdeaFinalized = (project: any): boolean => {
   return project?.ideation?.finalized === true;
@@ -70,23 +65,20 @@ export const createProject = async (
       return res.status(401).json({ error: "Unauthorized" });
     }
 
-    // Old code:
-    // const project = await Project.create({
-    //   description,
-    //   owner: req.user._id,
-    //   messages: [{ role: "user", content: description }],
-    //   ideaState: {
-    //     summary: "",
-    //     requirements: [],
-    //     unknowns: [],
-    //   },
-    //   meta: { stage: "ideation" },
-    // });
     // ??$$$ newer code
     // ??$$$ Initialize project.ideation with empty messages array so first boot triggers the agent call
     const project = await Project.create({
       description,
       owner: req.user._id,
+      // ??$$$ newer code
+      files: [
+        {
+          name: "README.md",
+          language: "markdown",
+          content: `# ${description.trim()}\n\nProject created with WireUp.\n`,
+        },
+      ],
+      activeFile: "README.md",
       ideation: {
         messages: [],
         brief: "",
@@ -110,33 +102,15 @@ export const createProject = async (
       },
     });
 
-    // Old code:
-    // const ai = await processInput(project, description);
-    // if (ai.extractedContext) {
-    //   project.extractedContext = ai.extractedContext;
-    // }
-    // project.ideaState = {
-    //   summary: ai.summary,
-    //   requirements: ai.requirements,
-    //   unknowns: ai.unknowns,
-    // };
-    // project.architectureState = ai.architectureState;
-    // project.meta.stage = isIdeaFinalized(project) ? "components" : "ideation";
-    // project.generationProfile = buildGenerationProfileFromMeta(
-    //   project.meta || {}
-    // );
-    // project.messages.push({
-    //   role: "ai",
-    //   content: aiReplyCreate,
-    // });
-    // await project.save();
     // ??$$$ newer code
     project.generationProfile = buildGenerationProfileFromMeta(
       project.meta || {}
     );
     await project.save();
 
+    // ??$$$ newer code - return _id along with projectId to support frontend navigation contract
     return res.json({
+      _id: project._id,
       projectId: project._id,
       reply: "",
       ideation: project.ideation,
@@ -348,8 +322,10 @@ export const updateProject = async (
     const hasBomMeta = req.body.bomMeta !== undefined;
     const hasWiringMeta = req.body.wiringMeta !== undefined;
     const hasSketchMeta = req.body.sketchMeta !== undefined;
+    const hasFiles = req.body.files !== undefined;
+    const hasActiveFile = req.body.activeFile !== undefined;
 
-    if (!hasDescription && !hasWokwiUrl && !hasWokwiProjectPath && !hasBomMeta && !hasWiringMeta && !hasSketchMeta) {
+    if (!hasDescription && !hasWokwiUrl && !hasWokwiProjectPath && !hasBomMeta && !hasWiringMeta && !hasSketchMeta && !hasFiles && !hasActiveFile) {
       return res.status(400).json({ error: "Nothing to update" });
     }
 
@@ -389,6 +365,65 @@ export const updateProject = async (
     if (hasSketchMeta) {
       project.sketchMeta = { ...((project.sketchMeta as any)?.toObject?.() || project.sketchMeta), ...req.body.sketchMeta };
       project.markModified("sketchMeta");
+    }
+    // ??$$$ newer code - sync project files update back to NewFlowSession and the local disk mirror
+    if (hasFiles) {
+      project.files = req.body.files;
+      project.markModified("files");
+
+      try {
+        const NewFlowSession = require("../models/newFlowSession.model").default;
+        const { syncSessionToDisk } = require("../agents/formulation/formulation.persistence");
+        const session = await NewFlowSession.findOne({ projectId: project._id });
+        if (session) {
+          const files = req.body.files || [];
+          const sketchFile = files.find((f: any) => f.name === "sketch.ino");
+          if (sketchFile) {
+            session.finalSketch = sketchFile.content;
+            session.markModified("finalSketch");
+          }
+          
+          const wiringFile = files.find((f: any) => f.name === "wiring.json");
+          if (wiringFile) {
+            try {
+              session.wiring = JSON.parse(wiringFile.content);
+              session.markModified("wiring");
+            } catch (e) {
+              console.error("Failed to parse wiring.json for session update:", e);
+            }
+          }
+          
+          const milestonesFile = files.find((f: any) => f.name === "milestones.json");
+          if (milestonesFile) {
+            try {
+              session.milestones = JSON.parse(milestonesFile.content);
+              session.markModified("milestones");
+            } catch (e) {
+              console.error("Failed to parse milestones.json for session update:", e);
+            }
+          }
+
+          const diagramFile = files.find((f: any) => f.name === "diagram.json");
+          if (diagramFile) {
+            try {
+              session.diagram = JSON.parse(diagramFile.content);
+              session.markModified("diagram");
+            } catch (e) {
+              console.error("Failed to parse diagram.json for session update:", e);
+            }
+          }
+
+          await session.save();
+          await syncSessionToDisk(session._id.toString());
+        }
+      } catch (err) {
+        console.error("Error syncing project files update to session/disk:", err);
+      }
+    }
+
+    if (hasActiveFile) {
+      project.activeFile = req.body.activeFile;
+      project.markModified("activeFile");
     }
 
     await project.save();
@@ -437,70 +472,3 @@ export const deleteProject = async (
 // ─────────────────────────────────────────────────────────────
 // CHAT LOOP
 // ─────────────────────────────────────────────────────────────
-
-// Old code:
-// export const chatProject = async (
-//   req: AuthRequest,
-//   res: Response
-// ) => {
-//   try {
-//     const { projectId, message } = req.body as ChatBody;
-// 
-//     if (!mongoose.Types.ObjectId.isValid(projectId)) {
-//       return res.status(400).json({ error: "Invalid projectId" });
-//     }
-// 
-//     const project = await Project.findById(projectId);
-// 
-//     if (!project) {
-//       return res.status(404).json({ error: "Project not found" });
-//     }
-// 
-//     if (project.owner.toString() !== req.user?._id?.toString()) {
-//       return res.status(403).json({ error: "Forbidden" });
-//     }
-// 
-//     project.messages.push({
-//       role: "user",
-//       content: message,
-//     });
-// 
-//     const ai = await processInput(project, message);
-// 
-//     project.ideaState = {
-//       summary: ai.summary,
-//       requirements: ai.requirements,
-//       unknowns: ai.unknowns,
-//     };
-// 
-//     project.architectureState = ai.architectureState;
-// 
-//     project.meta.stage = isIdeaFinalized(project) ? "components" : "ideation";
-// 
-//     project.generationProfile = buildGenerationProfileFromMeta(
-//       project.meta || {}
-//     );
-// 
-//     const aiReply =
-//       ai.question ||
-//       ai.summary ||
-//       "I've updated the project context. What's next?";
-// 
-//     project.messages.push({
-//       role: "ai",
-//       content: aiReply,
-//     });
-// 
-//     await project.save();
-// 
-//     return res.json({
-//       reply: ai.question,
-//       ideaState: project.ideaState,
-//       architectureState: project.architectureState,
-//       generationProfile: project.generationProfile,
-//     });
-//   } catch (err: any) {
-//     console.error("CHAT PROJECT ERROR:", err);
-//     return res.status(500).json({ error: err.message });
-//   }
-// };

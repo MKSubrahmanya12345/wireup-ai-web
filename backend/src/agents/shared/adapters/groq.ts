@@ -81,7 +81,13 @@ export class GroqAdapter implements LLMAdapter {
             args: parsedArgs
           };
         });
-      }
+      },
+      // ??$$$ newer code - Groq token usage statistics
+      usage: completion.usage ? {
+        promptTokens: completion.usage.prompt_tokens || 0,
+        completionTokens: completion.usage.completion_tokens || 0,
+        totalTokens: completion.usage.total_tokens || 0
+      } : undefined
     };
   }
 }

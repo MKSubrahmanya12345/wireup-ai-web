@@ -8,13 +8,6 @@ export interface RightSidebarProps {
   isOpenMobile?: boolean;
 }
 
-/* old code
-export const RightSidebar: React.FC = () => {
-  const {
-    project, simulationRunning, selectedComponent, setSelectedComponent,
-    buttonPressed, setButtonPressed, ledState, cpuUsage
-  } = useProjectStore();
-*/
 
 // ??$$$ newer code: Responsive layout with mobile sliding drawer support
 export const RightSidebar: React.FC<RightSidebarProps> = ({ isOpenMobile = false }) => {
@@ -78,9 +71,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({ isOpenMobile = false
   );
 
   return (
-    /* old code
-    <aside className="w-60 flex-shrink-0 border-l border-[var(--border)] bg-[var(--surface)] flex flex-col overflow-hidden">
-    */
     // ??$$$ newer code: Support sliding drawer on mobile
     <aside className={`w-60 flex-shrink-0 border-l border-[var(--border)] bg-[var(--surface)] flex flex-col overflow-hidden transition-transform duration-300 z-40
       md:relative md:translate-x-0 md:flex

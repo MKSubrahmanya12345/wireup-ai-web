@@ -334,40 +334,6 @@ export async function executeEstimatePowerBudget(args: any) {
   }
 }
 
-// ??$$$ old code
-/*
-export async function executeGenerateWiring(args: any) {
-  const mcu = args.mcu;
-  const parts = parseIfString(args.parts);
-
-  try {
-    const connections = resolveWiring(parts, mcu);
-
-    const pinUsage: Record<string, any> = {};
-    connections.forEach((conn) => {
-      const fromMatch = conn.from.match(/mcu\.(.+)/);
-      if (fromMatch) {
-        const pin = fromMatch[1];
-        if (!pinUsage[pin]) {
-          pinUsage[pin] = [];
-        }
-        pinUsage[pin].push(conn.to);
-      }
-    });
-
-    return {
-      connections,
-      totalConnections: connections.length,
-      pinUsage,
-      validationPassed: true,
-      validationWarnings: []
-    };
-  } catch (err: any) {
-    console.error("executeGenerateWiring failed:", err);
-    return { connections: [], totalConnections: 0, pinUsage: {}, validationPassed: false, error: err.message };
-  }
-}
-*/
 
 // ??$$$ newer code
 async function generateMcuAwareWiring(parts: any[], mcu: string, matchedSpec: any): Promise<any[]> {

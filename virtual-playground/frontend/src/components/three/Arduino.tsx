@@ -19,14 +19,6 @@ export const Arduino: React.FC<ArduinoProps> = ({
   const [hoveredPin, setHoveredPin] = useState<string | null>(null);
   const meshRef = useRef<any>(null);
 
-  /* old code
-  const pins = [
-    { id: "5V", pos: [-1.2, 0.1, 0.4], label: "5V Power", type: "power" },
-    { id: "GND", pos: [-1.2, 0.1, 0.8], label: "Ground", type: "gnd" },
-    { id: "D7", pos: [1.2, 0.1, -0.4], label: "Digital Out D7", type: "digital" },
-    { id: "D2", pos: [1.2, 0.1, -0.8], label: "Digital In D2", type: "digital" }
-  ];
-  */
 
   // ??$$$ newer code
   const pins = [

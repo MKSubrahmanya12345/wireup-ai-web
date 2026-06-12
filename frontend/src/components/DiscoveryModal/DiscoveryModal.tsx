@@ -5,7 +5,8 @@ import { Socket } from "socket.io-client";
 import { axiosInstance } from "../../lib/axios";
 import { useThemeStore } from "../../store/useThemeStore.ts";
 import { DiscoveryPhase } from "./phases/DiscoveryPhase";
-import { X, HardDrive, Layers, Cpu } from "lucide-react"; // ??$$$ newer code
+// ??$$$ newer code - importing Play and Sparkles icons for simulation & playground
+import { X, HardDrive, Layers, Cpu, Play, Sparkles } from "lucide-react";
 import toast from "react-hot-toast";
 import { FormulationPhase } from "./phases/FormulationPhase";
 import { useSessionRestore } from "./hooks/useSessionRestore";
@@ -185,7 +186,8 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
     if (envUrl) {
       return envUrl.replace(/\/api$/, "");
     }
-    return window.location.hostname === "localhost" ? "http://localhost:5000" : "";
+    // ??$$$ newer code
+    return (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? "http://localhost:5000" : "";
   };
 
   // Auto-scroll logs
@@ -582,55 +584,73 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
   };
 
   // ── Derived theme tokens ──────────────────────────────────────────────────
-  // ??$$$ newer code - VSCode monochromatic styling
-  const modalBg = "bg-[#1e1e1e]";
-  const headerBg = "bg-[#252526] border-[#2d2d2d]";
-  const textHead = "text-white";
-  const textSub = "text-zinc-500";
-  const selectCls = "rounded border border-[#3c3c3c] bg-[#1e1e1e] px-2 py-1 text-xs text-zinc-200 outline-none focus:border-[#007acc] transition-colors";
+  // ??$$$ newer code - neon dark purple theme (matching teammate Image 3)
+  const textHead = "text-[#f0f0f5]";
+  const textSub = "text-[#8888a8]";
+  const selectCls = "rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[#f0f0f5] outline-none focus:border-[#c8a0e0]/50 transition-colors";
 
   return (
-    <div className={`fixed inset-0 z-50 flex flex-col font-sans antialiased overflow-hidden text-zinc-350 bg-[#1e1e1e]`}>
-      
+    <div className="fixed inset-0 z-50 flex flex-col antialiased overflow-hidden bg-[#0d0d12] text-[#f0f0f5]">
+
       {/* ── Top Header ── */}
-      <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-[#2d2d2d] px-6 bg-[#252526]">
+      <header className="relative z-10 flex h-14 shrink-0 items-center justify-between border-b border-white/[0.07] px-6 bg-[#0d0d12]/90 backdrop-blur-xl">
         
+        {/* ??$$$ newer code - neon dark header branding */}
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-[#1e1e1e] border border-[#2d2d2d] text-[#007acc]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#c8a0e0]/30 bg-[#c8a0e0]/10 text-[#c8a0e0]">
             <Cpu className="h-4 w-4" />
           </div>
           <div>
-            <h1 className="text-xs font-bold text-white uppercase tracking-wider">
+            <h1 className="text-sm font-bold text-[#f0f0f5] tracking-tight">
               AI Build Session
             </h1>
-            <p className="text-[10px] text-zinc-500 font-mono">
+            <p className="text-[10px] text-[#8888a8]">
               {phase === 1 ? "Discovery Loop" : "Autonomous Formulation Pipeline"}
             </p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
+          {/* ??$$$ newer code - Playground & Behavior Sim buttons in the top header during Phase 1 (Q&A) */}
+          {phase === 1 && sessionId && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleGoToSimulator}
+                className="flex items-center gap-1.5 rounded bg-[#007acc] hover:bg-[#0062a3] text-[11px] text-white font-bold px-2.5 py-1.5 transition-all shadow-md"
+              >
+                <Play className="h-3 w-3 fill-current" />
+                Playground
+              </button>
+              <button
+                onClick={handleGoToBehaviorSim}
+                className="flex items-center gap-1.5 rounded bg-zinc-800 hover:bg-zinc-700 border border-white/10 text-[11px] text-zinc-300 font-bold px-2.5 py-1.5 transition-all shadow-md"
+              >
+                <Sparkles className="h-3 w-3 text-amber-400" />
+                Behavior Sim
+              </button>
+            </div>
+          )}
           {/* Model Selector */}
           {started && (
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-zinc-400 font-mono">Agent Brain:</span>
+              <span className="text-xs text-[#8888a8]">Agent Brain:</span>
               <select
                 value={model}
                 onChange={(e) => setModel(e.target.value)}
                 className={selectCls}
               >
                 {/* ??$$$ newer code */}
-                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
-                <option value="gpt-oss-120b">Cerebras gpt-oss-120b</option>
-                <option value="zai-glm-4.7">Cerebras zai-glm-4.7</option>
-                <option value="qwen/qwen3-32b">Groq Llama 4 Scout</option>
-                <option value="qwen/qwen3-32b">Groq Qwen2.5-32B</option>
-                <option value="deepseek-chat">DeepSeek V3 (Chat)</option>
-                <option value="ollama/qwen2.5:3b">Ollama Local (qwen2.5:3b)</option>
-                <option value="ollama/llama3.2:3b">Ollama Local (llama3.2:3b)</option>
-                <option value="ollama/qwen2.5-coder:14b">Ollama Local (qwen2.5-coder:14b)</option>
-                <option value="ollama/qwen2.5-coder:7b">Ollama Local (qwen2.5-coder:7b)</option>
-                <option value="ollama/deepseek-r1:8b">Ollama Local (deepseek-r1:8b)</option>
+                <option value="gemini-2.5-flash" className="bg-[#111118]">Gemini 2.5 Flash</option>
+                <option value="gpt-oss-120b" className="bg-[#111118]">Cerebras gpt-oss-120b</option>
+                <option value="zai-glm-4.7" className="bg-[#111118]">Cerebras zai-glm-4.7</option>
+                <option value="meta-llama/llama-4-scout-17b-16e-instruct" className="bg-[#111118]">Groq Llama 4 Scout</option>
+                <option value="qwen/qwen3-32b" className="bg-[#111118]">Groq Qwen3-32B</option>
+                <option value="deepseek-chat" className="bg-[#111118]">DeepSeek V3 (Chat)</option>
+                <option value="ollama/qwen2.5:3b" className="bg-[#111118]">Ollama (qwen2.5:3b)</option>
+                <option value="ollama/llama3.2:3b" className="bg-[#111118]">Ollama (llama3.2:3b)</option>
+                <option value="ollama/qwen2.5-coder:14b" className="bg-[#111118]">Ollama (qwen2.5-coder:14b)</option>
+                <option value="ollama/qwen2.5-coder:7b" className="bg-[#111118]">Ollama (qwen2.5-coder:7b)</option>
+                <option value="ollama/deepseek-r1:8b" className="bg-[#111118]">Ollama (deepseek-r1:8b)</option>
               </select>
             </div>
           )}
@@ -638,7 +658,7 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="flex h-7 w-7 items-center justify-center rounded text-zinc-400 hover:bg-[#333333] hover:text-white transition-colors"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8888a8] hover:bg-white/8 hover:text-[#f0f0f5] transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -648,9 +668,9 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
       {/* Main Content Area */}
       <div className="relative z-10 flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex h-full flex-col items-center justify-center gap-4">
-            <div className={`h-8 w-8 animate-spin rounded-full border-[3px] border-t-transparent ${dark ? "border-indigo-500" : "border-indigo-400"}`} />
-            <p className={`text-sm ${textSub}`}>Booting discovery pipelines…</p>
+          <div className="flex h-full flex-col items-center justify-center gap-4 bg-[#0a0a0f]">
+            <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-t-transparent border-[#c8a0e0]" />
+            <p className="text-sm text-[#8888a8]">Booting discovery pipelines…</p>
           </div>
         ) : !started ? (
           <ModelSelector
@@ -694,6 +714,9 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             handleRestartDiscovery={handleRestartDiscovery}
             setPhase={setPhase}
             setShouldAutoFormulate={setShouldAutoFormulate}
+            // ??$$$ newer code - passing simulation and playground handlers to DiscoveryPhase
+            handleGoToSimulator={handleGoToSimulator}
+            handleGoToBehaviorSim={handleGoToBehaviorSim}
           />
         ) : (
           <FormulationPhase
@@ -728,17 +751,14 @@ export const DiscoveryModal: React.FC<DiscoveryModalProps> = ({
             handleResume={handleResume}
             handleRescue={handleRescue}
             resolveConflict={resolveConflict}
-            // ??$$$ old code
-            /*
-            blueprint={blueprint}
-            requirementsDoc={requirementsDoc}
-            setShowContextModal={setShowContextModal}
-            */
             // ??$$$ newer code
             blueprint={blueprint}
             requirementsDoc={requirementsDoc}
             setShowContextModal={setShowContextModal}
             sessionId={sessionId}
+            model={model}
+            setModel={setModel}
+            onClose={onClose}
           />
 
         )}

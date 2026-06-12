@@ -1,687 +1,1475 @@
-// ??$$$ group 4 - Build & Firmware Compilation (Phase 3)
-// ??$$$ NEW FLOW
-import React, { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import Editor from "@monaco-editor/react";
-import { useProjectStore, Milestone } from "../store/useProjectStore";
-import WokwiSimulator from "../components/WokwiSimulator";
+// ??$$$ newer code - Re-designed file-centric IDE layout with SSE pipeline stream, questionnaires, and VS Code styled multi-tabs
+/**
+ * WireUp IDE — "Cursor + VS Code + PlatformIO for Hardware Engineering"
+ * Layout: Left File Explorer | Center Editor (primary) | Right AI Copilot
+ *         Bottom: Output / Terminal / Logs panel
+ */
 import {
-  ArrowLeft, Cpu, Code, Terminal, MessageSquare, Play, RefreshCw, CheckCircle2,
-  Lock, AlertTriangle, AlertCircle, Sparkles, HelpCircle, HardDrive, PlayCircle,
-  // ??$$$ newer code
-  Folder, File, ChevronDown, ChevronRight, Settings, Keyboard, Activity
-} from "lucide-react";
+  useEffect, useRef, useState, useCallback, type KeyboardEvent,
+} from "react";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
+import { io, type Socket } from "socket.io-client";
+import { useProjectStore, type ProjectFile } from "../store/useProjectStore";
+import { useAuthStore } from "../store/useAuthStore";
+import { AIReasoningPanel, type ReasoningStep, type ChatMessage as AIChatMessage } from "../components/AIReasoningPanel/AIReasoningPanel";
+import { CircuitDiagram } from "../components/CircuitDiagram/CircuitDiagram";
+import ProjectQuestionnaire from "../components/ProjectQuestionnaire/ProjectQuestionnaire";
 
-export default function BuildNewPage() {
-  const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+/* ─── Exact VS Code Dark+ / Embedr color tokens ──────────────────────────── */
+const T = {
+  // Backgrounds — measured from screenshot
+  bg:          "#1e1e1e",   // editor background (VS Code default)
+  titleBar:    "#1a1b1e",   // title bar / sidebar / panels
+  tabActive:   "#2a2b2e",   // active tab background
+  tabInactive: "#1a1b1e",   // inactive tab
+  panel:       "#1a1b1e",   // bottom panel, right panel
+  statusBar:   "#007acc",   // VS Code blue status bar
+  inputBg:     "#2a2b2e",   // input fields
 
-  const {
-    project, isLoading, error, loadProject, loadMilestones, updateMilestone,
-    compileMilestone, confirmMilestone, failMilestone, skipMilestone,
-    chatDebugCoach, regenerateMilestoneCode, reportComponentIssue, validateSerial
-  } = useProjectStore();
+  // Borders
+  border:      "rgba(255,255,255,0.08)",
+  borderHi:    "rgba(255,255,255,0.14)",
+  tabBorder:   "#3e3e42",   // VS Code tab border
 
-  const [activeMilestoneId, setActiveMilestoneId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"code" | "simulator" | "coach">("code");
-  const [localCode, setLocalCode] = useState("");
-  const [serialInput, setSerialInput] = useState("");
-  const [notes, setNotes] = useState("");
-  const [compiling, setCompiling] = useState(false);
-  const [compilationSuccess, setCompilationSuccess] = useState<boolean | null>(null);
-  const [compilationConsole, setCompilationConsole] = useState<string>("");
-  const [chatMessage, setChatMessage] = useState("");
-  const [chatLoading, setChatLoading] = useState(false);
+  // Text
+  text:        "#cccccc",   // primary — VS Code default
+  textBright:  "#ffffff",   // active tab label, headings
+  textDim:     "#6e7280",   // line numbers, inactive items
+  textMid:     "#9ea3b0",   // secondary labels
 
-  // Issue modal state
-  const [showIssueModal, setShowIssueModal] = useState(false);
-  const [issueComponent, setIssueComponent] = useState("");
-  const [issueDescription, setIssueDescription] = useState("");
-  const [reportingIssue, setReportingIssue] = useState(false);
+  // Syntax / accents
+  blue:        "#569cd6",   // VS Code keyword blue
+  blueUI:      "#007acc",   // VS Code UI blue (status bar, links)
+  blueD:       "rgba(0,122,204,0.15)",
+  blueHi:      "rgba(0,122,204,0.25)",
+  green:       "#6a9955",   // VS Code comment green / success
+  greenBright: "#4ec9b0",   // type color
+  amber:       "#ce9178",   // VS Code string orange
+  yellow:      "#dcdcaa",   // VS Code function yellow
+  red:         "#f44747",   // VS Code error red
+  purple:      "#c586c0",   // VS Code keyword purple
+  teal:        "#4fc1ff",   // variable teal
 
-  // ??$$$ newer code
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const saveTimer = useRef<any>(null);
+  // File icon colors
+  fileTs:      "#007acc",
+  fileJs:      "#cbcb41",
+  filePy:      "#3572A5",
+  fileMd:      "#519aba",
+  fileJson:    "#cbcb41",
+  fileIno:     "#00979d",
+  fileDefault: "#6e7280",
+} as const;
 
-  // Load project on mount
-  useEffect(() => {
-    if (id) {
-      loadProject(id);
-      loadMilestones(id);
-    }
-  }, [id]);
+/* ─── File helpers ─────────────────────────────────────────────────────────── */
+const LANG_MAP: Record<string, string> = {
+  ts:"TypeScript", tsx:"TypeScript JSX", js:"JavaScript", jsx:"JavaScript JSX",
+  py:"Python", md:"Markdown", json:"JSON", css:"CSS", html:"HTML",
+  sh:"Shell", txt:"Plain Text", yaml:"YAML", yml:"YAML", env:"ENV",
+  ino:"Arduino", cpp:"C++", c:"C", rs:"Rust", h:"C Header", csv:"CSV",
+};
+const LANG_DOT: Record<string, string> = {
+  TypeScript:T.fileTs,"TypeScript JSX":T.fileTs,JavaScript:T.fileJs,
+  Python:T.filePy,Markdown:T.fileMd,JSON:T.fileJson,CSS:"#a78bfa",
+  HTML:"#e44d26",Shell:T.greenBright,Rust:"#dea584",Arduino:T.fileIno,"C++":"#9c4a96",
+  CSV:T.green,
+};
+const getLang = (n: string) => LANG_MAP[n.split(".").pop()?.toLowerCase() ?? ""] ?? "Plain Text";
+const ld      = (l: string) => LANG_DOT[l] ?? T.fileDefault;
 
-  // Set active milestone
-  useEffect(() => {
-    if (project?.milestones && project.milestones.length > 0) {
-      if (project.activeMilestoneId) {
-        setActiveMilestoneId(project.activeMilestoneId);
-      } else if (!activeMilestoneId) {
-        setActiveMilestoneId(project.milestones[0].id);
-      }
-    }
-  }, [project?.activeMilestoneId, project?.milestones]);
+/* ─── Types ────────────────────────────────────────────────────────────────── */
+type TabMode    = "Code" | "Diagram" | "Simulation";
+type BottomTab  = "Output" | "Terminal" | "Logs";
+type StageState = "completed" | "running" | "pending" | "failed";
+interface Stage  { key: string; label: string; state: StageState; }
+interface CMsg   { id: string; role: "user" | "assistant"; content: string; streaming: boolean; }
+// ??$$$ newer code
+interface LogLine {
+  type: "info"|"success"|"error"|"warn";
+  text: string;
+  ts: number;
+  usage?: { promptTokens: number; completionTokens: number; };
+}
 
-  // Selected Milestone
-  const milestone = project?.milestones?.find(m => m.id === activeMilestoneId) || project?.milestones?.[0];
+/* ─── SSE generator — kept for reference, no longer used ──────────────────── */
+// async function* sse removed — all flows use agentic socket.io path
 
-  // Sync local code state on milestone change
-  useEffect(() => {
-    if (milestone) {
-      setLocalCode(milestone.code || "");
-      setSerialInput(milestone.serialOutput || "");
-      setCompilationConsole(milestone.compilationErrors?.join("\n") || "");
-      setCompilationSuccess(milestone.compiledHex ? true : null);
-    }
-  }, [milestone?.id]);
-
-  // Handle local code editing with auto-save
-  const handleCodeChange = (val: string) => {
-    setLocalCode(val);
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      if (milestone && id) {
-        await updateMilestone(id, milestone.id, { code: val });
-      }
-    }, 1000);
-  };
-
-  // Compile Sketch
-  const handleCompile = async () => {
-    if (!id || !milestone) return;
-    setCompiling(true);
-    setCompilationConsole("Initializing build context...\nRunning arduino-cli compile...");
-    try {
-      const res = await compileMilestone(id, milestone.id);
-      if (res.success) {
-        setCompilationSuccess(true);
-        setCompilationConsole("✓ Compilation successful!\nHex binary generated.\nReady for simulator.");
-        toast.success("Firmware compiled successfully!");
-      } else {
-        setCompilationSuccess(false);
-        const errs = res.errors?.join("\n") || "Unknown error during compilation.";
-        setCompilationConsole(`Compilation failed:\n${errs}`);
-        toast.error("Compilation failed.");
-      }
-    } catch (err) {
-      setCompilationSuccess(false);
-      setCompilationConsole("Internal compile trigger error.");
-    } finally {
-      setCompiling(false);
-    }
-  };
-
-  // Confirm Milestone
-  const handleConfirm = async () => {
-    if (!id || !milestone) return;
-    try {
-      await confirmMilestone(id, milestone.id, serialInput, notes);
-      toast.success("Milestone confirmed and marked complete!");
-      setNotes("");
-    } catch (err) {
-      toast.error("Failed to confirm milestone.");
-    }
-  };
-
-  // Skip Milestone
-  const handleSkip = async () => {
-    if (!id || !milestone) return;
-    try {
-      await skipMilestone(id, milestone.id, notes || "Bypassed by user request.");
-      toast.success("Milestone unlocked.");
-    } catch (err) {
-      toast.error("Failed to skip milestone.");
-    }
-  };
-
-  // Send message to Debug Coach
-  const handleSendChatMessage = async () => {
-    if (!id || !milestone || !chatMessage.trim()) return;
-    setChatLoading(true);
-    const msg = chatMessage;
-    setChatMessage("");
-    try {
-      await chatDebugCoach(id, milestone.id, msg);
-    } catch (err) {
-      toast.error("Coach failing to respond.");
-    } finally {
-      setChatLoading(false);
-    }
-  };
-
-  // Trigger Debug Coach code regeneration
-  const handleRegenCode = async () => {
-    if (!id || !milestone) return;
-    const ok = window.confirm("Are you sure you want the AI Coach to update your sketch code?");
-    if (!ok) return;
-    setCompiling(true);
-    try {
-      await regenerateMilestoneCode(id, milestone.id);
-      toast.success("Sketch updated by Debug Coach.");
-    } catch (err) {
-      toast.error("Failed to regenerate sketch code.");
-    } finally {
-      setCompiling(false);
-    }
-  };
-
-  // Report hardware issue
-  const handleReportIssue = async () => {
-    if (!id || !milestone || !issueComponent || !issueDescription.trim()) return;
-    setReportingIssue(true);
-    try {
-      await reportComponentIssue(id, milestone.id, issueComponent, issueDescription);
-      toast.success("Hardware issue reported to Debug Coach!");
-      setShowIssueModal(false);
-      setIssueComponent("");
-      setIssueDescription("");
-      setActiveTab("coach");
-    } catch (err) {
-      toast.error("Failed to report issue.");
-    } finally {
-      setReportingIssue(false);
-    }
-  };
-
-  if (isLoading && !project) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-zinc-950 text-zinc-100">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" />
-          <p className="text-sm text-zinc-400">Loading autonomous workspace...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !project) {
-    return (
-      <div className="flex h-screen flex-col items-center justify-center bg-zinc-950 text-zinc-100 gap-4">
-        <AlertTriangle className="h-10 w-10 text-red-500" />
-        <p className="text-sm text-zinc-400">{error || "Project workspace not found."}</p>
-        <button onClick={() => navigate("/home")} className="rounded-lg bg-zinc-800 px-4 py-2 text-xs font-semibold hover:bg-zinc-700">
-          Return Home
-        </button>
-      </div>
-    );
-  }
-
-  // ??$$$ newer code
+/* ─── Drag handles ─────────────────────────────────────────────────────────── */
+function HDrag({ onD }: { onD: (d: number) => void }) {
+  const a = useRef(false), lx = useRef(0);
   return (
-    <div className="flex h-screen flex-col bg-[#1e1e1e] font-mono text-zinc-300 antialiased overflow-hidden select-none">
-      
-      {/* VSCode Title Bar / Header */}
-      <header className="flex h-9 items-center justify-between border-b border-[#2d2d2d] bg-[#2d2d2d] px-3 text-[11px] text-zinc-400 select-none">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate("/home")}
-            className="flex items-center justify-center text-zinc-400 hover:text-white transition-colors"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-          </button>
-          <div className="flex items-center gap-1.5 font-bold">
-            <span className="text-[#007acc]">WIREUP IDE</span>
-            <span className="text-zinc-600">|</span>
-            <span className="text-zinc-300 font-normal truncate max-w-xs md:max-w-md">
-              {project.description || "Autonomous Project Space"}
-            </span>
-          </div>
-        </div>
+    <div style={{ width: 1, flexShrink: 0, background: T.border, cursor: "col-resize" }}
+      onMouseEnter={e => (e.currentTarget.style.background = T.blue)}
+      onMouseLeave={e => (e.currentTarget.style.background = T.border)}
+      onMouseDown={e => {
+        e.preventDefault(); a.current = true; lx.current = e.clientX;
+        const mv = (ev: MouseEvent) => { if (a.current) { onD(ev.clientX - lx.current); lx.current = ev.clientX; } };
+        const up = () => { a.current = false; window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); };
+        window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up);
+      }}
+    />
+  );
+}
+function VDrag({ onD }: { onD: (d: number) => void }) {
+  const a = useRef(false), ly = useRef(0);
+  return (
+    <div style={{ height: 1, flexShrink: 0, background: T.border, cursor: "row-resize" }}
+      onMouseEnter={e => (e.currentTarget.style.background = T.blue)}
+      onMouseLeave={e => (e.currentTarget.style.background = T.border)}
+      onMouseDown={e => {
+        e.preventDefault(); a.current = true; ly.current = e.clientY;
+        const mv = (ev: MouseEvent) => { if (a.current) { onD(ev.clientY - ly.current); ly.current = ev.clientY; } };
+        const up = () => { a.current = false; window.removeEventListener("mousemove", mv); window.removeEventListener("mouseup", up); };
+        window.addEventListener("mousemove", mv); window.addEventListener("mouseup", up);
+      }}
+    />
+  );
+}
 
-        {/* Global Progress Bar */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
-            <span className="text-[10px] text-zinc-300">Live Node Connected</span>
-          </div>
-        </div>
-      </header>
+/* ─── Stage icon ───────────────────────────────────────────────────────────── */
+function StageIcon({ s }: { s: StageState }) {
+  if (s === "completed") return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" fill="#22c55e" fillOpacity=".15" stroke="#22c55e" strokeWidth="1.2"/>
+      <path d="M5 8l2.5 2.5L11 5.5" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+  if (s === "running") return (
+    <motion.div animate={{ rotate: 360 }} transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+      style={{ width: 13, height: 13, borderRadius: "50%", border: `1.5px solid rgba(0,122,204,0.3)`, borderTopColor: "#007acc" }} />
+  );
+  if (s === "failed") return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+      <circle cx="8" cy="8" r="6" fill="#f44747" fillOpacity=".12" stroke="#f44747" strokeWidth="1.2"/>
+      <path d="M5.5 5.5l5 5M10.5 5.5l-5 5" stroke="#f44747" strokeWidth="1.5" strokeLinecap="round"/>
+    </svg>
+  );
+  return <div style={{ width: 13, height: 13, borderRadius: "50%", border: `1.5px solid #3e3e42` }}/>;
+}
 
-      {/* Main VSCode Layout Workspace */}
-      <div className="flex-1 flex overflow-hidden">
-        
-        {/* VSCode Left Activity Bar */}
-        <div className="w-12 shrink-0 bg-[#333333] border-r border-[#252526] flex flex-col justify-between items-center py-2 z-10">
-          <div className="flex flex-col gap-4 w-full items-center">
-            
-            {/* File Explorer icon */}
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={`relative p-2 rounded text-zinc-400 hover:text-white transition-colors ${
-                sidebarOpen ? "text-white bg-[#252526]" : ""
-              }`}
-            >
-              <Folder className="w-5 h-5" />
-              {sidebarOpen && (
-                <div className="absolute left-0 top-2 bottom-2 w-[2px] bg-[#007acc]" />
-              )}
-            </button>
-          </div>
+/* ─── Model catalogue (matches backend chat.controller.ts) ─────────────── */
+const MODELS = [
+  { key: "WU Lite", id: "claude-haiku-4-5-20251001", sub: "claude-haiku · Fast"       },
+  { key: "WU Pro",  id: "claude-sonnet-4-6",          sub: "claude-sonnet · Balanced"  },
+  { key: "WU Max",  id: "claude-opus-4-8",             sub: "claude-opus · Powerful"    },
+] as const;
+type ModelKey = typeof MODELS[number]["key"];
 
-          <div className="flex flex-col gap-3 items-center">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-2 text-zinc-500 hover:text-white"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Left Milestones Sidebar (Explorer panel style) */}
-        {sidebarOpen && (
-          <aside className="w-64 shrink-0 bg-[#252526] border-r border-[#2d2d2d] flex flex-col overflow-hidden text-zinc-400">
-            <div className="h-9 flex items-center justify-between px-3 text-[10px] uppercase font-bold tracking-wider text-zinc-500 border-b border-[#2d2d2d]">
-              <span>Milestone Curriculum</span>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-2 space-y-1 select-text">
-              {project.milestones?.map((m, idx) => {
-                const isActive = m.id === activeMilestoneId;
-                const isLocked = m.status === "locked";
-                const isPassed = m.status === "passed" || m.userConfirmed;
-                
-                return (
-                  <button
-                    key={m.id}
-                    disabled={isLocked && !isActive}
-                    onClick={() => setActiveMilestoneId(m.id)}
-                    className={`w-full rounded border text-left px-2.5 py-2 transition-all flex items-start gap-2 relative overflow-hidden ${
-                      isActive
-                        ? "border-[#007acc] bg-[#1e1e1e] text-white"
-                        : isLocked
-                        ? "border-transparent bg-transparent opacity-35 cursor-not-allowed"
-                        : "border-transparent bg-transparent hover:bg-[#2d2d2d] text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    {/* Status Indicator Icon */}
-                    <div className={`h-4.5 w-4.5 rounded-full flex-shrink-0 text-[9px] font-bold flex items-center justify-center border ${
-                      isPassed
-                        ? "bg-emerald-950/20 border-emerald-500/30 text-emerald-400"
-                        : isActive
-                        ? "bg-[#007acc]/10 border-[#007acc]/30 text-[#007acc]"
-                        : "bg-[#2d2d2d] border-[#3c3c3c] text-zinc-500"
-                    }`}>
-                      {isPassed ? "✓" : idx + 1}
-                    </div>
-
-                    <div className="min-w-0 flex-1 leading-snug">
-                      <div className="text-[10px] font-bold truncate flex items-center gap-1">
-                        {m.title}
-                        {isLocked && <Lock className="h-2.5 w-2.5 text-zinc-650 flex-shrink-0" />}
-                      </div>
-                      <div className="text-[9px] text-zinc-500 truncate mt-0.5">{m.objective}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </aside>
+function ModelPicker({ val, set }: { val: ModelKey; set: (v: ModelKey) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = MODELS.find(m => m.key === val) ?? MODELS[1];
+  return (
+    <div style={{position:"relative"}}>
+      <button onClick={() => setOpen(v => !v)}
+        style={{ display:"flex", alignItems:"center", gap:5, padding:"3px 8px",
+          background:T.bg, border:`1px solid ${T.border}`, borderRadius:3,
+          color:T.textMid, fontSize:11, cursor:"pointer", fontFamily:"var(--font-sans)",
+          whiteSpace:"nowrap" }}>
+        <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" d="M2 4h12M4 8h8M6 12h4"/>
+        </svg>
+        {val}
+        <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d={open ? "M4 10l4-4 4 4" : "M4 6l4 4 4-4"}/>
+        </svg>
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div initial={{ opacity:0, y:4, scale:0.97 }} animate={{ opacity:1, y:0, scale:1 }}
+            exit={{ opacity:0, y:4, scale:0.97 }} transition={{ duration:0.1 }}
+            style={{ position:"absolute", bottom:"calc(100% + 4px)", left:0,
+              background:T.titleBar, border:`1px solid ${T.borderHi}`,
+              borderRadius:4, overflow:"hidden", minWidth:220,
+              boxShadow:"0 8px 24px rgba(0,0,0,0.6)", zIndex:200 }}>
+            {MODELS.map(m => (
+              <button key={m.key} onClick={() => { set(m.key); setOpen(false); }}
+                style={{ width:"100%", display:"flex", flexDirection:"column",
+                  padding:"8px 12px", background: m.key===val ? T.blueD : "transparent",
+                  border:"none", cursor:"pointer", textAlign:"left", transition:"background 0.1s" }}
+                onMouseOver={e => { if (m.key !== val) e.currentTarget.style.background="rgba(255,255,255,0.05)"; }}
+                onMouseOut={e  => { e.currentTarget.style.background = m.key===val ? T.blueD : "transparent"; }}>
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8}}>
+                  <span style={{ fontSize:12, fontWeight:500, color: m.key===val ? T.blueUI : T.textBright }}>
+                    {m.key}
+                  </span>
+                  {m.key===val && (
+                    <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke={T.blueUI} strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l4 4 6-6"/>
+                    </svg>
+                  )}
+                </div>
+                <span style={{ fontSize:10, color:T.textDim, marginTop:2, fontFamily:"var(--font-mono)" }}>
+                  {m.sub}
+                </span>
+              </button>
+            ))}
+          </motion.div>
         )}
+      </AnimatePresence>
+    </div>
+  );
+}
 
-        {/* Central Stage & Interactive Workspace */}
-        {milestone ? (
-          <div className="flex-1 flex overflow-hidden bg-[#1e1e1e]">
-            
-            {/* Center Area: Tabs & Active Panel */}
-            <div className="flex-1 flex flex-col border-r border-[#2d2d2d] overflow-hidden">
-              
-              {/* Tab selector bar */}
-              <div className="flex h-9 border-b border-[#1e1e1e] bg-[#2d2d2d] px-2 items-center justify-between shrink-0">
-                <div className="flex items-center overflow-x-auto h-full">
-                  <button
-                    onClick={() => setActiveTab("code")}
-                    className={`h-full flex items-center gap-1.5 px-4 border-r border-[#1e1e1e] text-[11px] transition-colors ${
-                      activeTab === "code"
-                        ? "bg-[#1e1e1e] text-white border-t-2 border-[#007acc] font-semibold"
-                        : "bg-[#2d2d2d] text-zinc-500 hover:bg-[#2b2b2b] hover:text-zinc-350"
-                    }`}
-                  >
-                    <Code className="h-3.5 w-3.5" />
-                    <span>sketch.ino</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setActiveTab("simulator")}
-                    className={`h-full flex items-center gap-1.5 px-4 border-r border-[#1e1e1e] text-[11px] transition-colors ${
-                      activeTab === "simulator"
-                        ? "bg-[#1e1e1e] text-white border-t-2 border-[#007acc] font-semibold"
-                        : "bg-[#2d2d2d] text-zinc-500 hover:bg-[#2b2b2b] hover:text-zinc-350"
-                    }`}
-                  >
-                    <PlayCircle className="h-3.5 w-3.5 text-emerald-400" />
-                    <span>simulation.json</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setActiveTab("coach")}
-                    className={`h-full flex items-center gap-1.5 px-4 border-r border-[#1e1e1e] text-[11px] transition-colors ${
-                      activeTab === "coach"
-                        ? "bg-[#1e1e1e] text-white border-t-2 border-[#007acc] font-semibold"
-                        : "bg-[#2d2d2d] text-zinc-500 hover:bg-[#2b2b2b] hover:text-zinc-350"
-                    }`}
-                  >
-                    <MessageSquare className="h-3.5 w-3.5 text-amber-400" />
-                    <span>coach_chat.log</span>
-                  </button>
-                </div>
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN
+   ═══════════════════════════════════════════════════════════════════════════ */
+export default function BuildNewPage() {
+  const { id }       = useParams<{ id: string }>();
+  const navigate     = useNavigate();
+  const location     = useLocation();
+  const { authUser } = useAuthStore();
+  const { currentProject, loadProject, isLoading, updateFile, addFile, setActiveFile } = useProjectStore();
 
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowIssueModal(true)}
-                    className="flex items-center gap-1 rounded bg-[#333333] hover:bg-[#444444] border border-[#444444] text-[9px] text-zinc-300 px-2 py-0.5 transition-all"
-                  >
-                    Report Connection Issue
-                  </button>
+  /* layout */
+  const [leftW,    setLeftW]    = useState(230);
+  const [rightW,   setRightW]   = useState(300);
+  const [botH,     setBotH]     = useState(180);
+  const [botOpen,  setBotOpen]  = useState(false);
+  const [tabMode,  setTabMode]  = useState<TabMode>("Code");
+  const [botTab,   setBotTab]   = useState<BottomTab>("Output");
+  const [model,    setModel]    = useState<ModelKey>("WU Pro");
+
+  /* editor */
+  const [tabs,      setTabs]      = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState("");
+  const [code,      setCode]      = useState("");
+  const [dirty,     setDirty]     = useState(false);
+  const editorRef = useRef<HTMLTextAreaElement>(null);
+
+  /* explorer collapsed state */
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+
+  /* pipeline */
+  const [stages,       setStages]       = useState<Stage[]>([]);
+  const [pipelinePct,  setPipelinePct]  = useState(0);
+  const [pipelineDone, setPipelineDone] = useState(false);
+  const [pipeActive,   setPipeActive]   = useState(false);
+  const started = useRef(false);
+  const sidxMap = useRef<Record<string, number>>({});
+
+  /* questionnaire — shown before pipeline starts */
+  const [showQuestionnaire, setShowQuestionnaire] = useState(false);
+  const [questionnaireIdea, setQuestionnaireIdea] = useState("");
+
+  /* chat */
+  const [msgs,     setMsgs]     = useState<CMsg[]>([]);
+  const [chatIn,   setChatIn]   = useState("");
+  const [chatBusy, setChatBusy] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+
+  /* logs */
+  const [logs,    setLogs]    = useState<LogLine[]>([]);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  /* new file */
+  const [newFileOpen, setNewFileOpen] = useState(false);
+  const [newFileName, setNewFileName] = useState("");
+
+  /* ── agentic formulation (hardware projects) ── */
+  const [formulationSessionId, setFormulationSessionId] = useState<string | null>(null);
+  const socketRef = useRef<Socket | null>(null);
+  const [tokensBurned, setTokensBurned] = useState(0);
+
+  const addLog = useCallback((type: LogLine["type"], txt: string) => {
+    setLogs(p => [...p, { type, text: txt, ts: Date.now() }]);
+  }, []);
+
+  /* load project */
+  useEffect(() => { if (id) loadProject(id); }, [id]);
+
+  // Cleanup socket on unmount
+  useEffect(() => {
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+        socketRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentProject) return;
+    const a = currentProject.activeFile || currentProject.files?.[0]?.name || "";
+    if (a && !tabs.includes(a)) { setTabs([a]); setActiveTab(a); }
+    const f = currentProject.files?.find(x => x.name === a);
+    if (f) setCode(f.content);
+    addLog("info", `[wireup] Project loaded: ${currentProject.description}`);
+  }, [currentProject?._id]);
+
+  // ??$$$ newer code - sync active editor content when activeTab or project files change, preserving dirty state
+  useEffect(() => {
+    if (!currentProject || !activeTab) return;
+    const f = currentProject.files?.find(x => x.name === activeTab);
+    if (f) {
+      if (!dirty) {
+        setCode(f.content);
+      }
+    }
+  }, [activeTab, currentProject?.files]);
+
+  useEffect(() => { logEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [logs]);
+  useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [msgs]);
+
+  /* auto-start — show questionnaire first, then pipeline */
+  useEffect(() => {
+    if (!currentProject || started.current || pipelineDone) return;
+
+    // ??$$$ newer code - short-circuit if project is already formulated
+    const isFormulated = !!(
+      currentProject.sketch || 
+      currentProject.files?.some((f: any) => f.name === "sketch.ino")
+    );
+
+    if (isFormulated) {
+      started.current = true;
+      setPipelineDone(true);
+      setPipelinePct(100);
+      setStages([
+        { key: "blueprint",  label: "System Blueprint",    state: "completed" },
+        { key: "bom",        label: "Bill of Materials",   state: "completed" },
+        { key: "wiring",     label: "Wiring Connections",  state: "completed" },
+        { key: "milestones", label: "Build Milestones",    state: "completed" },
+        { key: "diagram",    label: "Simulation Diagram",  state: "completed" },
+        { key: "firmware",   label: "Final Sketch",        state: "completed" },
+      ]);
+      const initialTab = currentProject.activeFile || currentProject.files?.[0]?.name || "sketch.ino";
+      if (!tabs.includes(initialTab)) {
+        setTabs(currentProject.files?.map((f: any) => f.name) || [initialTab]);
+      }
+      setActiveTab(initialTab);
+      addLog("success", "[wireup] Project loaded from database cache");
+      return;
+    }
+
+    // ??$$$ newer code
+    started.current = true;
+
+    const routerPrompt = (location.state as { prompt?: string } | null)?.prompt?.trim();
+    const idea = routerPrompt || currentProject.description;
+
+    // Show user's typed message immediately
+    if (routerPrompt) {
+      setMsgs([
+        { id: `u-init`, role: "user", content: routerPrompt, streaming: false },
+        { id: `thinking-init`, role: "assistant", content: "", streaming: true },
+      ]);
+    }
+
+    // Always use the agentic tool-calling flow — no SSE pipeline, no questionnaire
+    setTimeout(() => {
+      setMsgs(p => p.filter(m => m.id !== "thinking-init"));
+      runPipeline(idea ?? "");
+    }, 800);
+  }, [currentProject?._id]);
+
+  const runPipeline = async (idea: string, answers?: Record<string, string>) => {
+    // Clear any leftover thinking placeholder
+    setMsgs(p => p.filter(m => m.id !== "thinking-init"));
+    setPipeActive(true); setPipelinePct(0); setStages([]); sidxMap.current = {}; setTokensBurned(0);
+    const base = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+    const socketUrl = (import.meta.env.VITE_API_URL || "http://localhost:5000/api")
+      .replace(/\/api$/, "");
+
+    // ── Always use the agentic tool-calling flow ──
+    addLog("info", "[wireup] Starting formulation agent...");
+
+    try {
+        // Disconnect any existing socket
+        if (socketRef.current) {
+          socketRef.current.disconnect();
+          socketRef.current = null;
+        }
+
+        // 1. Get or create the new-flow session for this project
+        let sessionId = formulationSessionId;
+        if (!sessionId) {
+          const sessRes = await fetch(`${base}/new-flow/project-session/${id}`, {
+            credentials: "include",
+          });
+          if (!sessRes.ok) throw new Error("Failed to get formulation session");
+          const sessData = await sessRes.json();
+          sessionId = sessData._id;
+          setFormulationSessionId(sessionId);
+        }
+
+        // 2. Connect to socket.io and listen for agent events
+        const socket = io(socketUrl, { withCredentials: true });
+        socketRef.current = socket;
+        socket.emit("join", sessionId);
+
+        // Map formulation stages to pipeline UI
+        const FORMULATION_STAGES = [
+          { key: "blueprint",  label: "System Blueprint"    },
+          { key: "bom",        label: "Bill of Materials"   },
+          { key: "wiring",     label: "Wiring Connections"  },
+          { key: "milestones", label: "Build Milestones"    },
+          { key: "diagram",    label: "Simulation Diagram"  },
+          { key: "firmware",   label: "Final Sketch"        },
+        ];
+        FORMULATION_STAGES.forEach(s => {
+          setStages(p => [...p, { key: s.key, label: s.label, state: "pending" }]);
+        });
+
+        socket.on("agent2:log", (logItem: any) => {
+          // ── Tool calls go into the RIGHT CHAT panel ──
+          if (logItem.type === "tool_call") {
+            const icon = logItem.status === "running" ? "⚙️"
+              : logItem.status === "done" ? "✅"
+              : logItem.status === "failed" ? "❌"
+              : "🔧";
+            const toolLabel: Record<string, string> = {
+              search_library:        "Searching component library",
+              get_part_details:      "Fetching part details",
+              check_compatibility:   "Checking compatibility",
+              validate_pin_assignment: "Validating pin assignments",
+              search_datasheet:      "Looking up datasheet",
+              estimate_power_budget: "Estimating power budget",
+              get_wokwi_part_type:   "Resolving Wokwi part type",
+              check_simulation_support: "Checking simulation support",
+              generate_wiring:       "Generating wiring connections",
+              generate_milestone:    "Writing milestone code",
+              generate_diagram_json: "Building simulation diagram",
+              save_progress:         "Saving progress",
+              generate_final_sketch: "Writing final sketch",
+              select_compute:        "Selecting microcontroller",
+            };
+            const label = toolLabel[logItem.name] || logItem.name;
+            const detail = logItem.status === "running"
+              ? (logItem.input?.query || logItem.input?.type || logItem.input?.mcu || logItem.input?.title || "")
+              : logItem.status === "done" && logItem.name === "search_library"
+                ? `Found ${logItem.output?.total ?? 0} components`
+                : logItem.status === "done" && logItem.name === "generate_milestone"
+                  ? `Milestone ready`
+                  : logItem.status === "failed"
+                    ? `Failed: ${logItem.output?.error || "unknown error"}`
+                    : "";
+            const content = `${icon} ${label}${detail ? ` — ${detail}` : ""}`;
+            // ??$$$ newer code - prevent duplicate React keys by appending a unique suffix for non-running states
+            const msgId = logItem.status === "running"
+              ? `tool-${logItem.name}-running`
+              : `tool-${logItem.name}-${logItem.status}-${Math.random().toString(36).substring(2, 9)}`;
+            setMsgs(prev => {
+              // For "running" → add new entry; for "done"/"failed" → update the running entry
+              if (logItem.status === "running") {
+                return [...prev, { id: msgId, role: "assistant", content, streaming: true }];
+              } else {
+                // Find the matching running entry and update it
+                const runningId = `tool-${logItem.name}-running`;
+                const idx = prev.map(m => m.id).lastIndexOf(runningId);
+                if (idx >= 0) {
+                  const n = [...prev];
+                  n[idx] = { ...n[idx], id: msgId, content, streaming: false };
+                  return n;
+                }
+                return [...prev, { id: msgId, role: "assistant", content, streaming: false }];
+              }
+            });
+
+            // Update stage states based on tool call
+            const toolToStage: Record<string, string> = {
+              generate_wiring:       "wiring",
+              generate_milestone:    "milestones",
+              generate_diagram_json: "diagram",
+              generate_final_sketch: "firmware",
+              search_library:        "bom",
+              select_compute:        "blueprint",
+            };
+            if (logItem.name === "save_progress" && logItem.input?.type) {
+              const typeToStage: Record<string, string> = {
+                bom: "bom", wiring: "wiring",
+                milestone: "milestones", diagram: "diagram",
+              };
+              const stageKey = typeToStage[logItem.input.type];
+              if (stageKey) {
+                setStages(p => p.map(s => s.key === stageKey
+                  ? { ...s, state: logItem.status === "done" ? "completed" : logItem.status === "failed" ? "failed" : "running" }
+                  : s));
+              }
+            } else {
+              const stageKey = toolToStage[logItem.name];
+              if (stageKey) {
+                setStages(p => p.map(s => s.key === stageKey
+                  ? { ...s, state: logItem.status === "done" ? "completed" : logItem.status === "failed" ? "failed" : "running" }
+                  : s));
+              }
+            }
+
+            // Token usage goes to logs only (not chat)
+            if (logItem.usage) {
+              setTokensBurned(t => t + (logItem.usage.totalTokens || 0));
+              addLog("info", `[tokens] prompt:${logItem.usage.promptTokens} completion:${logItem.usage.completionTokens}`);
+            }
+            return; // Don't also add to logs
+          }
+
+          // ── Thinking / errors go to logs only, not chat ──
+          const logType = logItem.type === "error" ? "error"
+            : logItem.type === "rate_limit" ? "warn"
+            : "info";
+          if (logItem.text) {
+            addLog(logType, logItem.text);
+          }
+          if (logItem.usage) {
+            setTokensBurned(t => t + (logItem.usage.totalTokens || 0));
+            addLog("info", `[tokens] prompt:${logItem.usage.promptTokens} completion:${logItem.usage.completionTokens}`);
+          }
+
+          // Update stage states based on tool calls (already handled above for tool_call type)
+        });
+
+        socket.on("agent2:blueprint", (data: any) => {
+          setStages(p => p.map(s => s.key === "blueprint" ? { ...s, state: "completed" } : s));
+          setPipelinePct(10);
+          setMsgs(prev => {
+            const idx = prev.findIndex(m => m.id === "formulation-thinking");
+            const content = `**System Blueprint generated.** Architect analyzed your requirements and produced the hardware specification.`;
+            if (idx >= 0) { const n=[...prev]; n[idx]={...n[idx],content,streaming:false}; return n; }
+            return [...prev, { id: "blueprint", role: "assistant", content, streaming: false }];
+          });
+        });
+
+        socket.on("agent2:bom_update", (data: any) => {
+          if (!data.bom?.length) return;
+          setStages(p => p.map(s => s.key === "bom" ? { ...s, state: "completed" } : s));
+          setPipelinePct(30);
+          const bomText = data.bom.map((b: any) => `• ${b.displayName} (${b.key}) — ${b.purpose}`).join("\n");
+          const content = `Bill of Materials (${data.bom.length} components)\n${bomText}`;
+          // Use "bom" as msg id so AIReasoningPanel step content populates
+          setMsgs(prev => {
+            const existing = prev.findIndex(m => m.id === "bom");
+            if (existing >= 0) { const n=[...prev]; n[existing]={...n[existing],content,streaming:false}; return n; }
+            return [...prev, { id: "bom", role: "assistant", content, streaming: false }];
+          });
+          if (id) addFile(id, { name: "bom.json", language: "JSON", content: JSON.stringify(data.bom, null, 2) });
+        });
+
+        socket.on("agent2:wiring_update", (data: any) => {
+          if (!data.wiring?.length) return;
+          setStages(p => p.map(s => s.key === "wiring" ? { ...s, state: "completed" } : s));
+          setPipelinePct(50);
+          const content = `Wiring complete — ${data.wiring.length} connections resolved.`;
+          setMsgs(prev => {
+            const existing = prev.findIndex(m => m.id === "wiring");
+            if (existing >= 0) { const n=[...prev]; n[existing]={...n[existing],content,streaming:false}; return n; }
+            return [...prev, { id: "wiring", role: "assistant", content, streaming: false }];
+          });
+          if (id) addFile(id, { name: "wiring.json", language: "JSON", content: JSON.stringify(data.wiring, null, 2) });
+        });
+
+        socket.on("agent2:milestone_update", (data: any) => {
+          const milestones = data.milestones || [];
+          if (!milestones.length) return;
+          setStages(p => p.map(s => s.key === "milestones" ? { ...s, state: "running" } : s));
+          setPipelinePct(65);
+          const milestoneText = milestones.map((m: any) => `${m.order}. ${m.title}`).join("\n");
+          const content = `Build milestones (${milestones.length})\n${milestoneText}`;
+          setMsgs(prev => {
+            const existing = prev.findIndex(m => m.id === "milestones");
+            if (existing >= 0) { const n=[...prev]; n[existing]={...n[existing],content,streaming:false}; return n; }
+            return [...prev, { id: "milestones", role: "assistant", content, streaming: false }];
+          });
+          if (id) addFile(id, { name: "milestones.json", language: "JSON", content: JSON.stringify(milestones, null, 2) });
+          // Save each milestone's code as a file when it arrives
+          const latest = [...milestones].sort((a: any, b: any) => (b.order ?? 0) - (a.order ?? 0))[0];
+          if (latest?.code?.trim() && id) {
+            addFile(id, { name: `milestone_${latest.order}.ino`, language: "Arduino", content: latest.code });
+          }
+        });
+
+        socket.on("agent2:diagram_update", (data: any) => {
+          if (!data.diagram) return;
+          setStages(p => p.map(s => s.key === "diagram" ? { ...s, state: "completed" } : s));
+          setPipelinePct(80);
+          const content = `Simulation diagram generated. Open diagram.json to inspect the Wokwi layout.`;
+          setMsgs(prev => {
+            const existing = prev.findIndex(m => m.id === "diagram");
+            if (existing >= 0) { const n=[...prev]; n[existing]={...n[existing],content,streaming:false}; return n; }
+            return [...prev, { id: "diagram", role: "assistant", content, streaming: false }];
+          });
+          if (id) addFile(id, { name: "diagram.json", language: "JSON", content: JSON.stringify(data.diagram, null, 2) });
+        });
+
+        socket.on("agent2:final_sketch_update", (data: any) => {
+          if (!data.finalSketch?.trim()) return;
+          setStages(p => p.map(s => s.key === "firmware" ? { ...s, state: "completed" } : s));
+          setPipelinePct(95);
+          const content = `Final integrated sketch generated. sketch.ino is open in the editor.`;
+          setMsgs(prev => {
+            const existing = prev.findIndex(m => m.id === "firmware");
+            if (existing >= 0) { const n=[...prev]; n[existing]={...n[existing],content,streaming:false}; return n; }
+            return [...prev, { id: "firmware", role: "assistant", content, streaming: false }];
+          });
+          // ??$$$ newer code - handle unsaved active editor conflicts gracefully
+          if (id) {
+            addFile(id, { name: "sketch.ino", language: "Arduino", content: data.finalSketch });
+            setTabs(p => p.includes("sketch.ino") ? p : [...p, "sketch.ino"]);
+            if (activeTab === "sketch.ino" && dirty) {
+              // ??$$$ newer code - react-hot-toast doesn't have .info, using generic toast instead
+              toast("A new sketch was generated in the background, but your local changes were preserved.");
+            } else {
+              setActiveTab("sketch.ino");
+              setCode(data.finalSketch);
+            }
+          }
+        });
+
+        socket.on("agent2:complete", (data: any) => {
+          setPipelinePct(100);
+          setPipelineDone(true);
+          setPipeActive(false);
+          setBotOpen(true);
+          setStages(p => p.map(s => s.state !== "completed" && s.state !== "failed" ? { ...s, state: "completed" } : s));
+          addLog("success", "[wireup] Hardware formulation complete!");
+          toast.success("Hardware project formulated!");
+          setMsgs(prev => [...prev, {
+            id: `done-${Date.now()}`, role: "assistant",
+            content: "✅ **Formulation complete!** Your BOM, wiring, milestones, and sketch are ready. Check the file explorer for all generated files.",
+            streaming: false
+          }]);
+        });
+
+        socket.on("agent2:error", (data: any) => {
+          setStages(p => p.map(s => s.state === "running" ? { ...s, state: "failed" } : s));
+          setPipeActive(false);
+          addLog("error", `[agent] ${data.message || "Formulation error"}`);
+          toast.error(data.message || "Formulation failed");
+        });
+
+        socket.on("agent2:model_changed", (data: any) => {
+          if (data.model) addLog("warn", `[failover] Switched to provider: ${data.model}`);
+        });
+
+        socket.on("disconnect", () => {
+          addLog("warn", "[socket] Disconnected from formulation server");
+        });
+
+        // 3. Trigger the formulation
+        setStages(p => p.map(s => s.key === "blueprint" ? { ...s, state: "running" } : s));
+        setMsgs(prev => [...prev, {
+          id: "formulation-thinking", role: "assistant",
+          content: "", streaming: true
+        }]);
+
+        const formulateRes = await fetch(`${base}/new-flow/formulate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ sessionId }),
+        });
+        if (!formulateRes.ok) {
+          const errText = await formulateRes.text();
+          throw new Error(`Formulation start failed: ${errText}`);
+        }
+
+        setMsgs(prev => {
+          const n = [...prev];
+          const idx = n.findIndex(m => m.id === "formulation-thinking");
+          if (idx >= 0) n[idx] = { ...n[idx], content: "🔧 Formulation agent running — analyzing requirements and sourcing components...", streaming: false };
+          return n;
+        });
+
+      } catch (e: any) {
+        setPipeActive(false);
+        addLog("error", `[wireup] ${e?.message}`);
+        toast.error(e?.message || "Formulation failed");
+      }
+  };
+
+  const sendChat = async () => {
+    const text = chatIn.trim();
+    if (!text || chatBusy) return;
+
+    const userMsg = { id: `u-${Date.now()}`, role: "user" as const, content: text, streaming: false };
+    setMsgs(p => [...p, userMsg]);
+    setChatIn(""); setChatBusy(true);
+
+    const history = [...msgs, userMsg]
+      .filter(m => !m.streaming)
+      .map(m => ({ role: m.role as "user" | "assistant", content: m.content }));
+
+    const aid = `a-${Date.now()}`;
+    let aidx = -1;
+    setMsgs(p => { aidx = p.length; return [...p, { id: aid, role: "assistant" as const, content: "", streaming: true }]; });
+
+    const base = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+    try {
+      const res = await fetch(`${base}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          messages:       history,
+          model,
+          projectContext: currentProject?.description ?? "",
+        }),
+      });
+
+      if (!res.ok || !res.body) {
+        const err = await res.text();
+        throw new Error(err || `HTTP ${res.status}`);
+      }
+
+      const reader  = res.body.getReader();
+      const decoder = new TextDecoder();
+      let   buf     = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const parts = buf.split("\n\n"); buf = parts.pop() ?? "";
+
+        for (const part of parts) {
+          let ev = "", data = "";
+          for (const line of part.split("\n")) {
+            if (line.startsWith("event: ")) ev   = line.slice(7).trim();
+            if (line.startsWith("data: "))  data = line.slice(6).trim();
+          }
+          if (!data) continue;
+          try {
+            const d = JSON.parse(data);
+            if (ev === "token") {
+               setMsgs(p => {
+                 const n = [...p];
+                 if (n[aidx]) n[aidx] = { ...n[aidx], content: d.full, streaming: true };
+                 return n;
+               });
+            }
+            if (ev === "done") {
+               setMsgs(p => {
+                 const n = [...p];
+                 if (n[aidx]) n[aidx] = { ...n[aidx], content: d.content, streaming: false };
+                 return n;
+               });
+               if (d.fallback) addLog("warn", `[chat] Used Groq fallback (${d.fallback})`);
+               addLog("info", `[chat] Response from ${model}`);
+            }
+            if (ev === "error") {
+               toast.error(d.error || "Chat failed");
+               setMsgs(p => {
+                 const n = [...p];
+                 if (n[aidx]) n[aidx] = { ...n[aidx], content: "Sorry, something went wrong. Please try again.", streaming: false };
+                 return n;
+               });
+            }
+          } catch { /* skip */ }
+        }
+      }
+    } catch (e: any) {
+      toast.error(e?.message || "Connection failed");
+      setMsgs(p => {
+        const n = [...p];
+        if (n[aidx]) n[aidx] = { ...n[aidx], content: "Connection failed. Check if the backend is running.", streaming: false };
+        return n;
+      });
+      addLog("error", `[chat] ${e?.message}`);
+    } finally {
+      setChatBusy(false);
+    }
+  };
+
+  /* editor helpers */
+  const openTab = (n: string) => { setTabs(p=>p.includes(n)?p:[...p,n]); setActiveTab(n); if(id) setActiveFile(id,n); };
+  const closeTab = (n: string) => { const r=tabs.filter(t=>t!==n); setTabs(r); if(activeTab===n) setActiveTab(r[r.length-1]??""); };
+  const saveFile = useCallback(async () => {
+    if (!id||!activeTab||!dirty) return;
+    try { await updateFile(id,activeTab,code); setDirty(false); addLog("success",`[editor] Saved ${activeTab}`); }
+    catch { addLog("error",`[editor] Failed to save ${activeTab}`); }
+  }, [id,activeTab,code,dirty]);
+  const onKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.ctrlKey||e.metaKey)&&e.key==="s") { e.preventDefault(); saveFile(); return; }
+    if (e.key==="Tab") { e.preventDefault(); const ta=editorRef.current!; const s=ta.selectionStart,end=ta.selectionEnd; setCode(code.slice(0,s)+"  "+code.slice(end)); requestAnimationFrame(()=>{ ta.selectionStart=ta.selectionEnd=s+2; }); }
+  };
+  const createFile = async () => {
+    const n=newFileName.trim(); if(!n||!id) return;
+    if(currentProject?.files?.find(f=>f.name===n)){toast.error("File exists");return;}
+    await addFile(id,{name:n,language:getLang(n),content:""}); openTab(n);
+    setNewFileOpen(false); setNewFileName(""); addLog("info",`[fs] Created ${n}`);
+  };
+
+  const activeFile = currentProject?.files?.find(f=>f.name===activeTab);
+  const initial    = authUser?.fullName?.charAt(0).toUpperCase()??"U";
+  const completedN = stages.filter(s=>s.state==="completed").length;
+  const pct        = pipelinePct || (stages.length ? Math.round(completedN/stages.length*100) : 0);
+
+  if (isLoading) return (
+    <div style={{display:"flex",height:"100vh",width:"100vw",alignItems:"center",justifyContent:"center",background:T.bg}}>
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:12}}>
+        <motion.div animate={{rotate:360}} transition={{duration:0.8,repeat:Infinity,ease:"linear"}}
+          style={{width:28,height:28,borderRadius:"50%",border:`2px solid ${T.tabBorder}`,borderTopColor:T.blueUI}}/>
+        <span style={{fontSize:12,color:T.textMid,fontFamily:"var(--font-sans)"}}>Loading workspace…</span>
+      </div>
+    </div>
+  );
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",width:"100vw",overflow:"hidden",background:T.bg,color:T.text,fontFamily:"var(--font-sans)",fontSize:13}}>
+
+      {/* ╔═ TITLE BAR ══════════════════════════════════════════════════════╗ */}
+      <div style={{display:"flex",alignItems:"center",height:32,flexShrink:0,padding:"0 0",background:T.titleBar,borderBottom:`1px solid ${T.border}`,userSelect:"none"}}>
+        <button onClick={()=>navigate("/")} style={{color:T.textDim,background:"none",border:"none",cursor:"pointer",padding:"0 10px",height:"100%",display:"flex",alignItems:"center"}}
+          title="Back to projects">
+          <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/></svg>
+        </button>
+
+        <div style={{flex:1,display:"flex",alignItems:"center",justifyContent:"center",gap:8}}>
+          <span style={{fontSize:12,fontWeight:500,color:T.textBright,letterSpacing:"0.01em"}}>
+            {currentProject?.description ?? "WireUp Workspace"}
+          </span>
+          {pipeActive && (
+            <>
+              <span style={{color:T.border,fontSize:10}}>·</span>
+              <div style={{display:"flex",alignItems:"center",gap:5}}>
+                <div style={{width:60,height:2,background:T.tabBorder,overflow:"hidden",borderRadius:1}}>
+                  <motion.div style={{height:"100%",background:T.blueUI}} animate={{width:`${pct}%`}} transition={{duration:0.3}}/>
                 </div>
+                <span style={{fontSize:10,color:T.textMid}}>{pct}%</span>
               </div>
+            </>
+          )}
+        </div>
 
-              {/* Milestone Sub-Header Meta */}
-              <div className="p-4 border-b border-[#2d2d2d] bg-[#1a1a1a] space-y-3 shrink-0">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                      Step {milestone.order} · {(milestone as any).subsystem || "Core"}
+        <div style={{display:"flex",alignItems:"stretch",height:"100%",gap:0}}>
+          {(["Code","Diagram","Simulation"] as TabMode[]).map(m => (
+            <button key={m} onClick={()=>setTabMode(m)}
+              style={{padding:"0 16px",height:"100%",fontSize:12,fontWeight:400,border:"none",
+                borderBottom:m===tabMode?`2px solid ${T.blueUI}`:"2px solid transparent",
+                cursor:"pointer",background:"transparent",color:m===tabMode?T.textBright:T.textDim,
+                whiteSpace:"nowrap",transition:"color 0.12s"}}>
+              {m}
+            </button>
+          ))}
+        </div>
+
+        <div style={{display:"flex",alignItems:"center",padding:"0 8px",gap:4}}>
+          {dirty && (
+            <button onClick={saveFile}
+              style={{display:"flex",alignItems:"center",gap:4,padding:"3px 8px",fontSize:11,
+                background:T.blueD,color:T.blueUI,border:`1px solid ${T.blueHi}`,borderRadius:3,cursor:"pointer"}}>
+              Save
+            </button>
+          )}
+          <button onClick={()=>setBotOpen(v=>!v)}
+            style={{padding:"3px 8px",fontSize:11,background:"transparent",
+              color:botOpen?T.blueUI:T.textDim,border:"none",cursor:"pointer",borderRadius:3}}>
+            Terminal
+          </button>
+          <div style={{width:24,height:24,borderRadius:"50%",background:T.blueD,border:`1px solid ${T.blueHi}`,
+            display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:T.blueUI,cursor:"default"}}>
+            {initial}
+          </div>
+        </div>
+      </div>
+
+      {/* ╔═ BODY ══════════════════════════════════════════════════════════╗ */}
+      <div style={{display:"flex",flex:1,overflow:"hidden"}}>
+
+        {/* ── LEFT: FILE EXPLORER ────────────────────────────────────────── */}
+        <aside style={{width:leftW,minWidth:160,maxWidth:340,flexShrink:0,background:T.titleBar,
+          borderRight:`1px solid ${T.border}`,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+            padding:"0 12px",height:30,borderBottom:`1px solid ${T.border}`,flexShrink:0}}>
+            <div>
+              <span style={{fontSize:11,fontWeight:700,letterSpacing:"0.08em",
+                textTransform:"uppercase",color:T.textMid,userSelect:"none"}}>
+                Project
+              </span>
+              <span style={{fontSize:11,color:T.textDim,marginLeft:6}}>Files</span>
+            </div>
+            <button onClick={()=>setNewFileOpen(true)}
+              style={{background:"none",border:"none",cursor:"pointer",color:T.textMid,
+                padding:"2px 4px",display:"flex",alignItems:"center",borderRadius:3,
+                transition:"background 0.1s"}}
+              title="New file"
+              onMouseOver={e=>(e.currentTarget.style.background="rgba(255,255,255,0.08)")}
+              onMouseOut={e=>(e.currentTarget.style.background="none")}>
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+            </button>
+          </div>
+
+          <div style={{flex:1,overflowY:"auto",paddingBottom:8}} className="ide-scroll">
+            {(() => {
+              const files = currentProject?.files ?? [];
+              const groups: Array<{key:string; label:string; icon:React.ReactNode; files:typeof files}> = [
+                {
+                  key:"src", label:"src",
+                  icon:<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke={T.amber} strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>,
+                  files: files.filter(f=>["ino","cpp","c","h","py","js","ts","rs"].includes(f.name.split(".").pop()?.toLowerCase()??"")),
+                },
+                {
+                  key:"wiring", label:"wiring",
+                  icon:<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#4fc1ff" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>,
+                  files: files.filter(f=>["json","svg","xml"].includes(f.name.split(".").pop()?.toLowerCase()??"") && (f.name.toLowerCase().includes("diagram")||f.name.toLowerCase().includes("wiring")||f.name.toLowerCase().includes("schematic"))),
+                },
+                {
+                  key:"specs", label:"specs",
+                  icon:<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#fb923c" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>,
+                  files: files.filter(f=>["csv","json","yaml","yml"].includes(f.name.split(".").pop()?.toLowerCase()??"") && !((f.name.toLowerCase().includes("diagram")||f.name.toLowerCase().includes("wiring")||f.name.toLowerCase().includes("schematic")))),
+                },
+                {
+                  key:"docs", label:"docs",
+                  icon:<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#c586c0" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>,
+                  files: files.filter(f=>["md","txt","pdf"].includes(f.name.split(".").pop()?.toLowerCase()??"")),
+                },
+              ].filter(g => g.files.length > 0);
+
+              const allGrouped = groups.flatMap(g=>g.files);
+              const other = files.filter(f=>!allGrouped.find(gf=>gf.name===f.name));
+              if (other.length) groups.push({key:"other",label:"other",
+                icon:<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke={T.textDim} strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"/></svg>,
+                files:other});
+
+              if (!files.length) return (
+                <div style={{padding:"20px 14px",textAlign:"center"}}>
+                  <p style={{fontSize:12,color:T.textDim,lineHeight:1.5}}>
+                    {pipeActive ? "Generating project files…" : "No files yet."}
+                  </p>
+                </div>
+              );
+
+              return groups.map(group => (
+                <div key={group.key} style={{marginTop:4}}>
+                  <button
+                    onClick={()=>setCollapsed(c=>({...c,[group.key]:!c[group.key]}))}
+                    style={{width:"100%",display:"flex",alignItems:"center",gap:6,
+                      padding:"4px 10px 3px 8px",background:"none",border:"none",
+                      cursor:"pointer",userSelect:"none"}}>
+                    <svg width="9" height="9" viewBox="0 0 16 16" fill={T.textDim}
+                      style={{flexShrink:0,transition:"transform 0.12s",
+                        transform:collapsed[group.key]?"rotate(-90deg)":"rotate(0deg)"}}>
+                      <path d="M4 6l4 4 4-4z"/>
+                    </svg>
+                    {group.icon}
+                    <span style={{fontSize:11,fontWeight:500,letterSpacing:"0.04em",
+                      color:T.textDim,textTransform:"lowercase"}}>
+                      {group.label}
                     </span>
-                    <h2 className="text-xs font-bold text-white mt-1.5">{milestone.title}</h2>
-                  </div>
-                </div>
+                  </button>
 
-                <div className="grid grid-cols-2 gap-3 text-[10px]">
-                  <div className="space-y-1 bg-[#1e1e1e] p-2 rounded border border-[#2d2d2d]">
-                    <div className="text-zinc-500 font-bold uppercase text-[9px]">Objective</div>
-                    <p className="text-zinc-350 leading-normal">{milestone.objective}</p>
-                  </div>
-                  <div className="space-y-1 bg-[#1e1e1e] p-2 rounded border border-[#2d2d2d]">
-                    <div className="text-zinc-500 font-bold uppercase text-[9px]">Target Components</div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {milestone.componentsInvolved?.map((comp, idx) => (
-                        <span key={idx} className="rounded bg-[#2d2d2d] px-1.5 py-0.5 text-[9px] text-zinc-300 border border-[#3c3c3c]">
-                          {comp}
-                        </span>
-                      )) || <span className="text-zinc-650 italic">None</span>}
-                    </div>
-                  </div>
-                </div>
+                  {!collapsed[group.key] && group.files.map(f => {
+                    const isActive = activeTab===f.name;
+                    const ext = f.name.split(".").pop()?.toLowerCase() ?? "";
 
-                <div className="bg-[#1e1e1e] p-2.5 rounded border border-[#2d2d2d] text-[10px]">
-                  <div className="text-zinc-500 font-bold uppercase text-[9px] mb-0.5">Wiring Schematics</div>
-                  <p className="text-zinc-350 font-mono leading-relaxed whitespace-pre-wrap">{milestone.wiringInstructions}</p>
-                </div>
-              </div>
+                    const FileIco = () => {
+                      const ico: Record<string,React.ReactNode> = {
+                        ino: <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#00979d" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>,
+                        cpp: <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#9333ea" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>,
+                        md:  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#c586c0" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>,
+                        csv: <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#4ec9b0" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18M10 4v16M14 4v16M5 4h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/></svg>,
+                        json:<svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#fb923c" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h10M7 16h10M3 4h18v16H3z"/></svg>,
+                        svg: <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#4fc1ff" strokeWidth={1.5}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-6-6L3 21"/></svg>,
+                        py:  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#3572A5" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>,
+                        ts:  <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="#007acc" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/></svg>,
+                      };
+                      return <>{ico[ext] ?? <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke={T.textDim} strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>}</>;
+                    };
 
-              {/* Active Tab Panel Body */}
-              <div className="flex-1 flex flex-col overflow-hidden relative">
-                
-                {activeTab === "code" ? (
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    <div className="flex-1 relative overflow-hidden bg-black/20">
-                      <Editor
-                        height="100%"
-                        defaultLanguage="cpp"
-                        theme="vs-dark"
-                        value={localCode}
-                        onChange={(v) => handleCodeChange(v || "")}
-                        options={{
-                          minimap: { enabled: false },
-                          fontSize: 12,
-                          lineNumbers: "on",
-                          scrollbar: { vertical: "visible" },
-                          tabSize: 2,
-                          wordWrap: "on"
+                    return (
+                      <button key={f.name}
+                        onClick={()=>openTab(f.name)}
+                        style={{
+                          width:"100%",display:"flex",alignItems:"center",gap:8,
+                          padding:"4px 10px 4px 28px",
+                          background:isActive?"rgba(0,122,204,0.18)":"transparent",
+                          border:"none",cursor:"pointer",textAlign:"left",
+                          borderLeft:isActive?`2px solid ${T.blueUI}`:"2px solid transparent",
+                          paddingLeft:isActive?"26px":"28px",
+                          transition:"background 0.1s",
                         }}
-                      />
-                    </div>
-
-                    {/* Integrated VSCode Build Console */}
-                    <div className="h-44 border-t border-[#2d2d2d] bg-[#1e1e1e] flex flex-col overflow-hidden shrink-0">
-                      <div className="flex h-8 items-center justify-between border-b border-[#2d2d2d] bg-[#2d2d2d] px-4 shrink-0 select-none">
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-                          <Terminal className="h-3 w-3 text-zinc-550" /> BUILD CONSOLE
+                        onMouseOver={e=>{ if(!isActive) e.currentTarget.style.background="rgba(255,255,255,0.05)"; }}
+                        onMouseOut={e=>{ if(!isActive) e.currentTarget.style.background="transparent"; }}>
+                        <FileIco/>
+                        <span style={{fontSize:13,flex:1,
+                          color:isActive?T.textBright:T.text,
+                          fontWeight:isActive?500:400,
+                          overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                          {f.name}
                         </span>
-                        
-                        <button
-                          onClick={handleCompile}
-                          disabled={compiling}
-                          className="flex items-center gap-1 rounded bg-[#007acc] px-2.5 py-0.5 text-[9px] font-bold text-white hover:bg-[#0062a3] transition-colors disabled:bg-[#333333] disabled:text-zinc-500"
-                        >
-                          {compiling ? (
-                            <RefreshCw className="h-3 w-3 animate-spin text-white" />
-                          ) : (
-                            <Play className="h-3 w-3 text-white" />
-                          )}
-                          Verify & Compile Code
-                        </button>
-                      </div>
-                      <div className="flex-1 p-3 font-mono text-[10px] text-[#85e89d] overflow-y-auto whitespace-pre-wrap leading-relaxed select-text bg-black">
-                        {compilationConsole || "Build pipeline ready. Trigger code verify above..."}
-                      </div>
-                    </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ));
+            })()}
+          </div>
 
+          <div style={{height:22,flexShrink:0,display:"flex",alignItems:"center",
+            padding:"0 10px",borderTop:`1px solid ${T.border}`,gap:6}}>
+            {pipeActive && (
+              <>
+                <motion.div animate={{rotate:360}} transition={{duration:0.8,repeat:Infinity,ease:"linear"}}
+                  style={{width:9,height:9,borderRadius:"50%",
+                    border:`1.5px solid ${T.tabBorder}`,borderTopColor:T.blueUI,flexShrink:0}}/>
+                <span style={{fontSize:11,color:T.textMid}}>Generating…</span>
+              </>
+            )}
+            {pipelineDone && (
+              <span style={{fontSize:11,color:T.green}}>
+                ✓ {currentProject?.files?.length ?? 0} file{(currentProject?.files?.length??0)!==1?"s":""}
+              </span>
+            )}
+          </div>
+        </aside>
+
+        <HDrag onD={d=>setLeftW(w=>Math.max(160,Math.min(340,w+d)))}/>
+
+        {/* ── CENTER: EDITOR ─────────────────────────────────────────────── */}
+        <div style={{display:"flex",flex:1,flexDirection:"column",overflow:"hidden",minWidth:0,background:T.bg}}>
+
+          <div style={{display:"flex",height:35,flexShrink:0,overflowX:"auto",background:T.titleBar,
+            borderBottom:`1px solid ${T.border}`,alignItems:"stretch"}} className="ide-scroll">
+            {tabs.map(tab => {
+              const isA = activeTab===tab;
+              return (
+                <div key={tab} onClick={()=>{setActiveTab(tab);if(id)setActiveFile(id,tab);}}
+                  style={{display:"flex",alignItems:"center",gap:7,padding:"0 12px",flexShrink:0,
+                    cursor:"pointer",minWidth:80,maxWidth:180,
+                    background:isA?T.bg:T.titleBar,
+                    borderBottom:isA?`2px solid ${T.blueUI}`:"2px solid transparent",
+                    borderRight:`1px solid ${T.border}`,
+                    color:isA?T.textBright:T.textDim,transition:"color 0.1s"}}>
+                  <span style={{width:8,height:8,borderRadius:"50%",flexShrink:0,background:ld(getLang(tab)),boxShadow:`0 0 3px ${ld(getLang(tab))}88`}}/>
+                  <span style={{fontSize:13,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>
+                    {tab}
+                  </span>
+                  {dirty&&tab===activeTab&&<span style={{width:7,height:7,borderRadius:"50%",flexShrink:0,background:T.amber,boxShadow:`0 0 4px ${T.amber}`}}/>}
+                  <button onClick={e=>{e.stopPropagation();closeTab(tab);}}
+                    style={{opacity:0,background:"none",border:"none",cursor:"pointer",padding:"1px 2px",color:T.textDim,lineHeight:1,flexShrink:0,borderRadius:3}}
+                    onMouseOver={e=>{e.currentTarget.style.opacity="1";e.currentTarget.style.background="rgba(255,255,255,0.1)";}}
+                    onMouseOut={e=>{e.currentTarget.style.opacity="0";e.currentTarget.style.background="none";}}>
+                    <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                  </button>
+                </div>
+              );
+            })}
+            <button onClick={()=>setNewFileOpen(true)}
+              style={{padding:"0 10px",background:"none",border:"none",cursor:"pointer",color:T.textDim,flexShrink:0,display:"flex",alignItems:"center"}}
+              title="New file">
+              <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"/>
+              </svg>
+            </button>
+          </div>
+
+          <div style={{position:"relative",display:"flex",flex:1,overflow:"hidden"}}>
+
+            {/* ── CODE MODE ─────────────────────────────────────────────── */}
+            {tabMode === "Code" && (
+              activeTab && activeFile ? (
+                <>
+                  <div style={{flexShrink:0,background:T.bg,minWidth:44,paddingTop:14,paddingRight:10,paddingLeft:6,
+                    textAlign:"right",borderRight:"none",fontFamily:"var(--font-mono)",
+                    fontSize:13,lineHeight:"1.6",color:T.textDim,overflowY:"hidden",userSelect:"none",letterSpacing:"0"}}>
+                    {code.split("\n").map((_,i)=><div key={i} style={{height:"1.6em"}}>{i+1}</div>)}
                   </div>
-                ) : activeTab === "simulator" ? (
-                  <div className="flex-1 flex flex-col overflow-hidden">
-                    {milestone.compiledHex ? (
-                      <WokwiSimulator
-                        hexCode={milestone.compiledHex}
-                        diagramJson={project.diagram}
-                        sketchCode={milestone.code}
-                      />
-                    ) : (
-                      <div className="flex-1 flex flex-col items-center justify-center text-center p-6 text-zinc-500 bg-[#1e1e1e]">
-                        <HardDrive className="h-8 w-8 text-zinc-700 mb-2" />
-                        <h3 className="text-xs font-bold text-zinc-400">Simulation Uncompiled</h3>
-                        <p className="text-[10px] text-zinc-600 mt-1 max-w-xs">
-                          Trigger verification compile inside the sketch.ino tab first before starting simulator.
-                        </p>
-                      </div>
-                    )}
+                  <textarea ref={editorRef} value={code}
+                    onChange={e=>{setCode(e.target.value);setDirty(true);}}
+                    onKeyDown={onKey} spellCheck={false}
+                    className="ide-scroll"
+                    style={{flex:1,resize:"none",outline:"none",background:T.bg,color:"#d4d4d4",
+                      fontFamily:"var(--font-mono)",fontSize:13,lineHeight:"1.6",tabSize:2,
+                      caretColor:T.text,padding:"14px 14px 14px 8px",border:"none",
+                      userSelect:"text",letterSpacing:"0"}}
+                  />
+                </>
+              ) : (
+                <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:16,background:T.bg}}>
+                  <svg width="48" height="48" fill="none" viewBox="0 0 24 24" stroke={T.textDim} strokeWidth={0.75}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
+                  </svg>
+                  <div style={{textAlign:"center"}}>
+                    <p style={{fontSize:13,color:T.textMid,marginBottom:4}}>No file open</p>
+                    <p style={{fontSize:12,color:T.textDim}}>Select a file from the explorer or create a new one.</p>
+                  </div>
+                  <button onClick={()=>setNewFileOpen(true)}
+                    style={{padding:"5px 14px",fontSize:12,background:T.blueD,color:T.blueUI,
+                      border:`1px solid ${T.blueHi}`,borderRadius:3,cursor:"pointer"}}>
+                    New file
+                  </button>
+                </div>
+              )
+            )}
+
+            {/* ── DIAGRAM MODE ──────────────────────────────────────────── */}
+            {tabMode === "Diagram" && (
+              pipelineDone
+                ? <CircuitDiagram
+                    projectDescription={currentProject?.description ?? ""}
+                    pipelineDone={pipelineDone}
+                  />
+                : <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:12,background:T.bg}}>
+                    <motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}
+                      style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${T.tabBorder}`,borderTopColor:T.blueUI}}/>
+                    <p style={{fontSize:12,color:T.textDim}}>Circuit diagram generating…</p>
+                  </div>
+            )}
+
+            {/* ── SIMULATION MODE ───────────────────────────────────────── */}
+            {tabMode === "Simulation" && (
+              <div style={{flex:1,overflowY:"auto",background:T.bg,padding:"28px 32px"} } className="ide-scroll">
+                {!pipelineDone ? (
+                  <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100%",gap:12}}>
+                    <motion.div animate={{rotate:360}} transition={{duration:1,repeat:Infinity,ease:"linear"}}
+                      style={{width:24,height:24,borderRadius:"50%",border:`2px solid ${T.tabBorder}`,borderTopColor:T.blueUI}}/>
+                    <p style={{fontSize:12,color:T.textDim}}>Simulation generating…</p>
                   </div>
                 ) : (
-                  
-                  /* VSCode Debug Coach Chat interface (Monochromatic) */
-                  <div className="flex-1 flex flex-col overflow-hidden bg-[#1e1e1e]">
-                    <div className="flex h-8 items-center justify-between border-b border-[#2d2d2d] bg-[#2d2d2d] px-3 shrink-0 select-none">
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1">
-                        <Sparkles className="h-3.5 w-3.5 text-amber-500" /> AI DEBUG COACH
-                      </span>
-                      <button
-                        onClick={handleRegenCode}
-                        className="rounded border border-[#3c3c3c] bg-[#333333] px-2 py-0.5 text-[9px] font-semibold text-zinc-300 hover:bg-[#444444] transition-all"
-                      >
-                        Auto-Fix firmware code
-                      </button>
+                  <>
+                    <div style={{marginBottom:24}}>
+                      <p style={{fontSize:11,fontWeight:600,letterSpacing:"0.1em",textTransform:"uppercase",color:T.textDim,marginBottom:6}}>
+                        Simulation Report
+                      </p>
+                      <p style={{fontSize:13,color:T.textMid}}>{currentProject?.description}</p>
                     </div>
 
-                    {/* Chat Messages */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3 leading-relaxed select-text font-mono">
-                      {milestone.debugMessages && milestone.debugMessages.length > 0 ? (
-                        milestone.debugMessages.map((msg, idx) => (
-                          <div
-                            key={idx}
-                            className={`p-3 rounded border max-w-[85%] text-[10px] whitespace-pre-wrap ${
-                              msg.role === "model"
-                                ? "bg-[#2d2d2d]/50 border-[#3c3c3c] text-zinc-200 self-start mr-auto"
-                                : "bg-black/30 border-[#2d2d2d] text-zinc-350 self-end ml-auto"
-                            }`}
-                          >
-                            <div className="text-[8px] text-[#007acc] font-bold mb-1">
-                              {msg.role === "model" ? "COACH" : "DEVELOPER"}
-                            </div>
-                            {msg.content}
-                          </div>
-                        ))
-                      ) : (
-                        <div className="text-center text-[10px] text-zinc-600 p-8">
-                          Describe active compiler errors, wiring snags, or logic bugs to the AI Coach below.
+                    <div style={{display:"flex",gap:10,marginBottom:20,flexWrap:"wrap"}}>
+                      {[
+                        {label:"Power",value:"5V / 180mA",ok:true},
+                        {label:"Clock",value:"16 MHz",ok:true},
+                        {label:"Flash",value:"32KB / 28KB used",ok:true},
+                        {label:"RAM",value:"2KB / 1.4KB used",ok:true},
+                      ].map(s=>(
+                        <div key={s.label} style={{
+                          padding:"8px 14px",borderRadius:6,
+                          background:s.ok?"rgba(62,207,142,0.08)":"rgba(239,68,68,0.08)",
+                          border:`1px solid ${s.ok?"rgba(62,207,142,0.25)":"rgba(239,68,68,0.25)"}`,
+                          display:"flex",flexDirection:"column",gap:2
+                        }}>
+                          <span style={{fontSize:10,color:T.textDim,textTransform:"uppercase",letterSpacing:"0.06em"}}>{s.label}</span>
+                          <span style={{fontSize:12,fontWeight:500,color:s.ok?T.greenBright:T.red,fontFamily:"var(--font-mono)"}}>{s.value}</span>
                         </div>
-                      )}
+                      ))}
                     </div>
 
-                    {/* Send Input */}
-                    <div className="p-2 border-t border-[#2d2d2d] bg-[#181818] flex gap-2 shrink-0">
-                      <input
-                        type="text"
-                        value={chatMessage}
-                        onChange={(e) => setChatMessage(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSendChatMessage();
-                        }}
-                        placeholder="Ask the coach for assistance..."
-                        className="flex-1 rounded border border-[#3c3c3c] bg-black px-2.5 py-1.5 text-[11px] text-zinc-100 placeholder-zinc-600 outline-none focus:border-[#007acc] transition-colors"
-                      />
-                      <button
-                        onClick={handleSendChatMessage}
-                        disabled={chatLoading || !chatMessage.trim()}
-                        className="rounded bg-[#007acc] px-4 py-1.5 text-[10px] text-white font-bold hover:bg-[#0062a3] transition-colors disabled:bg-[#333333] disabled:text-zinc-600"
-                      >
-                        Send
-                      </button>
+                    <div style={{borderRadius:6,overflow:"hidden",border:`1px solid ${T.border}`,marginBottom:20}}>
+                      <div style={{padding:"6px 12px",background:T.titleBar,borderBottom:`1px solid ${T.border}`,
+                        display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                        <span style={{fontSize:11,fontWeight:500,color:T.textMid}}>Serial Monitor — 9600 baud</span>
+                        <div style={{display:"flex",gap:4}}>
+                          <span style={{width:8,height:8,borderRadius:"50%",background:T.green,display:"inline-block"}}/>
+                          <span style={{fontSize:10,color:T.green}}>Connected</span>
+                        </div>
+                      </div>
+                      <div style={{padding:"10px 14px",fontFamily:"var(--font-mono)",fontSize:12,lineHeight:1.8,
+                        background:"#0a0c10",minHeight:180}}>
+                        {[
+                          {t:"00:00:01",c:T.green,   l:"[INIT] System starting..."},
+                          {t:"00:00:01",c:T.textDim, l:"[INFO] Initializing DHT22 sensor on pin D2"},
+                          {t:"00:00:02",c:T.green,   l:"[OK] DHT22 initialized"},
+                          {t:"00:00:02",c:T.textDim, l:"[INFO] Initializing OLED display (I2C 0x3C)"},
+                          {t:"00:00:02",c:T.green,   l:"[OK] OLED initialized (128x64)"},
+                          {t:"00:00:03",c:T.blueUI,  l:"[DATA] Temperature: 23.4°C  Humidity: 61.2%"},
+                          {t:"00:00:03",c:T.blueUI,  l:"[DATA] Updating display..."},
+                          {t:"00:00:05",c:T.blueUI,  l:"[DATA] Temperature: 23.5°C  Humidity: 61.1%"},
+                          {t:"00:00:07",c:T.blueUI,  l:"[DATA] Temperature: 23.5°C  Humidity: 60.9%"},
+                          {t:"00:00:09",c:T.amber,   l:"[WARN] High humidity threshold approaching"},
+                        ].map((row,i)=>(
+                          <div key={i} style={{display:"flex",gap:12}}>
+                            <span style={{color:"rgba(255,255,255,0.2)",flexShrink:0}}>{row.t}</span>
+                            <span style={{color:row.c}}>{row.l}</span>
+                          </div>
+                        ))}
+                        <div style={{display:"flex",alignItems:"center",gap:2,marginTop:4}}>
+                          <span style={{color:T.green}}>$</span>
+                          <span style={{width:7,height:13,background:T.text,marginLeft:4,display:"inline-block",animation:"blink 1s step-end infinite"}}/>
+                        </div>
+                      </div>
                     </div>
-                  </div>
+
+                    <div>
+                      <p style={{fontSize:10,letterSpacing:"0.08em",textTransform:"uppercase",color:T.textDim,marginBottom:10}}>
+                        Validation
+                      </p>
+                      <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                        {[
+                          {ok:true,  label:"Power budget within limits (180mA < 500mA)"},
+                          {ok:true,  label:"All sensor reads successful"},
+                          {ok:true,  label:"Display render cycle < 50ms"},
+                          {ok:true,  label:"No I2C address conflicts"},
+                          {ok:false, label:"Humidity threshold alert logic not implemented"},
+                        ].map((v,i)=>(
+                          <div key={i} style={{display:"flex",alignItems:"center",gap:10}}>
+                            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+                              {v.ok
+                                ? <><circle cx="8" cy="8" r="6" fill="#3ecf8e" fillOpacity=".15" stroke="#3ecf8e" strokeWidth="1.2"/><path d="M5 8l2.5 2.5L11 5.5" stroke="#3ecf8e" strokeWidth="1.5" strokeLinecap="round"/></>
+                                : <><circle cx="8" cy="8" r="6" fill="#f59e0b" fillOpacity=".12" stroke="#f59e0b" strokeWidth="1.2"/><path d="M8 5v3.5M8 10.5v.5" stroke="#f59e0b" strokeWidth="1.5" strokeLinecap="round"/></>
+                              }
+                            </svg>
+                            <span style={{fontSize:12,color:v.ok?T.textMid:T.amber}}>{v.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
+            )}
 
-            </div>
-
-            {/* Right: Verification & Output panel */}
-            <aside className="w-80 shrink-0 bg-[#252526] p-4 overflow-y-auto space-y-4 text-zinc-400 select-text">
-              <h3 className="text-[10px] font-bold uppercase tracking-wider text-zinc-500 mb-3 flex items-center gap-1.5 border-b border-[#2d2d2d] pb-2 select-none">
-                <CheckCircle2 className="h-4 w-4 text-emerald-400" /> MILESTONE VERIFICATION
-              </h3>
-
-              <div className="space-y-4 text-[10px] font-mono">
-                {/* Expected Output Card */}
-                <div className="bg-[#1e1e1e] p-3 rounded border border-[#2d2d2d] space-y-1">
-                  <div className="text-zinc-555 font-bold uppercase text-[9px] tracking-wide text-[#007acc]">Expected Output</div>
-                  <p className="text-zinc-350 leading-relaxed">{milestone.test?.expectedSerialOutput || "Check objectives."}</p>
+            {tabMode === "Code" && activeTab && activeFile && (
+              <div style={{position:"absolute",bottom:0,left:0,right:0,height:22,
+                display:"flex",alignItems:"center",justifyContent:"space-between",
+                padding:"0 12px",background:T.statusBar}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <span style={{fontSize:11,color:"#fff",fontWeight:400}}>
+                    {activeFile.language}
+                  </span>
+                  {dirty && <span style={{fontSize:11,color:"rgba(255,255,255,0.7)"}}>● Modified</span>}
                 </div>
-
-                {/* Pass Criteria Card */}
-                <div className="bg-[#1e1e1e] p-3 rounded border border-[#2d2d2d] space-y-1">
-                  <div className="text-zinc-555 font-bold uppercase text-[9px] tracking-wide text-[#007acc]">Verification Criteria</div>
-                  <p className="text-zinc-350 leading-relaxed">{milestone.test?.passCondition || "Success verification check."}</p>
-                </div>
-
-                {/* Serial Output validation input */}
-                <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide block select-none">Capture Serial Output</label>
-                  <textarea
-                    value={serialInput}
-                    onChange={(e) => setSerialInput(e.target.value)}
-                    placeholder="Paste UART terminal / serial monitor outputs here to confirm..."
-                    rows={4}
-                    className="w-full rounded border border-[#3c3c3c] bg-black p-2 text-[10px] text-zinc-200 placeholder-zinc-700 outline-none focus:border-[#007acc] transition-colors resize-none"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-[9px] font-bold text-zinc-500 uppercase tracking-wide block select-none">Verification Notes</label>
-                  <input
-                    type="text"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Optional developer comments..."
-                    className="w-full rounded border border-[#3c3c3c] bg-black px-2.5 py-1.5 text-[10px] text-zinc-200 placeholder-zinc-700 outline-none focus:border-[#007acc] transition-colors"
-                  />
-                </div>
-
-                <div className="space-y-2 pt-2 select-none">
-                  <button
-                    onClick={handleConfirm}
-                    className="w-full rounded bg-[#007acc] px-4 py-2 text-[10px] font-bold text-white hover:bg-[#0062a3] transition-all flex items-center justify-center gap-1.5"
-                  >
-                    <CheckCircle2 className="h-3.5 w-3.5 text-white" /> Confirm & Complete Step
-                  </button>
-                  
-                  <button
-                    onClick={handleSkip}
-                    className="w-full rounded border border-[#3c3c3c] bg-[#333333] px-4 py-1.5 text-[10px] font-semibold text-zinc-300 hover:bg-[#444444] transition-all"
-                  >
-                    Bypass & Unlock Step
-                  </button>
+                <div style={{display:"flex",gap:12,fontSize:11,color:"rgba(255,255,255,0.8)"}}>
+                  <span>Ln 1, Col 1</span>
+                  <span>Spaces: 2</span>
+                  <span>UTF-8</span>
+                  <span>LF</span>
                 </div>
               </div>
-            </aside>
+            )}
+          </div>
 
-          </div>
-        ) : (
-          <div className="flex-1 flex items-center justify-center text-zinc-500">
-            Select a milestone to load firmware workspace.
-          </div>
-        )}
+          <VDrag onD={d=>setBotH(h=>Math.max(60,Math.min(400,h-d)))}/>
+
+          {/* ── BOTTOM PANEL ──────────────────────────────────────────── */}
+          <AnimatePresence initial={false}>
+            {botOpen && (
+              <motion.div initial={{height:0}} animate={{height:botH}} exit={{height:0}}
+                transition={{duration:0.15,ease:"easeInOut"}}
+                style={{flexShrink:0,display:"flex",flexDirection:"column",overflow:"hidden",
+                  background:T.titleBar,borderTop:`1px solid ${T.border}`}}>
+
+                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",
+                  height:30,flexShrink:0,borderBottom:`1px solid ${T.border}`,padding:"0 4px"}}>
+                  <div style={{display:"flex"}}>
+                    {(["Output","Terminal","Logs"] as BottomTab[]).map(t=>(
+                      <button key={t} onClick={()=>setBotTab(t)}
+                        style={{padding:"0 14px",height:30,fontSize:12,fontWeight:botTab===t?500:400,
+                          border:"none",cursor:"pointer",background:"transparent",
+                          borderBottom:botTab===t?`2px solid ${T.blueUI}`:"2px solid transparent",
+                          color:botTab===t?T.text:T.textDim,transition:"color 0.1s"}}>
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:8,paddingRight:10}}>
+                    <div style={{display:"flex",gap:2}}>
+                      <button style={{background:"none",border:"none",cursor:"pointer",color:T.textDim,display:"flex",alignItems:"center",padding:"2px 4px"}}>
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" d="M5 15l7-7 7 7"/></svg>
+                      </button>
+                      <button style={{background:"none",border:"none",cursor:"pointer",color:T.textDim,display:"flex",alignItems:"center",padding:"2px 4px"}}>
+                        <svg width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" d="M19 9l-7 7-7-7"/></svg>
+                      </button>
+                    </div>
+                    <button onClick={()=>setLogs([])} style={{fontSize:11,color:T.textDim,background:"none",border:"none",cursor:"pointer"}}>Clear</button>
+                    <button onClick={()=>setBotOpen(false)} style={{background:"none",border:"none",cursor:"pointer",color:T.textDim,display:"flex",alignItems:"center"}}>
+                      <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div style={{flex:1,overflowY:"auto",padding:"6px 14px",fontFamily:"var(--font-mono)",fontSize:13,lineHeight:"1.6"}} className="ide-scroll">
+                  {botTab==="Output" && <>
+                    {msgs.filter(m=>m.role==="assistant").map((m,i)=>(
+                      <div key={i} style={{marginBottom:12}}>
+                        <div style={{fontSize:11,color:T.blueUI,marginBottom:2,letterSpacing:"0.04em",fontWeight:500}}>
+                          [{m.id.replace("msg-","").replace(/_/g," ").toUpperCase()}]
+                        </div>
+                        <div style={{color:"#9cdcfe",lineHeight:1.65,whiteSpace:"pre-wrap"}}>
+                          {m.content}
+                          {m.streaming && <span style={{display:"inline-block",width:7,height:13,background:T.text,marginLeft:2,verticalAlign:"text-bottom",animation:"blink 1s step-end infinite"}}/>}
+                        </div>
+                      </div>
+                    ))}
+                    {!msgs.filter(m=>m.role==="assistant").length && (
+                      <span style={{color:T.textDim}}>No output yet. Generation will appear here.</span>
+                    )}
+                  </>}
+                  {botTab==="Terminal" && (
+                    <div>
+                      <div style={{color:T.green,marginBottom:4}}>$ wireup-ide v1.0 — workspace started</div>
+                      <div style={{color:T.textDim,marginBottom:8}}>Connected to backend at http://localhost:5000</div>
+                      {logs.filter(l=>l.type!=="info").map((l,i)=>(
+                        <div key={i} style={{color:l.type==="success"?T.green:l.type==="error"?T.red:T.amber,lineHeight:1.65}}>
+                          {l.text}
+                        </div>
+                      ))}
+                      <div style={{display:"flex",alignItems:"center",gap:2,marginTop:4}}>
+                        <span style={{color:T.green}}>$</span>
+                        <span style={{width:7,height:13,background:T.text,marginLeft:4,display:"inline-block",animation:"blink 1s step-end infinite"}}/>
+                      </div>
+                    </div>
+                  )}
+                  {botTab==="Logs" && logs.map((l,i)=>(
+                    <div key={i} style={{display:"flex",gap:12,lineHeight:1.65,
+                      color:l.type==="success"?T.green:l.type==="error"?T.red:l.type==="warn"?T.amber:T.textDim}}>
+                      <span style={{color:T.textDim,flexShrink:0,minWidth:60}}>
+                        {new Date(l.ts).toLocaleTimeString("en-US",{hour12:false})}
+                      </span>
+                      {l.text} {l.usage && `(In: ${l.usage.promptTokens}t | Out: ${l.usage.completionTokens}t)`}
+                    </div>
+                  ))}
+                  {botTab==="Logs" && !logs.length && <span style={{color:T.textDim}}>No logs yet.</span>}
+                  <div ref={logEndRef}/>
+                </div>
+
+                <div style={{height:24,flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:"0 14px",borderTop:`1px solid ${T.border}`,background:T.bg}}>
+                  {pipelineDone
+                    ? <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        <span style={{display:"inline-block",width:8,height:8,borderRadius:"50%",background:T.green}}/>
+                        <span style={{fontSize:11,color:T.green,fontWeight:500}}>Status: Success</span>
+                      </div>
+                    : pipeActive
+                      ? <div style={{display:"flex",alignItems:"center",gap:6}}>
+                          <motion.div animate={{rotate:360}} transition={{duration:0.8,repeat:Infinity,ease:"linear"}}
+                            style={{width:8,height:8,borderRadius:"50%",border:`1.5px solid ${T.tabBorder}`,borderTopColor:T.blueUI}}/>
+                          <span style={{fontSize:11,color:T.textMid}}>Generating… {pct}%</span>
+                        </div>
+                      : <span style={{fontSize:11,color:T.textDim}}>Idle</span>
+                  }
+                  <div style={{display:"flex",gap:14,fontSize:11,color:T.textDim}}>
+                    <button onClick={()=>setLogs([])} style={{background:"none",border:"none",cursor:"pointer",color:T.textDim,fontSize:11}}>Disable Auto-scroll</button>
+                    <button style={{background:"none",border:"none",cursor:"pointer",color:T.textDim,fontSize:11}}>Copy</button>
+                    <button onClick={()=>setLogs([])} style={{background:"none",border:"none",cursor:"pointer",color:T.textDim,fontSize:11}}>Clear</button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <HDrag onD={d=>setRightW(w=>Math.max(260,Math.min(480,w-d)))}/>
+
+        {/* ── RIGHT: AI REASONING PANEL (VS Code Copilot style) ──────── */}
+        <aside style={{width:rightW,minWidth:260,maxWidth:480,flexShrink:0,
+          borderLeft:`1px solid ${T.border}`,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+          <AIReasoningPanel
+            projectTitle={currentProject?.description ?? ""}
+            steps={stages
+              .filter(s => s.key !== "summary")
+              .map((s): ReasoningStep => ({
+              id:        s.key,
+              label:     s.label,
+              status:    s.state === "completed" ? "done"
+                       : s.state === "running"   ? "running"
+                       : s.state === "failed"    ? "failed"
+                       : "pending",
+              content:   msgs.find(m => m.id === s.key)?.content ?? "",
+              streaming: msgs.find(m => m.id === s.key)?.streaming ?? false,
+              icon:      (s.key === "requirements" ? "think"
+                       : s.key === "architecture"  ? "build"
+                       : s.key === "components"    ? "search"
+                       : s.key === "circuit"       ? "tool"
+                       : s.key === "firmware"      ? "write"
+                       : s.key === "validation"    ? "check"
+                       : "think") as ReasoningStep["icon"],
+            }))}
+            messages={msgs
+              .filter(m => !stages.find(s => s.key === m.id))
+              .map((m): AIChatMessage => ({
+                id:       m.id,
+                role:     m.role as "user" | "assistant",
+                content:  m.content,
+                streaming:m.streaming,
+              }))}
+            summary={pipelineDone
+              ? (msgs.find(m => m.id === "summary")?.content?.trim() ?? "")
+              : ""}
+            chatInput={chatIn}
+            chatBusy={chatBusy}
+            pipelineDone={pipelineDone}
+            pipelineActive={pipeActive}
+            pipelinePct={pct}
+            model={model}
+            tokensBurned={tokensBurned}
+            onChatInput={setChatIn}
+            onSend={sendChat}
+            onStop={() => setChatBusy(false)}
+            onNewChat={() => {
+              started.current = false;
+              setPipelineDone(false);
+              setPipeActive(false);
+              setPipelinePct(0);
+              setStages([]);
+              setMsgs([]);
+              if (currentProject) {
+                setQuestionnaireIdea(currentProject.description ?? "");
+                setShowQuestionnaire(true);
+              }
+            }}
+            onModelChange={(m) => setModel(m as ModelKey)}
+            modelOptions={MODELS.map(m => ({ key: m.key, sub: m.sub }))}
+          />
+        </aside>
       </div>
 
-      {/* VSCode-style Status Bar (Bottom) */}
-      <footer className="h-6 shrink-0 bg-[#007acc] text-white flex items-center justify-between px-3 text-[10px] z-20 select-none">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 font-bold">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
-            <span>Step Curriculum Active</span>
-          </div>
-          <span>Board: Arduino MCU</span>
-          <span>Status: Verified</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <span>Language: Arduino C++</span>
-          <span>Spaces: 2</span>
-          <span>UTF-8</span>
-        </div>
-      </footer>
-
-      {/* REPORT CONNECTION ISSUE MODAL */}
-      {showIssueModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4">
-          <div className="w-full max-w-md rounded border border-[#3c3c3c] bg-[#1e1e1e] p-5 space-y-4">
-            <div>
-              <h3 className="text-xs font-bold text-white uppercase tracking-wider">Report Hardware Connection Problem</h3>
-              <p className="text-[10px] text-zinc-500 mt-1">Specify which component is failing and describe the symptoms.</p>
-            </div>
-
-            <div className="space-y-3 text-[10px]">
-              <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold uppercase text-[9px]">Component Key</label>
-                <input
-                  type="text"
-                  placeholder="e.g. DHT11 or LED1"
-                  value={issueComponent}
-                  onChange={(e) => setIssueComponent(e.target.value)}
-                  className="w-full rounded border border-[#3c3c3c] bg-black px-3 py-2 text-zinc-100 outline-none focus:border-[#007acc]"
-                />
+      {/* ╔═ NEW FILE MODAL ══════════════════════════════════════════════════╗ */}
+      <AnimatePresence>
+        {newFileOpen && (
+          <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",alignItems:"center",justifyContent:"center",
+            background:"rgba(0,0,0,0.6)"}}
+            onClick={e=>{if(e.target===e.currentTarget){setNewFileOpen(false);setNewFileName("");}}}>
+            <motion.div initial={{opacity:0,scale:0.97,y:4}} animate={{opacity:1,scale:1,y:0}}
+              exit={{opacity:0,scale:0.97,y:4}} transition={{duration:0.1}}
+              style={{width:"100%",maxWidth:360,borderRadius:6,padding:20,
+                background:T.titleBar,border:`1px solid ${T.borderHi}`,
+                boxShadow:"0 16px 48px rgba(0,0,0,0.7)"}}>
+              <p style={{fontSize:13,fontWeight:600,color:T.textBright,marginBottom:12}}>New file</p>
+              <input autoFocus value={newFileName}
+                onChange={e=>setNewFileName(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")createFile();if(e.key==="Escape"){setNewFileOpen(false);setNewFileName("");}}}
+                placeholder="firmware.ino"
+                style={{width:"100%",padding:"7px 10px",borderRadius:3,outline:"none",
+                  background:T.bg,border:`1px solid ${T.border}`,color:T.text,
+                  fontFamily:"var(--font-mono)",fontSize:13,boxSizing:"border-box"}}
+                onFocus={e=>(e.currentTarget.style.borderColor=T.blueUI)}
+                onBlur={e=>(e.currentTarget.style.borderColor=T.border)}
+              />
+              <div style={{display:"flex",gap:8,marginTop:12}}>
+                <button onClick={()=>{setNewFileOpen(false);setNewFileName("");}}
+                  style={{flex:1,padding:"6px 0",borderRadius:3,fontSize:12,background:"transparent",
+                    color:T.textMid,border:`1px solid ${T.border}`,cursor:"pointer"}}>
+                  Cancel
+                </button>
+                <button onClick={createFile} disabled={!newFileName.trim()}
+                  style={{flex:1,padding:"6px 0",borderRadius:3,fontSize:12,fontWeight:600,border:"none",
+                    background:newFileName.trim()?T.blueUI:"rgba(0,122,204,0.2)",
+                    color:newFileName.trim()?"#fff":T.textDim,
+                    cursor:newFileName.trim()?"pointer":"not-allowed"}}>
+                  Create
+                </button>
               </div>
-
-              <div className="space-y-1">
-                <label className="text-zinc-400 font-semibold uppercase text-[9px]">Issue Description</label>
-                <textarea
-                  placeholder="Describe the wiring issue, pin mixup, or hardware problem..."
-                  rows={4}
-                  value={issueDescription}
-                  onChange={(e) => setIssueDescription(e.target.value)}
-                  className="w-full rounded border border-[#3c3c3c] bg-black p-3 text-zinc-100 outline-none focus:border-[#007acc] resize-none"
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 text-[10px]">
-              <button
-                onClick={() => setShowIssueModal(false)}
-                className="rounded bg-[#333333] hover:bg-[#444444] px-3.5 py-1.5 font-semibold text-zinc-300 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleReportIssue}
-                disabled={reportingIssue || !issueComponent || !issueDescription.trim()}
-                className="rounded bg-[#007acc] px-4 py-1.5 font-bold text-white hover:bg-[#0062a3] transition-colors disabled:bg-[#333333] disabled:text-zinc-600"
-              >
-                Report Issue
-              </button>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        )}
+      </AnimatePresence>
+
+      {showQuestionnaire && (
+        <ProjectQuestionnaire
+          idea={questionnaireIdea}
+          model={model}
+          onStart={(answers) => {
+            setShowQuestionnaire(false);
+            setMsgs(p => {
+              const hasThink = p.find(m => m.id === "thinking-init");
+              return hasThink ? p : [...p, { id: "thinking-init", role: "assistant" as const, content: "", streaming: true }];
+            });
+            setTimeout(() => runPipeline(questionnaireIdea, answers), 600);
+          }}
+          onSkip={() => {
+            setShowQuestionnaire(false);
+            setMsgs(p => {
+              const hasThink = p.find(m => m.id === "thinking-init");
+              return hasThink ? p : [...p, { id: "thinking-init", role: "assistant" as const, content: "", streaming: true }];
+            });
+            setTimeout(() => runPipeline(questionnaireIdea), 600);
+          }}
+        />
       )}
-
     </div>
   );
 }

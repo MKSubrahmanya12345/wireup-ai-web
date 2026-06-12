@@ -8,22 +8,6 @@ export interface SidebarProps {
   isOpenMobile?: boolean;
 }
 
-/* old code
-export const Sidebar: React.FC = () => {
-  const { project, selectedFile, setSelectedFile, selectedComponent, setSelectedComponent } = useProjectStore();
-  const [activeTab, setActiveTab] = useState<'explorer' | 'components'>('explorer');
-
-  const filesList = [
-    { name: 'sketch.ino',    size: 'sketch', icon: FileCode },
-    { name: 'wiring.json',   size: 'wiring', icon: FileJson },
-    { name: 'editable.json', size: 'config', icon: FileJson },
-    { name: 'scenario.json', size: 'scene',  icon: FileJson },
-    { name: 'project.json',  size: 'full',   icon: FileJson },
-  ];
-
-  return (
-    <aside className="w-56 flex-shrink-0 border-r border-[var(--border)] bg-[var(--surface)] flex flex-col overflow-hidden">
-*/
 
 // ??$$$ newer code: Responsive layout with mobile sliding drawer support
 export const Sidebar: React.FC<SidebarProps> = ({ isOpenMobile = false }) => {

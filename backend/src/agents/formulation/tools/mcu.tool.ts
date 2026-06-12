@@ -1,24 +1,5 @@
 // ??$$$ newer code
 import { MCU_CATALOG, IMcuSpec } from "../../architect/mcu.catalog";
-// ??$$$ old code
-/*
-import mongoose from "mongoose";
-
-export async function executeSelectCompute(sessionId: string): Promise<any> {
-  // Retrieve the session from the DB
-  const NewFlowSession = mongoose.model("newflowsessions");
-  const session = await NewFlowSession.findById(sessionId);
-  if (!session) {
-    return { error: `Session not found: ${sessionId}` };
-  }
-  
-  const blueprint = session.blueprint;
-  if (!blueprint || !blueprint.computeRequirements) {
-    return { error: "No system blueprint compute requirements found in this session." };
-  }
-
-  const req = blueprint.computeRequirements;
-*/
 // ??$$$ newer code
 export async function executeSelectCompute(args: any): Promise<any> {
   const req = args?.computeRequirements;
@@ -94,8 +75,6 @@ export async function executeSelectCompute(args: any): Promise<any> {
   // Sort candidates by costRank ascending (most optimal/cheapest first)
   candidates.sort((a, b) => a.costRank - b.costRank);
 
-  // ??$$$ old code
-  // const recommended = candidates[0] || null;
   // ??$$$ newer code
   let recommended = candidates[0] || null;
   let warning = null;

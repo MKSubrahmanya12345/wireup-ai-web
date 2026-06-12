@@ -8,10 +8,6 @@ import { invalidateDownstream } from "../services/pipeline.service"; // ???
 // ??$$$ newer code
 import { getRegistry } from "../services/registry.services";
 
-// Old code:
-// const isIdeaFinalized = (project) => {
-//   return Boolean(project?.ideaState?.summary?.trim()) && (project?.ideaState?.unknowns?.length ?? 0) === 0;
-// };
 // ??$$$ newer code
 const isIdeaFinalized = (project) => {
   return project?.ideation?.finalized === true;
@@ -49,10 +45,6 @@ export const initComponents = async (req, res) => {
     // Fallback: If AI returns empty BOM, use the one pre-populated during finalization or derive from meta
     if (!ai.bom || ai.bom.length === 0) {
       if (!project.bom || project.bom.length === 0) {
-        // Old code:
-        // const sensors = Array.isArray(project.extractedContext?.sensors) ? project.extractedContext.sensors : [];
-        // const outputs = Array.isArray(project.extractedContext?.outputs) ? project.extractedContext.outputs : [];
-        // const board = project.extractedContext?.board ? [project.extractedContext.board] : [];
         // ??$$$ newer code
         const sensors = Array.isArray(project.ideation?.snapshot?.inputs) ? project.ideation.snapshot.inputs : [];
         const outputs = Array.isArray(project.ideation?.snapshot?.outputs) ? project.ideation.snapshot.outputs : [];
@@ -85,12 +77,6 @@ export const initComponents = async (req, res) => {
     };
 
     if (!project.componentsMessages) project.componentsMessages = [];
-    /* old code
-    project.componentsMessages.push({
-      role: "ai",
-      content: ai.assistantReply || "I've structured your components list based on our ideation."
-    });
-    */
     // ??$$$
     project.componentsMessages.push({
       role: "model",
@@ -163,12 +149,6 @@ export const chatComponents = async (req, res) => {
       bom: project.bom
     };
 
-    /* old code
-    project.componentsMessages.push({
-      role: "ai",
-      content: ai.assistantReply
-    });
-    */
     // ??$$$
     project.componentsMessages.push({
       role: "model",

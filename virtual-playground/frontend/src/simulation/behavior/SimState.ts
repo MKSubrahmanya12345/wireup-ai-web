@@ -1,15 +1,3 @@
-// ??$$$ old code
-/*
-export interface SimState {
-  trackName: string;
-  progress: number;
-  volume: number;
-  batteryPct: number;
-  btConnected: boolean;
-  playing: boolean;
-  mode: string;
-}
-*/
 
 // ??$$$ newer code
 export interface SimState {

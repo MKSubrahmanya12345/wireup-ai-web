@@ -2,9 +2,6 @@
 // @ts-nocheck
 // ??$$$ FORGE: build.route.js — Build stage routes (all protected)
 import express from 'express';
-/* old code
-import { generateBuild, syncBuild, getBuild, generateSketch, generateDiagram } from '../controllers/build.controller';
-*/
 import {
   generateBuild,
   syncBuild,

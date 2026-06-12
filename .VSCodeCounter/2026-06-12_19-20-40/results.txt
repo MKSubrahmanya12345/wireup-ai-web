@@ -1,0 +1,740 @@
+Date : 2026-06-12 19:20:40
+Directory : e:\wireup.ai - new
+Total : 522 files,  110642 codes, 4838 comments, 12129 blanks, all 127609 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| TypeScript         |        261 |     38,764 |      2,690 |      5,752 |     47,206 |
+| TypeScript JSX     |         94 |     28,299 |      1,785 |      2,620 |     32,704 |
+| JSON               |         34 |     24,556 |          8 |         27 |     24,591 |
+| Markdown           |         11 |      9,471 |          2 |      2,187 |     11,660 |
+| HTML               |          8 |      4,157 |         33 |        628 |      4,818 |
+| JavaScript         |         82 |      3,068 |         87 |        565 |      3,720 |
+| PostCSS            |         10 |      1,196 |        150 |        208 |      1,554 |
+| JavaScript JSX     |          3 |        636 |          0 |         51 |        687 |
+| Python             |          2 |        197 |         41 |         39 |        277 |
+| C++                |          1 |        133 |         30 |         32 |        195 |
+| JSON with Comments |          5 |         84 |          0 |          2 |         86 |
+| XML                |         10 |         56 |          0 |          5 |         61 |
+| Docker             |          1 |         25 |         12 |         13 |         50 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++----------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                           | files      | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                              |        522 |    110,642 |      4,838 |     12,129 |    127,609 |
+| . (Files)                                                                                                      |          8 |      9,947 |         17 |      1,478 |     11,442 |
+| .claude                                                                                                        |          1 |         15 |          0 |          1 |         16 |
+| INGESTION                                                                                                      |         73 |      7,292 |          0 |      1,028 |      8,320 |
+| INGESTION (Files)                                                                                              |          1 |        261 |          0 |        584 |        845 |
+| INGESTION\backend                                                                                              |         53 |      3,067 |          0 |        308 |      3,375 |
+| INGESTION\backend (Files)                                                                                      |          2 |      1,456 |          0 |          2 |      1,458 |
+| INGESTION\backend\scripts                                                                                      |          1 |         15 |          0 |          4 |         19 |
+| INGESTION\backend\src                                                                                          |         50 |      1,596 |          0 |        302 |      1,898 |
+| INGESTION\backend\src (Files)                                                                                  |          2 |         33 |          0 |         12 |         45 |
+| INGESTION\backend\src\classifiers                                                                              |          1 |         81 |          0 |          8 |         89 |
+| INGESTION\backend\src\config                                                                                   |          2 |         26 |          0 |          9 |         35 |
+| INGESTION\backend\src\controllers                                                                              |          1 |        121 |          0 |         16 |        137 |
+| INGESTION\backend\src\discovery                                                                                |          6 |        255 |          0 |         39 |        294 |
+| INGESTION\backend\src\discovery (Files)                                                                        |          1 |         21 |          0 |          4 |         25 |
+| INGESTION\backend\src\discovery\kicad                                                                          |          2 |        151 |          0 |         21 |        172 |
+| INGESTION\backend\src\discovery\providers                                                                      |          3 |         83 |          0 |         14 |         97 |
+| INGESTION\backend\src\domain                                                                                   |          1 |        106 |          0 |          3 |        109 |
+| INGESTION\backend\src\middleware                                                                               |          1 |         15 |          0 |          5 |         20 |
+| INGESTION\backend\src\models                                                                                   |          6 |        107 |          0 |         29 |        136 |
+| INGESTION\backend\src\parsers                                                                                  |          5 |        152 |          0 |         30 |        182 |
+| INGESTION\backend\src\providers                                                                                |          3 |         42 |          0 |         13 |         55 |
+| INGESTION\backend\src\registry                                                                                 |          2 |         63 |          0 |          8 |         71 |
+| INGESTION\backend\src\repositories                                                                             |          6 |         99 |          0 |         31 |        130 |
+| INGESTION\backend\src\routes                                                                                   |          1 |         32 |          0 |          3 |         35 |
+| INGESTION\backend\src\schemas                                                                                  |          1 |         66 |          0 |          9 |         75 |
+| INGESTION\backend\src\services                                                                                 |          6 |        317 |          0 |         63 |        380 |
+| INGESTION\backend\src\utils                                                                                    |          5 |         34 |          0 |         12 |         46 |
+| INGESTION\backend\src\validators                                                                               |          1 |         47 |          0 |         12 |         59 |
+| INGESTION\frontend                                                                                             |         19 |      3,964 |          0 |        136 |      4,100 |
+| INGESTION\frontend (Files)                                                                                     |          6 |      2,907 |          0 |         16 |      2,923 |
+| INGESTION\frontend\public                                                                                      |          2 |         25 |          0 |          1 |         26 |
+| INGESTION\frontend\src                                                                                         |         11 |      1,032 |          0 |        119 |      1,151 |
+| INGESTION\frontend\src (Files)                                                                                 |          4 |        160 |          0 |         23 |        183 |
+| INGESTION\frontend\src\api                                                                                     |          2 |         70 |          0 |         19 |         89 |
+| INGESTION\frontend\src\assets                                                                                  |          2 |          2 |          0 |          1 |          3 |
+| INGESTION\frontend\src\domain                                                                                  |          1 |         53 |          0 |          2 |         55 |
+| INGESTION\frontend\src\pages                                                                                   |          2 |        747 |          0 |         74 |        821 |
+| WireUp-hackathon-                                                                                              |         94 |     18,933 |        759 |      1,730 |     21,422 |
+| WireUp-hackathon- (Files)                                                                                      |          4 |      5,786 |          0 |        156 |      5,942 |
+| WireUp-hackathon-\backend                                                                                      |         35 |      5,829 |        262 |        756 |      6,847 |
+| WireUp-hackathon-\backend (Files)                                                                              |          2 |         58 |          0 |          2 |         60 |
+| WireUp-hackathon-\backend\data                                                                                 |          1 |        560 |          0 |          0 |        560 |
+| WireUp-hackathon-\backend\src                                                                                  |         32 |      5,211 |        262 |        754 |      6,227 |
+| WireUp-hackathon-\backend\src (Files)                                                                          |          1 |         71 |          7 |         16 |         94 |
+| WireUp-hackathon-\backend\src\agents                                                                           |          7 |      2,610 |         14 |        327 |      2,951 |
+| WireUp-hackathon-\backend\src\agents\discovery                                                                 |          4 |      2,318 |          7 |        264 |      2,589 |
+| WireUp-hackathon-\backend\src\agents\shared                                                                    |          3 |        292 |          7 |         63 |        362 |
+| WireUp-hackathon-\backend\src\controllers                                                                      |          8 |      1,625 |        188 |        245 |      2,058 |
+| WireUp-hackathon-\backend\src\lib                                                                              |          4 |        313 |         34 |         54 |        401 |
+| WireUp-hackathon-\backend\src\middleware                                                                       |          1 |         52 |          1 |         12 |         65 |
+| WireUp-hackathon-\backend\src\models                                                                           |          2 |         58 |          1 |          7 |         66 |
+| WireUp-hackathon-\backend\src\routes                                                                           |          7 |         94 |         12 |         32 |        138 |
+| WireUp-hackathon-\backend\src\services                                                                         |          1 |        382 |          5 |         59 |        446 |
+| WireUp-hackathon-\backend\src\types                                                                            |          1 |          6 |          0 |          2 |          8 |
+| WireUp-hackathon-\frontend                                                                                     |         54 |      7,257 |        481 |        802 |      8,540 |
+| WireUp-hackathon-\frontend (Files)                                                                             |          7 |        110 |          1 |          8 |        119 |
+| WireUp-hackathon-\frontend\src                                                                                 |         47 |      7,147 |        480 |        794 |      8,421 |
+| WireUp-hackathon-\frontend\src (Files)                                                                         |          4 |        299 |         55 |         55 |        409 |
+| WireUp-hackathon-\frontend\src\components                                                                      |         35 |      4,322 |        259 |        486 |      5,067 |
+| WireUp-hackathon-\frontend\src\components\AIReasoningPanel                                                     |          1 |        669 |         67 |         52 |        788 |
+| WireUp-hackathon-\frontend\src\components\CircuitDiagram                                                       |          1 |        543 |         62 |         58 |        663 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal                                                       |         32 |      2,866 |        113 |        356 |      3,335 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal (Files)                                               |          1 |        646 |         37 |         87 |        770 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\components                                            |          4 |        237 |          9 |         23 |        269 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks                                                 |          4 |        423 |          3 |        126 |        552 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels                                                |          7 |        702 |          9 |         38 |        749 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\phases                                                |          2 |        636 |         44 |         29 |        709 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors                                             |          4 |        222 |          4 |         50 |        276 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\services                                              |          3 |          0 |          0 |          3 |          3 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\types                                                 |          4 |          0 |          4 |          0 |          4 |
+| WireUp-hackathon-\frontend\src\components\DiscoveryModal\utils                                                 |          3 |          0 |          3 |          0 |          3 |
+| WireUp-hackathon-\frontend\src\components\ProjectQuestionnaire                                                 |          1 |        244 |         17 |         20 |        281 |
+| WireUp-hackathon-\frontend\src\hooks                                                                           |          1 |         85 |          6 |         14 |        105 |
+| WireUp-hackathon-\frontend\src\lib                                                                             |          1 |          5 |          0 |          2 |          7 |
+| WireUp-hackathon-\frontend\src\pages                                                                           |          3 |      2,221 |        155 |        196 |      2,572 |
+| WireUp-hackathon-\frontend\src\store                                                                           |          3 |        215 |          5 |         41 |        261 |
+| WireUp-hackathon-\whisper-server                                                                               |          1 |         61 |         16 |         16 |         93 |
+| backend                                                                                                        |        170 |     31,715 |      2,103 |      3,861 |     37,679 |
+| backend (Files)                                                                                                |          9 |      3,063 |         18 |         41 |      3,122 |
+| backend\data                                                                                                   |          2 |        560 |          0 |          1 |        561 |
+| backend\scratch                                                                                                |          8 |        423 |          8 |         62 |        493 |
+| backend\shared                                                                                                 |          1 |        100 |         12 |         19 |        131 |
+| backend\shared\types                                                                                           |          1 |        100 |         12 |         19 |        131 |
+| backend\src                                                                                                    |        149 |     27,567 |      2,065 |      3,738 |     33,370 |
+| backend\src (Files)                                                                                            |          1 |        266 |         86 |         58 |        410 |
+| backend\src\agents                                                                                             |         30 |      6,517 |        144 |        776 |      7,437 |
+| backend\src\agents\architect                                                                                   |          4 |        175 |          9 |         12 |        196 |
+| backend\src\agents\discovery                                                                                   |          4 |      2,318 |          7 |        264 |      2,589 |
+| backend\src\agents\formulation                                                                                 |         14 |      3,344 |        108 |        392 |      3,844 |
+| backend\src\agents\formulation (Files)                                                                         |          5 |      1,700 |         63 |        190 |      1,953 |
+| backend\src\agents\formulation\scratch                                                                         |          1 |         91 |         11 |         21 |        123 |
+| backend\src\agents\formulation\tools                                                                           |          8 |      1,553 |         34 |        181 |      1,768 |
+| backend\src\agents\shared                                                                                      |          8 |        680 |         20 |        108 |        808 |
+| backend\src\agents\shared (Files)                                                                              |          3 |        296 |          8 |         64 |        368 |
+| backend\src\agents\shared\adapters                                                                             |          5 |        384 |         12 |         44 |        440 |
+| backend\src\archive                                                                                            |          7 |      5,144 |        463 |        600 |      6,207 |
+| backend\src\archive (Files)                                                                                    |          4 |        604 |          1 |         48 |        653 |
+| backend\src\archive\legacy                                                                                     |          3 |      4,540 |        462 |        552 |      5,554 |
+| backend\src\contracts                                                                                          |          4 |         57 |          4 |          8 |         69 |
+| backend\src\controllers                                                                                        |         13 |      3,988 |        337 |        668 |      4,993 |
+| backend\src\lib                                                                                                |         11 |      1,259 |        108 |        159 |      1,526 |
+| backend\src\middleware                                                                                         |          1 |         52 |          1 |         12 |         65 |
+| backend\src\models                                                                                             |          5 |      1,393 |        118 |        210 |      1,721 |
+| backend\src\routes                                                                                             |         17 |        515 |         67 |        132 |        714 |
+| backend\src\scripts                                                                                            |         18 |      1,559 |         71 |        160 |      1,790 |
+| backend\src\services                                                                                           |         29 |      5,810 |        536 |        793 |      7,139 |
+| backend\src\shared                                                                                             |          1 |        128 |         14 |         24 |        166 |
+| backend\src\shared\types                                                                                       |          1 |        128 |         14 |         24 |        166 |
+| backend\src\simulation                                                                                         |          7 |        658 |         48 |         85 |        791 |
+| backend\src\simulation (Files)                                                                                 |          1 |        286 |         21 |         35 |        342 |
+| backend\src\simulation\analyzer                                                                                |          1 |         43 |          4 |          6 |         53 |
+| backend\src\simulation\archetype                                                                               |          1 |         69 |          1 |          6 |         76 |
+| backend\src\simulation\mcu                                                                                     |          1 |         73 |          3 |          5 |         81 |
+| backend\src\simulation\peripherals                                                                             |          1 |         58 |         10 |         12 |         80 |
+| backend\src\simulation\pins                                                                                    |          1 |         52 |          5 |         15 |         72 |
+| backend\src\simulation\validation                                                                              |          1 |         77 |          4 |          6 |         87 |
+| backend\src\utils                                                                                              |          5 |        221 |         68 |         53 |        342 |
+| backend\storage                                                                                                |          1 |          2 |          0 |          0 |          2 |
+| backend\storage\models                                                                                         |          1 |          2 |          0 |          0 |          2 |
+| drone_1                                                                                                        |          3 |      2,158 |         71 |        345 |      2,574 |
+| drone_website_controller_1                                                                                     |          1 |      1,071 |         17 |        159 |      1,247 |
+| frontend                                                                                                       |        102 |     26,267 |      1,371 |      2,311 |     29,949 |
+| frontend (Files)                                                                                               |          9 |      4,800 |          7 |         31 |      4,838 |
+| frontend\src                                                                                                   |         93 |     21,467 |      1,364 |      2,280 |     25,111 |
+| frontend\src (Files)                                                                                           |          3 |        295 |         43 |         52 |        390 |
+| frontend\src\assets                                                                                            |          2 |          2 |          0 |          1 |          3 |
+| frontend\src\components                                                                                        |         64 |     12,204 |        644 |      1,322 |     14,170 |
+| frontend\src\components (Files)                                                                                |         10 |      4,824 |        237 |        515 |      5,576 |
+| frontend\src\components\AIReasoningPanel                                                                       |          1 |        712 |         55 |         51 |        818 |
+| frontend\src\components\CircuitDiagram                                                                         |          1 |        538 |         54 |         56 |        648 |
+| frontend\src\components\DiscoveryModal                                                                         |         33 |      3,780 |        176 |        440 |      4,396 |
+| frontend\src\components\DiscoveryModal (Files)                                                                 |          1 |        666 |         44 |         83 |        793 |
+| frontend\src\components\DiscoveryModal\components                                                              |          4 |        247 |         11 |         22 |        280 |
+| frontend\src\components\DiscoveryModal\hooks                                                                   |          4 |        477 |         17 |        132 |        626 |
+| frontend\src\components\DiscoveryModal\panels                                                                  |          8 |        995 |         19 |         58 |      1,072 |
+| frontend\src\components\DiscoveryModal\phases                                                                  |          2 |      1,173 |         74 |         92 |      1,339 |
+| frontend\src\components\DiscoveryModal\selectors                                                               |          4 |        222 |          4 |         50 |        276 |
+| frontend\src\components\DiscoveryModal\services                                                                |          3 |          0 |          0 |          3 |          3 |
+| frontend\src\components\DiscoveryModal\types                                                                   |          4 |          0 |          4 |          0 |          4 |
+| frontend\src\components\DiscoveryModal\utils                                                                   |          3 |          0 |          3 |          0 |          3 |
+| frontend\src\components\ProjectQuestionnaire                                                                   |          1 |        244 |         12 |         19 |        275 |
+| frontend\src\components\shared                                                                                 |          3 |        452 |         17 |         50 |        519 |
+| frontend\src\components\sim                                                                                    |         14 |      1,391 |         91 |        169 |      1,651 |
+| frontend\src\components\ui                                                                                     |          1 |        263 |          2 |         22 |        287 |
+| frontend\src\hooks                                                                                             |          4 |        746 |         29 |        141 |        916 |
+| frontend\src\lib                                                                                               |          2 |         34 |          5 |          6 |         45 |
+| frontend\src\pages                                                                                             |         10 |      6,585 |        491 |        493 |      7,569 |
+| frontend\src\store                                                                                             |          4 |        885 |         82 |        125 |      1,092 |
+| frontend\src\styles                                                                                            |          3 |        469 |         25 |         78 |        572 |
+| frontend\src\utils                                                                                             |          1 |        247 |         45 |         62 |        354 |
+| public                                                                                                         |          1 |        240 |          0 |         97 |        337 |
+| scratch                                                                                                        |          4 |         78 |          2 |         20 |        100 |
+| scripts                                                                                                        |          2 |        117 |          5 |         27 |        149 |
+| shared                                                                                                         |          1 |        100 |         12 |         19 |        131 |
+| shared\types                                                                                                   |          1 |        100 |         12 |         19 |        131 |
+| virtual-playground                                                                                             |         58 |     12,419 |        453 |      1,016 |     13,888 |
+| virtual-playground (Files)                                                                                     |          1 |         10 |          0 |          0 |         10 |
+| virtual-playground\backend                                                                                     |          3 |      1,470 |          6 |         41 |      1,517 |
+| virtual-playground\frontend                                                                                    |         52 |     10,769 |        432 |        937 |     12,138 |
+| virtual-playground\frontend (Files)                                                                            |         11 |      4,191 |         13 |         27 |      4,231 |
+| virtual-playground\frontend\public                                                                             |          2 |         25 |          0 |          1 |         26 |
+| virtual-playground\frontend\src                                                                                |         39 |      6,553 |        419 |        909 |      7,881 |
+| virtual-playground\frontend\src (Files)                                                                        |          4 |        562 |         76 |         78 |        716 |
+| virtual-playground\frontend\src\assets                                                                         |          2 |          2 |          0 |          1 |          3 |
+| virtual-playground\frontend\src\components                                                                     |         15 |      3,834 |        244 |        423 |      4,501 |
+| virtual-playground\frontend\src\components\behavior                                                            |          1 |      1,474 |         84 |        128 |      1,686 |
+| virtual-playground\frontend\src\components\editor                                                              |          1 |         98 |          6 |          9 |        113 |
+| virtual-playground\frontend\src\components\layout                                                              |          4 |        697 |         48 |         67 |        812 |
+| virtual-playground\frontend\src\components\three                                                               |          9 |      1,565 |        106 |        219 |      1,890 |
+| virtual-playground\frontend\src\data                                                                           |          1 |         24 |          0 |          2 |         26 |
+| virtual-playground\frontend\src\simulation                                                                     |         15 |      1,657 |         67 |        324 |      2,048 |
+| virtual-playground\frontend\src\simulation (Files)                                                             |          3 |        669 |          8 |        143 |        820 |
+| virtual-playground\frontend\src\simulation\behavior                                                            |         10 |        871 |         59 |        148 |      1,078 |
+| virtual-playground\frontend\src\simulation\behavior (Files)                                                    |          5 |        463 |         35 |         70 |        568 |
+| virtual-playground\frontend\src\simulation\behavior\peripherals                                                |          5 |        408 |         24 |         78 |        510 |
+| virtual-playground\frontend\src\simulation\peripherals                                                         |          2 |        117 |          0 |         33 |        150 |
+| virtual-playground\frontend\src\store                                                                          |          1 |        421 |         30 |         76 |        527 |
+| virtual-playground\frontend\src\types                                                                          |          1 |         53 |          2 |          5 |         60 |
+| virtual-playground\scripts                                                                                     |          1 |         42 |          1 |         14 |         57 |
+| virtual-playground\shared                                                                                      |          1 |        128 |         14 |         24 |        166 |
+| virtual-playground\shared\types                                                                                |          1 |        128 |         14 |         24 |        166 |
+| workflow                                                                                                       |          4 |        290 |         28 |         37 |        355 |
++----------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++----------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                                                       | language           | code       | comment    | blank      | total      |
++----------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| e:\wireup.ai - new\.claude\settings.local.json                                                                 | JSON               |         15 |          0 |          1 |         16 |
+| e:\wireup.ai - new\INGESTION\backend\package-lock.json                                                         | JSON               |      1,432 |          0 |          1 |      1,433 |
+| e:\wireup.ai - new\INGESTION\backend\package.json                                                              | JSON               |         24 |          0 |          1 |         25 |
+| e:\wireup.ai - new\INGESTION\backend\scripts\scanAndExport.js                                                  | JavaScript         |         15 |          0 |          4 |         19 |
+| e:\wireup.ai - new\INGESTION\backend\src\app.js                                                                | JavaScript         |         19 |          0 |          8 |         27 |
+| e:\wireup.ai - new\INGESTION\backend\src\classifiers\familyClassifier.js                                       | JavaScript         |         81 |          0 |          8 |         89 |
+| e:\wireup.ai - new\INGESTION\backend\src\config\db.js                                                          | JavaScript         |          6 |          0 |          3 |          9 |
+| e:\wireup.ai - new\INGESTION\backend\src\config\env.js                                                         | JavaScript         |         20 |          0 |          6 |         26 |
+| e:\wireup.ai - new\INGESTION\backend\src\controllers\ingestion.controller.js                                   | JavaScript         |        121 |          0 |         16 |        137 |
+| e:\wireup.ai - new\INGESTION\backend\src\discovery\kicad\kicadSymbolExtractor.js                               | JavaScript         |         62 |          0 |         11 |         73 |
+| e:\wireup.ai - new\INGESTION\backend\src\discovery\kicad\sexpr.js                                              | JavaScript         |         89 |          0 |         10 |         99 |
+| e:\wireup.ai - new\INGESTION\backend\src\discovery\providerRegistry.js                                         | JavaScript         |         21 |          0 |          4 |         25 |
+| e:\wireup.ai - new\INGESTION\backend\src\discovery\providers\base.js                                           | JavaScript         |          8 |          0 |          2 |         10 |
+| e:\wireup.ai - new\INGESTION\backend\src\discovery\providers\emptyProviders.js                                 | JavaScript         |         33 |          0 |          6 |         39 |
+| e:\wireup.ai - new\INGESTION\backend\src\discovery\providers\kicadProvider.js                                  | JavaScript         |         42 |          0 |          6 |         48 |
+| e:\wireup.ai - new\INGESTION\backend\src\domain\families.js                                                    | JavaScript         |        106 |          0 |          3 |        109 |
+| e:\wireup.ai - new\INGESTION\backend\src\index.js                                                              | JavaScript         |         14 |          0 |          4 |         18 |
+| e:\wireup.ai - new\INGESTION\backend\src\middleware\errorHandler.js                                            | JavaScript         |         15 |          0 |          5 |         20 |
+| e:\wireup.ai - new\INGESTION\backend\src\models\component.model.js                                             | JavaScript         |         32 |          0 |          6 |         38 |
+| e:\wireup.ai - new\INGESTION\backend\src\models\componentVersion.model.js                                      | JavaScript         |         15 |          0 |          5 |         20 |
+| e:\wireup.ai - new\INGESTION\backend\src\models\ingestionJob.model.js                                          | JavaScript         |         14 |          0 |          4 |         18 |
+| e:\wireup.ai - new\INGESTION\backend\src\models\ingestionSetting.model.js                                      | JavaScript         |         11 |          0 |          4 |         15 |
+| e:\wireup.ai - new\INGESTION\backend\src\models\registryCandidate.model.js                                     | JavaScript         |         20 |          0 |          5 |         25 |
+| e:\wireup.ai - new\INGESTION\backend\src\models\registrySnapshot.model.js                                      | JavaScript         |         15 |          0 |          5 |         20 |
+| e:\wireup.ai - new\INGESTION\backend\src\parsers\datasheetFetcher.js                                           | JavaScript         |          9 |          0 |          5 |         14 |
+| e:\wireup.ai - new\INGESTION\backend\src\parsers\datasheetProcessor.js                                         | JavaScript         |         38 |          0 |          7 |         45 |
+| e:\wireup.ai - new\INGESTION\backend\src\parsers\htmlParser.js                                                 | JavaScript         |         31 |          0 |          7 |         38 |
+| e:\wireup.ai - new\INGESTION\backend\src\parsers\pdfParser.js                                                  | JavaScript         |         12 |          0 |          3 |         15 |
+| e:\wireup.ai - new\INGESTION\backend\src\parsers\pinExtractor.js                                               | JavaScript         |         62 |          0 |          8 |         70 |
+| e:\wireup.ai - new\INGESTION\backend\src\providers\manualProvider.js                                           | JavaScript         |         27 |          0 |          7 |         34 |
+| e:\wireup.ai - new\INGESTION\backend\src\providers\providerRegistry.js                                         | JavaScript         |          7 |          0 |          4 |         11 |
+| e:\wireup.ai - new\INGESTION\backend\src\providers\types.js                                                    | JavaScript         |          8 |          0 |          2 |         10 |
+| e:\wireup.ai - new\INGESTION\backend\src\registry\defaults.js                                                  | JavaScript         |         29 |          0 |          3 |         32 |
+| e:\wireup.ai - new\INGESTION\backend\src\registry\registryBuilder.js                                           | JavaScript         |         34 |          0 |          5 |         39 |
+| e:\wireup.ai - new\INGESTION\backend\src\repositories\component.repository.js                                  | JavaScript         |         20 |          0 |          6 |         26 |
+| e:\wireup.ai - new\INGESTION\backend\src\repositories\componentVersion.repository.js                           | JavaScript         |         20 |          0 |          4 |         24 |
+| e:\wireup.ai - new\INGESTION\backend\src\repositories\ingestionJob.repository.js                               | JavaScript         |         13 |          0 |          6 |         19 |
+| e:\wireup.ai - new\INGESTION\backend\src\repositories\ingestionSetting.repository.js                           | JavaScript         |         11 |          0 |          4 |         15 |
+| e:\wireup.ai - new\INGESTION\backend\src\repositories\registryCandidate.repository.js                          | JavaScript         |         28 |          0 |          7 |         35 |
+| e:\wireup.ai - new\INGESTION\backend\src\repositories\registrySnapshot.repository.js                           | JavaScript         |          7 |          0 |          4 |         11 |
+| e:\wireup.ai - new\INGESTION\backend\src\routes\ingestion.routes.js                                            | JavaScript         |         32 |          0 |          3 |         35 |
+| e:\wireup.ai - new\INGESTION\backend\src\schemas\componentSchemas.js                                           | JavaScript         |         66 |          0 |          9 |         75 |
+| e:\wireup.ai - new\INGESTION\backend\src\services\candidateService.js                                          | JavaScript         |         23 |          0 |          7 |         30 |
+| e:\wireup.ai - new\INGESTION\backend\src\services\discoveryScanService.js                                      | JavaScript         |         88 |          0 |         13 |        101 |
+| e:\wireup.ai - new\INGESTION\backend\src\services\ingestionService.js                                          | JavaScript         |        142 |          0 |         22 |        164 |
+| e:\wireup.ai - new\INGESTION\backend\src\services\registryExportService.js                                     | JavaScript         |         13 |          0 |          5 |         18 |
+| e:\wireup.ai - new\INGESTION\backend\src\services\registrySnapshotService.js                                   | JavaScript         |         41 |          0 |         11 |         52 |
+| e:\wireup.ai - new\INGESTION\backend\src\services\settingsService.js                                           | JavaScript         |         10 |          0 |          5 |         15 |
+| e:\wireup.ai - new\INGESTION\backend\src\utils\asyncHandler.js                                                 | JavaScript         |          5 |          0 |          2 |          7 |
+| e:\wireup.ai - new\INGESTION\backend\src\utils\hash.js                                                         | JavaScript         |          4 |          0 |          3 |          7 |
+| e:\wireup.ai - new\INGESTION\backend\src\utils\httpError.js                                                    | JavaScript         |          7 |          0 |          2 |          9 |
+| e:\wireup.ai - new\INGESTION\backend\src\utils\slugify.js                                                      | JavaScript         |          7 |          0 |          2 |          9 |
+| e:\wireup.ai - new\INGESTION\backend\src\utils\stableStringify.js                                              | JavaScript         |         11 |          0 |          3 |         14 |
+| e:\wireup.ai - new\INGESTION\backend\src\validators\registryValidator.js                                       | JavaScript         |         47 |          0 |         12 |         59 |
+| e:\wireup.ai - new\INGESTION\frontend\README.md                                                                | Markdown           |          9 |          0 |          8 |         17 |
+| e:\wireup.ai - new\INGESTION\frontend\eslint.config.js                                                         | JavaScript         |         20 |          0 |          2 |         22 |
+| e:\wireup.ai - new\INGESTION\frontend\index.html                                                               | HTML               |         13 |          0 |          1 |         14 |
+| e:\wireup.ai - new\INGESTION\frontend\package-lock.json                                                        | JSON               |      2,819 |          0 |          1 |      2,820 |
+| e:\wireup.ai - new\INGESTION\frontend\package.json                                                             | JSON               |         29 |          0 |          1 |         30 |
+| e:\wireup.ai - new\INGESTION\frontend\public\favicon.svg                                                       | XML                |          1 |          0 |          0 |          1 |
+| e:\wireup.ai - new\INGESTION\frontend\public\icons.svg                                                         | XML                |         24 |          0 |          1 |         25 |
+| e:\wireup.ai - new\INGESTION\frontend\src\App.css                                                              | PostCSS            |         30 |          0 |          6 |         36 |
+| e:\wireup.ai - new\INGESTION\frontend\src\App.jsx                                                              | JavaScript JSX     |         25 |          0 |          3 |         28 |
+| e:\wireup.ai - new\INGESTION\frontend\src\api\http.js                                                          | JavaScript         |         13 |          0 |          4 |         17 |
+| e:\wireup.ai - new\INGESTION\frontend\src\api\ingestionApi.js                                                  | JavaScript         |         57 |          0 |         15 |         72 |
+| e:\wireup.ai - new\INGESTION\frontend\src\assets\react.svg                                                     | XML                |          1 |          0 |          0 |          1 |
+| e:\wireup.ai - new\INGESTION\frontend\src\assets\vite.svg                                                      | XML                |          1 |          0 |          1 |          2 |
+| e:\wireup.ai - new\INGESTION\frontend\src\domain\families.js                                                   | JavaScript         |         53 |          0 |          2 |         55 |
+| e:\wireup.ai - new\INGESTION\frontend\src\index.css                                                            | PostCSS            |         96 |          0 |         12 |        108 |
+| e:\wireup.ai - new\INGESTION\frontend\src\main.jsx                                                             | JavaScript JSX     |          9 |          0 |          2 |         11 |
+| e:\wireup.ai - new\INGESTION\frontend\src\pages\AdminIngestionPage.css                                         | PostCSS            |        145 |          0 |         28 |        173 |
+| e:\wireup.ai - new\INGESTION\frontend\src\pages\AdminIngestionPage.jsx                                         | JavaScript JSX     |        602 |          0 |         46 |        648 |
+| e:\wireup.ai - new\INGESTION\frontend\vite.config.js                                                           | JavaScript         |         17 |          0 |          3 |         20 |
+| e:\wireup.ai - new\INGESTION\makeme.md                                                                         | Markdown           |        261 |          0 |        584 |        845 |
+| e:\wireup.ai - new\WireUp-hackathon-\DESIGN-claude (1).md                                                      | Markdown           |        505 |          0 |         85 |        590 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\data\componentRegistry.json                                       | JSON               |        560 |          0 |          0 |        560 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\package.json                                                      | JSON               |         35 |          0 |          1 |         36 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\discovery.agent.ts                           | TypeScript         |        406 |          3 |         66 |        475 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\discovery.prompts.ts                         | TypeScript         |        574 |          1 |         16 |        591 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\discovery.utils.ts                           | TypeScript         |      1,329 |          2 |        181 |      1,512 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\discovery\index.ts                                     | TypeScript         |          9 |          1 |          1 |         11 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\shared\adapters.ts                                     | TypeScript         |          2 |          1 |          1 |          4 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\shared\jsonRepair.ts                                   | TypeScript         |        210 |          3 |         42 |        255 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\agents\shared\keyRotation.service.ts                          | TypeScript         |         80 |          3 |         20 |        103 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\auth.controller.ts                                | TypeScript         |        153 |          1 |         39 |        193 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\chat.controller.ts                                | TypeScript         |         74 |          6 |         14 |         94 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\generate.controller.ts                            | TypeScript         |        329 |         14 |         27 |        370 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\googleAuth.controller.ts                          | TypeScript         |         64 |         11 |         14 |         89 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\newflow.controller.ts                             | TypeScript         |        663 |        135 |         97 |        895 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\project.controller.ts                             | TypeScript         |         80 |          5 |         17 |        102 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\questions.controller.ts                           | TypeScript         |        155 |         13 |         16 |        184 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\controllers\voice.controller.ts                               | TypeScript         |        107 |          3 |         21 |        131 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\index.ts                                                      | TypeScript         |         71 |          7 |         16 |         94 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\db.ts                                                     | TypeScript         |         14 |          0 |          2 |         16 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\llm.ts                                                    | TypeScript         |        180 |         22 |         26 |        228 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\utils.ts                                                  | TypeScript         |         15 |          0 |          5 |         20 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\lib\whisper.manager.ts                                        | TypeScript         |        104 |         12 |         21 |        137 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\middleware\auth.middleware.ts                                 | TypeScript         |         52 |          1 |         12 |         65 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\models\project.model.ts                                       | TypeScript         |         30 |          0 |          4 |         34 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\models\user.model.ts                                          | TypeScript         |         28 |          1 |          3 |         32 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\auth.route.ts                                          | TypeScript         |         22 |          2 |          8 |         32 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\chat.route.ts                                          | TypeScript         |          7 |          2 |          5 |         14 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\generate.route.ts                                      | TypeScript         |          6 |          1 |          4 |         11 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\newflow.route.ts                                       | TypeScript         |         28 |          5 |          4 |         37 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\project.route.ts                                       | TypeScript         |         16 |          0 |          4 |         20 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\questions.route.ts                                     | TypeScript         |          6 |          0 |          3 |          9 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\routes\voice.route.ts                                         | TypeScript         |          9 |          2 |          4 |         15 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\services\voice.service.ts                                     | TypeScript         |        382 |          5 |         59 |        446 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\src\types\passport.d.ts                                           | TypeScript         |          6 |          0 |          2 |          8 |
+| e:\wireup.ai - new\WireUp-hackathon-\backend\tsconfig.json                                                     | JSON with Comments |         23 |          0 |          1 |         24 |
+| e:\wireup.ai - new\WireUp-hackathon-\design.md                                                                 | Markdown           |        315 |          0 |         69 |        384 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\index.html                                                       | HTML               |         19 |          0 |          1 |         20 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\package.json                                                     | JSON               |         33 |          0 |          1 |         34 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\postcss.config.js                                                | JavaScript         |          6 |          0 |          1 |          7 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\App.tsx                                                      | TypeScript JSX     |         64 |          7 |         13 |         84 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\AIReasoningPanel\AIReasoningPanel.tsx             | TypeScript JSX     |        669 |         67 |         52 |        788 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\CircuitDiagram\CircuitDiagram.tsx                 | TypeScript JSX     |        543 |         62 |         58 |        663 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\DiscoveryModal.tsx                 | TypeScript JSX     |        646 |         37 |         87 |        770 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\ConflictResolution.tsx  | TypeScript JSX     |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\MilestoneCard.tsx       | TypeScript JSX     |         77 |          0 |          6 |         83 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\ModelSelector.tsx       | TypeScript JSX     |        160 |          9 |         15 |        184 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\components\RateLimitTimer.tsx      | TypeScript JSX     |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useAutoScroll.ts             | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useDiscoverySession.ts       | TypeScript         |        100 |          1 |         23 |        124 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useFormulationSocket.ts      | TypeScript         |        174 |          1 |         63 |        238 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\hooks\useSessionRestore.ts         | TypeScript         |        149 |          1 |         39 |        189 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\AgentConsole.tsx            | TypeScript JSX     |        269 |          4 |         14 |        287 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\BomPanel.tsx                | TypeScript JSX     |         93 |          2 |          4 |         99 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\HardwareAssembly.tsx        | TypeScript JSX     |         73 |          3 |          5 |         81 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\InspectorPanel.tsx          | TypeScript JSX     |        123 |          0 |          6 |        129 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\MilestonesPanel.tsx         | TypeScript JSX     |         25 |          0 |          3 |         28 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\ProgressTracker.tsx         | TypeScript JSX     |        119 |          0 |          5 |        124 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\panels\WiringPanel.tsx             | TypeScript JSX     |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\phases\DiscoveryPhase.tsx          | TypeScript JSX     |        193 |         26 |         14 |        233 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\phases\FormulationPhase.tsx        | TypeScript JSX     |        443 |         18 |         15 |        476 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\conflict.selectors.ts    | TypeScript         |         44 |          1 |          9 |         54 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\decision.selectors.ts    | TypeScript         |         63 |          1 |         16 |         80 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\progress.selectors.ts    | TypeScript         |         60 |          1 |         15 |         76 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\selectors\stage.selectors.ts       | TypeScript         |         55 |          1 |         10 |         66 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\services\discoveryApi.ts           | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\services\formulationApi.ts         | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\services\simulatorApi.ts           | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\bom.types.ts                 | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\log.types.ts                 | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\milestone.types.ts           | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\types\session.types.ts             | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\utils\exportData.ts                | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\utils\sessionHydration.ts          | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\DiscoveryModal\utils\socketEvents.ts              | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\components\ProjectQuestionnaire\ProjectQuestionnaire.tsx     | TypeScript JSX     |        244 |         17 |         20 |        281 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\hooks\useMicRecorder.ts                                      | TypeScript         |         85 |          6 |         14 |        105 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\index.css                                                    | PostCSS            |        182 |         46 |         35 |        263 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\lib\axios.ts                                                 | TypeScript         |          5 |          0 |          2 |          7 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\main.tsx                                                     | TypeScript JSX     |         47 |          1 |          4 |         52 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\pages\AuthPage.tsx                                           | TypeScript JSX     |        174 |          6 |         21 |        201 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\pages\BuildNewPage.tsx                                       | TypeScript JSX     |      1,067 |         82 |         83 |      1,232 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\pages\HomePage.tsx                                           | TypeScript JSX     |        980 |         67 |         92 |      1,139 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\store\useAuthStore.ts                                        | TypeScript         |        118 |          1 |         21 |        140 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\store\useProjectStore.ts                                     | TypeScript         |         81 |          4 |         16 |        101 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\store\useThemeStore.ts                                       | TypeScript         |         16 |          0 |          4 |         20 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\src\vite-env.d.ts                                                | TypeScript         |          6 |          1 |          3 |         10 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\tailwind.config.js                                               | JavaScript         |          7 |          1 |          1 |          9 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\tsconfig.json                                                    | JSON with Comments |         21 |          0 |          1 |         22 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\tsconfig.node.json                                               | JSON               |         10 |          0 |          1 |         11 |
+| e:\wireup.ai - new\WireUp-hackathon-\frontend\vite.config.ts                                                   | TypeScript         |         14 |          0 |          2 |         16 |
+| e:\wireup.ai - new\WireUp-hackathon-\package-lock.json                                                         | JSON               |      4,950 |          0 |          1 |      4,951 |
+| e:\wireup.ai - new\WireUp-hackathon-\package.json                                                              | JSON               |         16 |          0 |          1 |         17 |
+| e:\wireup.ai - new\WireUp-hackathon-\whisper-server\server.py                                                  | Python             |         61 |         16 |         16 |         93 |
+| e:\wireup.ai - new\arena.md                                                                                    | Markdown           |        831 |          0 |        366 |      1,197 |
+| e:\wireup.ai - new\backend\Dockerfile                                                                          | Docker             |         25 |         12 |         13 |         50 |
+| e:\wireup.ai - new\backend\backfill_types.js                                                                   | JavaScript         |        106 |          5 |         12 |        123 |
+| e:\wireup.ai - new\backend\data\CRegistry.json                                                                 | JSON               |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\backend\data\componentRegistry.json                                                         | JSON               |        560 |          0 |          0 |        560 |
+| e:\wireup.ai - new\backend\inspect_db.js                                                                       | JavaScript         |         35 |          1 |          7 |         43 |
+| e:\wireup.ai - new\backend\inspect_project.js                                                                  | JavaScript         |          9 |          0 |          1 |         10 |
+| e:\wireup.ai - new\backend\nodemon.json                                                                        | JSON               |          6 |          0 |          0 |          6 |
+| e:\wireup.ai - new\backend\package-lock.json                                                                   | JSON               |      2,797 |          0 |          1 |      2,798 |
+| e:\wireup.ai - new\backend\package.json                                                                        | JSON               |         42 |          0 |          0 |         42 |
+| e:\wireup.ai - new\backend\scratch\inspect-latest.ts                                                           | TypeScript         |         43 |          1 |          9 |         53 |
+| e:\wireup.ai - new\backend\scratch\inspect-messages.ts                                                         | TypeScript         |         25 |          1 |          8 |         34 |
+| e:\wireup.ai - new\backend\scratch\inspect-project.ts                                                          | TypeScript         |         22 |          1 |          7 |         30 |
+| e:\wireup.ai - new\backend\scratch\list_parts.js                                                               | JavaScript         |         15 |          0 |          1 |         16 |
+| e:\wireup.ai - new\backend\scratch\test-groq-mapping.ts                                                        | TypeScript         |         90 |          2 |         14 |        106 |
+| e:\wireup.ai - new\backend\scratch\test-groq-model.ts                                                          | TypeScript         |         29 |          1 |          7 |         37 |
+| e:\wireup.ai - new\backend\scratch\test-groq-tool.ts                                                           | TypeScript         |         29 |          1 |          7 |         37 |
+| e:\wireup.ai - new\backend\scratch\test-turn4.ts                                                               | TypeScript         |        170 |          1 |          9 |        180 |
+| e:\wireup.ai - new\backend\scratch_inspect.js                                                                  | JavaScript         |         19 |          0 |          7 |         26 |
+| e:\wireup.ai - new\backend\shared\types\SimulationBundle.ts                                                    | TypeScript         |        100 |         12 |         19 |        131 |
+| e:\wireup.ai - new\backend\src\agents\architect\architect.agent.ts                                             | TypeScript         |         33 |          2 |          6 |         41 |
+| e:\wireup.ai - new\backend\src\agents\architect\architect.prompts.ts                                           | TypeScript         |         16 |          2 |          2 |         20 |
+| e:\wireup.ai - new\backend\src\agents\architect\index.ts                                                       | TypeScript         |          2 |          1 |          1 |          4 |
+| e:\wireup.ai - new\backend\src\agents\architect\mcu.catalog.ts                                                 | TypeScript         |        124 |          4 |          3 |        131 |
+| e:\wireup.ai - new\backend\src\agents\discovery\discovery.agent.ts                                             | TypeScript         |        406 |          3 |         66 |        475 |
+| e:\wireup.ai - new\backend\src\agents\discovery\discovery.prompts.ts                                           | TypeScript         |        574 |          1 |         16 |        591 |
+| e:\wireup.ai - new\backend\src\agents\discovery\discovery.utils.ts                                             | TypeScript         |      1,329 |          2 |        181 |      1,512 |
+| e:\wireup.ai - new\backend\src\agents\discovery\index.ts                                                       | TypeScript         |          9 |          1 |          1 |         11 |
+| e:\wireup.ai - new\backend\src\agents\formulation\formulation.agent.ts                                         | TypeScript         |        992 |         28 |        102 |      1,122 |
+| e:\wireup.ai - new\backend\src\agents\formulation\formulation.persistence.ts                                   | TypeScript         |        548 |         30 |         71 |        649 |
+| e:\wireup.ai - new\backend\src\agents\formulation\formulation.prompts.ts                                       | TypeScript         |        152 |          3 |         15 |        170 |
+| e:\wireup.ai - new\backend\src\agents\formulation\formulation.types.ts                                         | TypeScript         |          5 |          1 |          1 |          7 |
+| e:\wireup.ai - new\backend\src\agents\formulation\index.ts                                                     | TypeScript         |          3 |          1 |          1 |          5 |
+| e:\wireup.ai - new\backend\src\agents\formulation\scratch\test_fixes.js                                        | JavaScript         |         91 |         11 |         21 |        123 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\diagram.tool.ts                                        | TypeScript         |        162 |          1 |         24 |        187 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\index.ts                                               | TypeScript         |         77 |          5 |          6 |         88 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\mcu.tool.ts                                            | TypeScript         |        104 |          7 |         12 |        123 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\milestone.tool.ts                                      | TypeScript         |        185 |          3 |         13 |        201 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\save.tool.ts                                           | TypeScript         |        153 |          7 |         17 |        177 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\search.tool.ts                                         | TypeScript         |        169 |          4 |         19 |        192 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\utils.ts                                               | TypeScript         |        168 |          2 |         16 |        186 |
+| e:\wireup.ai - new\backend\src\agents\formulation\tools\wiring.tool.ts                                         | TypeScript         |        535 |          5 |         74 |        614 |
+| e:\wireup.ai - new\backend\src\agents\shared\adapters.ts                                                       | TypeScript         |          2 |          1 |          1 |          4 |
+| e:\wireup.ai - new\backend\src\agents\shared\adapters\cerebras.ts                                              | TypeScript         |         80 |          1 |          9 |         90 |
+| e:\wireup.ai - new\backend\src\agents\shared\adapters\gemini.ts                                                | TypeScript         |         92 |          5 |          9 |        106 |
+| e:\wireup.ai - new\backend\src\agents\shared\adapters\groq.ts                                                  | TypeScript         |         82 |          2 |         10 |         94 |
+| e:\wireup.ai - new\backend\src\agents\shared\adapters\index.ts                                                 | TypeScript         |          4 |          1 |          1 |          6 |
+| e:\wireup.ai - new\backend\src\agents\shared\adapters\ollama.ts                                                | TypeScript         |        126 |          3 |         15 |        144 |
+| e:\wireup.ai - new\backend\src\agents\shared\jsonRepair.ts                                                     | TypeScript         |        211 |          4 |         42 |        257 |
+| e:\wireup.ai - new\backend\src\agents\shared\keyRotation.service.ts                                            | TypeScript         |         83 |          3 |         21 |        107 |
+| e:\wireup.ai - new\backend\src\archive\api_freeze.json                                                         | JSON               |        343 |          0 |          0 |        343 |
+| e:\wireup.ai - new\backend\src\archive\baseline_metrics.md                                                     | Markdown           |         24 |          0 |          8 |         32 |
+| e:\wireup.ai - new\backend\src\archive\dependency_report.md                                                    | Markdown           |        173 |          0 |         32 |        205 |
+| e:\wireup.ai - new\backend\src\archive\freeze_api.ts                                                           | TypeScript         |         64 |          1 |          8 |         73 |
+| e:\wireup.ai - new\backend\src\archive\legacy\agent2tools.service.legacy.ts                                    | TypeScript         |      1,198 |         81 |        142 |      1,421 |
+| e:\wireup.ai - new\backend\src\archive\legacy\ai.services.legacy.ts                                            | TypeScript         |      2,218 |        299 |        278 |      2,795 |
+| e:\wireup.ai - new\backend\src\archive\legacy\newflow.agent.legacy.ts                                          | TypeScript         |      1,124 |         82 |        132 |      1,338 |
+| e:\wireup.ai - new\backend\src\contracts\agent.contracts.ts                                                    | TypeScript         |          8 |          1 |          2 |         11 |
+| e:\wireup.ai - new\backend\src\contracts\index.ts                                                              | TypeScript         |          3 |          1 |          1 |          5 |
+| e:\wireup.ai - new\backend\src\contracts\project.contracts.ts                                                  | TypeScript         |         33 |          1 |          3 |         37 |
+| e:\wireup.ai - new\backend\src\contracts\tool.contracts.ts                                                     | TypeScript         |         13 |          1 |          2 |         16 |
+| e:\wireup.ai - new\backend\src\controllers\assembly.controller.ts                                              | TypeScript         |         44 |          6 |         18 |         68 |
+| e:\wireup.ai - new\backend\src\controllers\auth.controller.ts                                                  | TypeScript         |        153 |          1 |         39 |        193 |
+| e:\wireup.ai - new\backend\src\controllers\build.controller.ts                                                 | TypeScript         |        873 |         78 |        176 |      1,127 |
+| e:\wireup.ai - new\backend\src\controllers\components.controller.ts                                            | TypeScript         |        334 |         45 |         80 |        459 |
+| e:\wireup.ai - new\backend\src\controllers\generate.controller.ts                                              | TypeScript         |        376 |          9 |         35 |        420 |
+| e:\wireup.ai - new\backend\src\controllers\ideation.controller.ts                                              | TypeScript         |        357 |         44 |         61 |        462 |
+| e:\wireup.ai - new\backend\src\controllers\library.controller.ts                                               | TypeScript         |         30 |          7 |          7 |         44 |
+| e:\wireup.ai - new\backend\src\controllers\newflow.controller.ts                                               | TypeScript         |      1,161 |         73 |        132 |      1,366 |
+| e:\wireup.ai - new\backend\src\controllers\pipeline.controller.ts                                              | TypeScript         |         19 |          7 |          5 |         31 |
+| e:\wireup.ai - new\backend\src\controllers\project.controller.ts                                               | TypeScript         |        360 |         45 |         70 |        475 |
+| e:\wireup.ai - new\backend\src\controllers\questions.controller.ts                                             | TypeScript         |        155 |         13 |         16 |        184 |
+| e:\wireup.ai - new\backend\src\controllers\shopping.controller.ts                                              | TypeScript         |         19 |          4 |          8 |         31 |
+| e:\wireup.ai - new\backend\src\controllers\voice.controller.ts                                                 | TypeScript         |        107 |          5 |         21 |        133 |
+| e:\wireup.ai - new\backend\src\index.ts                                                                        | TypeScript         |        266 |         86 |         58 |        410 |
+| e:\wireup.ai - new\backend\src\lib\arduino-boards.ts                                                           | TypeScript         |        111 |          3 |          8 |        122 |
+| e:\wireup.ai - new\backend\src\lib\binPacking.ts                                                               | TypeScript         |         35 |         22 |         11 |         68 |
+| e:\wireup.ai - new\backend\src\lib\componentDimensions.ts                                                      | TypeScript         |        410 |         19 |         13 |        442 |
+| e:\wireup.ai - new\backend\src\lib\db.ts                                                                       | TypeScript         |         18 |          1 |          5 |         24 |
+| e:\wireup.ai - new\backend\src\lib\llm.ts                                                                      | TypeScript         |        305 |          9 |         37 |        351 |
+| e:\wireup.ai - new\backend\src\lib\svgLayout.ts                                                                | TypeScript         |         55 |         28 |         21 |        104 |
+| e:\wireup.ai - new\backend\src\lib\utils.ts                                                                    | TypeScript         |         22 |          1 |          6 |         29 |
+| e:\wireup.ai - new\backend\src\lib\wokwi-components.ts                                                         | TypeScript         |         90 |          2 |         18 |        110 |
+| e:\wireup.ai - new\backend\src\lib\wokwi-context.ts                                                            | TypeScript         |        122 |          2 |         21 |        145 |
+| e:\wireup.ai - new\backend\src\lib\wokwi.ts                                                                    | TypeScript         |         32 |          2 |         10 |         44 |
+| e:\wireup.ai - new\backend\src\lib\wokwiDimensionKeyMap.ts                                                     | TypeScript         |         59 |         19 |          9 |         87 |
+| e:\wireup.ai - new\backend\src\middleware\auth.middleware.ts                                                   | TypeScript         |         52 |          1 |         12 |         65 |
+| e:\wireup.ai - new\backend\src\models\newFlowSession.model.ts                                                  | TypeScript         |        215 |         38 |         23 |        276 |
+| e:\wireup.ai - new\backend\src\models\part.model.ts                                                            | TypeScript         |        188 |         17 |         24 |        229 |
+| e:\wireup.ai - new\backend\src\models\project.model.ts                                                         | TypeScript         |        942 |         59 |        156 |      1,157 |
+| e:\wireup.ai - new\backend\src\models\systemConfig.model.ts                                                    | TypeScript         |          6 |          1 |          3 |         10 |
+| e:\wireup.ai - new\backend\src\models\user.model.ts                                                            | TypeScript         |         42 |          3 |          4 |         49 |
+| e:\wireup.ai - new\backend\src\routes\assembly.route.ts                                                        | TypeScript         |          7 |          3 |          4 |         14 |
+| e:\wireup.ai - new\backend\src\routes\auth.route.ts                                                            | TypeScript         |         16 |          1 |          6 |         23 |
+| e:\wireup.ai - new\backend\src\routes\build.route.ts                                                           | TypeScript         |         42 |          6 |          5 |         53 |
+| e:\wireup.ai - new\backend\src\routes\compile.route.ts                                                         | TypeScript         |        148 |          0 |         36 |        184 |
+| e:\wireup.ai - new\backend\src\routes\components.route.ts                                                      | TypeScript         |         18 |          7 |          8 |         33 |
+| e:\wireup.ai - new\backend\src\routes\generate.route.ts                                                        | TypeScript         |          7 |          4 |          5 |         16 |
+| e:\wireup.ai - new\backend\src\routes\ideation.route.ts                                                        | TypeScript         |          8 |          2 |          4 |         14 |
+| e:\wireup.ai - new\backend\src\routes\library.route.ts                                                         | TypeScript         |          7 |          3 |          4 |         14 |
+| e:\wireup.ai - new\backend\src\routes\newflow.route.ts                                                         | TypeScript         |         28 |          7 |          4 |         39 |
+| e:\wireup.ai - new\backend\src\routes\part.route.ts                                                            | TypeScript         |         52 |         14 |         11 |         77 |
+| e:\wireup.ai - new\backend\src\routes\pipeline.route.ts                                                        | TypeScript         |          6 |          3 |          4 |         13 |
+| e:\wireup.ai - new\backend\src\routes\playground.route.ts                                                      | TypeScript         |         87 |          3 |          8 |         98 |
+| e:\wireup.ai - new\backend\src\routes\project.routes.ts                                                        | TypeScript         |         29 |          3 |         11 |         43 |
+| e:\wireup.ai - new\backend\src\routes\questions.route.ts                                                       | TypeScript         |          6 |          1 |          4 |         11 |
+| e:\wireup.ai - new\backend\src\routes\shopping.route.ts                                                        | TypeScript         |          6 |          3 |          4 |         13 |
+| e:\wireup.ai - new\backend\src\routes\simulation.routes.ts                                                     | TypeScript         |         39 |          5 |         10 |         54 |
+| e:\wireup.ai - new\backend\src\routes\voice.route.ts                                                           | TypeScript         |          9 |          2 |          4 |         15 |
+| e:\wireup.ai - new\backend\src\scripts\check-appdata-local.js                                                  | JavaScript         |         46 |          1 |          4 |         51 |
+| e:\wireup.ai - new\backend\src\scripts\check-project-data.ts                                                   | TypeScript         |         24 |          1 |          5 |         30 |
+| e:\wireup.ai - new\backend\src\scripts\check-session.js                                                        | JavaScript         |         30 |          1 |          6 |         37 |
+| e:\wireup.ai - new\backend\src\scripts\check-session.ts                                                        | TypeScript         |         26 |          1 |          6 |         33 |
+| e:\wireup.ai - new\backend\src\scripts\check-space.js                                                          | JavaScript         |         44 |          1 |          4 |         49 |
+| e:\wireup.ai - new\backend\src\scripts\check-space.ts                                                          | TypeScript         |         43 |          1 |          4 |         48 |
+| e:\wireup.ai - new\backend\src\scripts\convert-model.ts                                                        | TypeScript         |         49 |          2 |          7 |         58 |
+| e:\wireup.ai - new\backend\src\scripts\migrate-ideation.ts                                                     | TypeScript         |         65 |          4 |         13 |         82 |
+| e:\wireup.ai - new\backend\src\scripts\reproduce-500.ts                                                        | TypeScript         |         34 |          3 |          7 |         44 |
+| e:\wireup.ai - new\backend\src\scripts\seed-active-project.ts                                                  | TypeScript         |         98 |          9 |         15 |        122 |
+| e:\wireup.ai - new\backend\src\scripts\seed-curated-parts.ts                                                   | TypeScript         |        548 |         12 |         13 |        573 |
+| e:\wireup.ai - new\backend\src\scripts\test-agent2-tools.ts                                                    | TypeScript         |        256 |         15 |         23 |        294 |
+| e:\wireup.ai - new\backend\src\scripts\test-chat-flow.ts                                                       | TypeScript         |         41 |          1 |          6 |         48 |
+| e:\wireup.ai - new\backend\src\scripts\test-ideation-endpoint.ts                                               | TypeScript         |         43 |          1 |         10 |         54 |
+| e:\wireup.ai - new\backend\src\scripts\test-kicad-regex.ts                                                     | TypeScript         |         47 |          6 |          9 |         62 |
+| e:\wireup.ai - new\backend\src\scripts\test-library-search.ts                                                  | TypeScript         |         54 |          5 |          7 |         66 |
+| e:\wireup.ai - new\backend\src\scripts\test-live-thinking.ts                                                   | TypeScript         |         70 |          5 |         15 |         90 |
+| e:\wireup.ai - new\backend\src\scripts\test-project-by-id.ts                                                   | TypeScript         |         41 |          2 |          6 |         49 |
+| e:\wireup.ai - new\backend\src\services\agent2tools.declarations.ts                                            | TypeScript         |        493 |          6 |         12 |        511 |
+| e:\wireup.ai - new\backend\src\services\agent2tools.service.ts                                                 | TypeScript         |          1 |         21 |          2 |         24 |
+| e:\wireup.ai - new\backend\src\services\ai.services.test.ts                                                    | TypeScript         |        100 |          3 |          9 |        112 |
+| e:\wireup.ai - new\backend\src\services\ai.services.ts                                                         | TypeScript         |         52 |         16 |          6 |         74 |
+| e:\wireup.ai - new\backend\src\services\assembly.service.ts                                                    | TypeScript         |         70 |         20 |         15 |        105 |
+| e:\wireup.ai - new\backend\src\services\blender.service.ts                                                     | TypeScript         |        203 |         15 |         19 |        237 |
+| e:\wireup.ai - new\backend\src\services\compileQueue.service.ts                                                | TypeScript         |         77 |          6 |         15 |         98 |
+| e:\wireup.ai - new\backend\src\services\component-definition.service.ts                                        | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\backend\src\services\easyeda.service.ts                                                     | TypeScript         |        128 |         16 |         23 |        167 |
+| e:\wireup.ai - new\backend\src\services\gemini.service.ts                                                      | TypeScript         |        616 |        133 |         22 |        771 |
+| e:\wireup.ai - new\backend\src\services\keyRotation.service.ts                                                 | TypeScript         |          2 |          2 |          1 |          5 |
+| e:\wireup.ai - new\backend\src\services\kicad.service.ts                                                       | TypeScript         |        259 |         18 |         27 |        304 |
+| e:\wireup.ai - new\backend\src\services\library.service.ts                                                     | TypeScript         |        223 |         18 |         35 |        276 |
+| e:\wireup.ai - new\backend\src\services\model.service.ts                                                       | TypeScript         |        122 |         20 |         25 |        167 |
+| e:\wireup.ai - new\backend\src\services\modelConversion.service.ts                                             | TypeScript         |        169 |         30 |         24 |        223 |
+| e:\wireup.ai - new\backend\src\services\newflow.agent.ts                                                       | TypeScript         |          1 |          1 |          1 |          3 |
+| e:\wireup.ai - new\backend\src\services\pin.service.ts                                                         | TypeScript         |         93 |         16 |         18 |        127 |
+| e:\wireup.ai - new\backend\src\services\pinResolver.service.ts                                                 | TypeScript         |        518 |         42 |         70 |        630 |
+| e:\wireup.ai - new\backend\src\services\pipeline.service.ts                                                    | TypeScript         |         81 |         41 |         22 |        144 |
+| e:\wireup.ai - new\backend\src\services\registry-codegen.service.test.ts                                       | TypeScript         |         42 |          6 |         10 |         58 |
+| e:\wireup.ai - new\backend\src\services\registry-codegen.service.ts                                            | TypeScript         |        634 |         26 |        103 |        763 |
+| e:\wireup.ai - new\backend\src\services\registry.services.ts                                                   | TypeScript         |         71 |          3 |         14 |         88 |
+| e:\wireup.ai - new\backend\src\services\shopping.service.ts                                                    | TypeScript         |         53 |         16 |         11 |         80 |
+| e:\wireup.ai - new\backend\src\services\snapeda.service.ts                                                     | TypeScript         |         81 |          7 |          7 |         95 |
+| e:\wireup.ai - new\backend\src\services\validation.service.ts                                                  | TypeScript         |        404 |         41 |         59 |        504 |
+| e:\wireup.ai - new\backend\src\services\voice.service.ts                                                       | TypeScript         |        381 |          6 |         60 |        447 |
+| e:\wireup.ai - new\backend\src\services\wokwi-local.service.ts                                                 | TypeScript         |        562 |          2 |        105 |        669 |
+| e:\wireup.ai - new\backend\src\services\wokwi-mcp-client.service.ts                                            | TypeScript         |        111 |          3 |         25 |        139 |
+| e:\wireup.ai - new\backend\src\services\wokwi-runner.service.ts                                                | TypeScript         |        263 |          2 |         52 |        317 |
+| e:\wireup.ai - new\backend\src\shared\types\SimulationBundle.ts                                                | TypeScript         |        128 |         14 |         24 |        166 |
+| e:\wireup.ai - new\backend\src\simulation\SimulationCompiler.ts                                                | TypeScript         |        286 |         21 |         35 |        342 |
+| e:\wireup.ai - new\backend\src\simulation\analyzer\sketchAnalyzer.ts                                           | TypeScript         |         43 |          4 |          6 |         53 |
+| e:\wireup.ai - new\backend\src\simulation\archetype\archetypeScorer.ts                                         | TypeScript         |         69 |          1 |          6 |         76 |
+| e:\wireup.ai - new\backend\src\simulation\mcu\mcuProfiles.ts                                                   | TypeScript         |         73 |          3 |          5 |         81 |
+| e:\wireup.ai - new\backend\src\simulation\peripherals\peripheralRegistry.ts                                    | TypeScript         |         58 |         10 |         12 |         80 |
+| e:\wireup.ai - new\backend\src\simulation\pins\pinResolver.ts                                                  | TypeScript         |         52 |          5 |         15 |         72 |
+| e:\wireup.ai - new\backend\src\simulation\validation\wiringValidator.ts                                        | TypeScript         |         77 |          4 |          6 |         87 |
+| e:\wireup.ai - new\backend\src\utils\boardLock.ts                                                              | TypeScript         |         55 |         14 |         12 |         81 |
+| e:\wireup.ai - new\backend\src\utils\bom.utils.ts                                                              | TypeScript         |         25 |          2 |          1 |         28 |
+| e:\wireup.ai - new\backend\src\utils\parseAIResponse.ts                                                        | TypeScript         |         76 |         26 |         17 |        119 |
+| e:\wireup.ai - new\backend\src\utils\validateDiagram.ts                                                        | TypeScript         |         39 |         14 |         12 |         65 |
+| e:\wireup.ai - new\backend\src\utils\validateSketch.ts                                                         | TypeScript         |         26 |         12 |         11 |         49 |
+| e:\wireup.ai - new\backend\storage\models\csa37f72-wlcsp24.glb.json                                            | JSON               |          2 |          0 |          0 |          2 |
+| e:\wireup.ai - new\backend\tsconfig.json                                                                       | JSON with Comments |         24 |          0 |          0 |         24 |
+| e:\wireup.ai - new\claude.md                                                                                   | Markdown           |      3,530 |          0 |        470 |      4,000 |
+| e:\wireup.ai - new\drone_1\esp32_firmware.ino                                                                  | C++                |        133 |         30 |         32 |        195 |
+| e:\wireup.ai - new\drone_1\index.html                                                                          | HTML               |      1,889 |         16 |        290 |      2,195 |
+| e:\wireup.ai - new\drone_1\server.py                                                                           | Python             |        136 |         25 |         23 |        184 |
+| e:\wireup.ai - new\drone_website_controller_1\index.html                                                       | HTML               |      1,071 |         17 |        159 |      1,247 |
+| e:\wireup.ai - new\file_churn.js                                                                               | JavaScript         |         94 |         17 |         19 |        130 |
+| e:\wireup.ai - new\frontend\README.md                                                                          | Markdown           |         60 |          1 |         14 |         75 |
+| e:\wireup.ai - new\frontend\eslint.config.js                                                                   | JavaScript         |         21 |          1 |          2 |         24 |
+| e:\wireup.ai - new\frontend\index.html                                                                         | HTML               |         13 |          0 |          1 |         14 |
+| e:\wireup.ai - new\frontend\package-lock.json                                                                  | JSON               |      4,567 |          0 |          1 |      4,568 |
+| e:\wireup.ai - new\frontend\package.json                                                                       | JSON               |         49 |          0 |          0 |         49 |
+| e:\wireup.ai - new\frontend\src\App.tsx                                                                        | TypeScript JSX     |         78 |          7 |         15 |        100 |
+| e:\wireup.ai - new\frontend\src\assets\react.svg                                                               | XML                |          1 |          0 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\assets\vite.svg                                                                | XML                |          1 |          0 |          1 |          2 |
+| e:\wireup.ai - new\frontend\src\components\AIReasoningPanel\AIReasoningPanel.tsx                               | TypeScript JSX     |        712 |         55 |         51 |        818 |
+| e:\wireup.ai - new\frontend\src\components\ChatRichText.tsx                                                    | TypeScript JSX     |         68 |          2 |         15 |         85 |
+| e:\wireup.ai - new\frontend\src\components\CircuitDiagram\CircuitDiagram.tsx                                   | TypeScript JSX     |        538 |         54 |         56 |        648 |
+| e:\wireup.ai - new\frontend\src\components\CreateProjectModal.tsx                                              | TypeScript JSX     |        118 |          2 |         15 |        135 |
+| e:\wireup.ai - new\frontend\src\components\DesignChat.tsx                                                      | TypeScript JSX     |        175 |          2 |         16 |        193 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\DiscoveryModal.tsx                                   | TypeScript JSX     |        666 |         44 |         83 |        793 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\ConflictResolution.tsx                    | TypeScript JSX     |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\MilestoneCard.tsx                         | TypeScript JSX     |         77 |          1 |          6 |         84 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\ModelSelector.tsx                         | TypeScript JSX     |        170 |         10 |         14 |        194 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\components\RateLimitTimer.tsx                        | TypeScript JSX     |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useAutoScroll.ts                               | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useDiscoverySession.ts                         | TypeScript         |        109 |          6 |         25 |        140 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useFormulationSocket.ts                        | TypeScript         |        180 |          5 |         67 |        252 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\hooks\useSessionRestore.ts                           | TypeScript         |        188 |          6 |         39 |        233 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\AgentConsole.tsx                              | TypeScript JSX     |        269 |          5 |         14 |        288 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\BomPanel.tsx                                  | TypeScript JSX     |         93 |          2 |          4 |         99 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\HardwareAssembly.tsx                          | TypeScript JSX     |         73 |          3 |          5 |         81 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\InspectorPanel.tsx                            | TypeScript JSX     |        123 |          0 |          6 |        129 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\MilestonesPanel.tsx                           | TypeScript JSX     |         25 |          0 |          3 |         28 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\ProgressTracker.tsx                           | TypeScript JSX     |        119 |          0 |          5 |        124 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\ProjectChatPanel.tsx                          | TypeScript JSX     |        293 |          9 |         20 |        322 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\panels\WiringPanel.tsx                               | TypeScript JSX     |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\phases\DiscoveryPhase.tsx                            | TypeScript JSX     |        422 |         23 |         20 |        465 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\phases\FormulationPhase.tsx                          | TypeScript JSX     |        751 |         51 |         72 |        874 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\conflict.selectors.ts                      | TypeScript         |         44 |          1 |          9 |         54 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\decision.selectors.ts                      | TypeScript         |         63 |          1 |         16 |         80 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\progress.selectors.ts                      | TypeScript         |         60 |          1 |         15 |         76 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\selectors\stage.selectors.ts                         | TypeScript         |         55 |          1 |         10 |         66 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\services\discoveryApi.ts                             | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\services\formulationApi.ts                           | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\services\simulatorApi.ts                             | TypeScript         |          0 |          0 |          1 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\bom.types.ts                                   | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\log.types.ts                                   | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\milestone.types.ts                             | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\types\session.types.ts                               | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\utils\exportData.ts                                  | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\utils\sessionHydration.ts                            | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\components\DiscoveryModal\utils\socketEvents.ts                                | TypeScript         |          0 |          1 |          0 |          1 |
+| e:\wireup.ai - new\frontend\src\components\Forge3D.tsx                                                         | TypeScript JSX     |      1,018 |         17 |         69 |      1,104 |
+| e:\wireup.ai - new\frontend\src\components\InteractiveNodeGraph.tsx                                            | TypeScript JSX     |        414 |         33 |         52 |        499 |
+| e:\wireup.ai - new\frontend\src\components\PipelineAuditTab.tsx                                                | TypeScript JSX     |        399 |         13 |         30 |        442 |
+| e:\wireup.ai - new\frontend\src\components\ProjectQuestionnaire\ProjectQuestionnaire.tsx                       | TypeScript JSX     |        244 |         12 |         19 |        275 |
+| e:\wireup.ai - new\frontend\src\components\Simulator3D.tsx                                                     | TypeScript JSX     |        543 |         35 |         51 |        629 |
+| e:\wireup.ai - new\frontend\src\components\ThreeViewport.tsx                                                   | TypeScript JSX     |        550 |         83 |         87 |        720 |
+| e:\wireup.ai - new\frontend\src\components\WokwiProofLab.tsx                                                   | TypeScript JSX     |        819 |         35 |         84 |        938 |
+| e:\wireup.ai - new\frontend\src\components\WokwiSimulator.tsx                                                  | TypeScript JSX     |        720 |         15 |         96 |        831 |
+| e:\wireup.ai - new\frontend\src\components\shared\ErrorBoundary.tsx                                            | TypeScript JSX     |        160 |          4 |         17 |        181 |
+| e:\wireup.ai - new\frontend\src\components\shared\ProjectLayout.tsx                                            | TypeScript JSX     |        123 |         10 |         12 |        145 |
+| e:\wireup.ai - new\frontend\src\components\shared\StageNav.tsx                                                 | TypeScript JSX     |        169 |          3 |         21 |        193 |
+| e:\wireup.ai - new\frontend\src\components\sim\Avr8jsRunner.ts                                                 | TypeScript         |        163 |          7 |         22 |        192 |
+| e:\wireup.ai - new\frontend\src\components\sim\CodeEditor.tsx                                                  | TypeScript JSX     |         25 |          2 |          3 |         30 |
+| e:\wireup.ai - new\frontend\src\components\sim\ComponentLibrary.tsx                                            | TypeScript JSX     |         81 |         13 |         14 |        108 |
+| e:\wireup.ai - new\frontend\src\components\sim\ComponentLibraryData.tsx                                        | TypeScript JSX     |         99 |          2 |          3 |        104 |
+| e:\wireup.ai - new\frontend\src\components\sim\DiagramViewer.tsx                                               | TypeScript JSX     |        139 |         11 |         17 |        167 |
+| e:\wireup.ai - new\frontend\src\components\sim\LibraryManager.tsx                                              | TypeScript JSX     |        153 |         12 |         18 |        183 |
+| e:\wireup.ai - new\frontend\src\components\sim\SerialMonitor.tsx                                               | TypeScript JSX     |         89 |         12 |         12 |        113 |
+| e:\wireup.ai - new\frontend\src\components\sim\SimCanvas.tsx                                                   | TypeScript JSX     |        153 |          3 |         19 |        175 |
+| e:\wireup.ai - new\frontend\src\components\sim\SimulatorCard.tsx                                               | TypeScript JSX     |          9 |          2 |          3 |         14 |
+| e:\wireup.ai - new\frontend\src\components\sim\SimulatorWorkspace.tsx                                          | TypeScript JSX     |        345 |         13 |         38 |        396 |
+| e:\wireup.ai - new\frontend\src\components\sim\WireOverlay.tsx                                                 | TypeScript JSX     |         70 |          5 |          5 |         80 |
+| e:\wireup.ai - new\frontend\src\components\sim\WirePreview.tsx                                                 | TypeScript JSX     |         11 |          2 |          3 |         16 |
+| e:\wireup.ai - new\frontend\src\components\sim\diagramStorage.ts                                               | TypeScript         |         53 |          4 |         10 |         67 |
+| e:\wireup.ai - new\frontend\src\components\sim\types.ts                                                        | TypeScript         |          1 |          3 |          2 |          6 |
+| e:\wireup.ai - new\frontend\src\components\ui\PromptInputDynamicGrow.tsx                                       | TypeScript JSX     |        263 |          2 |         22 |        287 |
+| e:\wireup.ai - new\frontend\src\hooks\useCompiler.ts                                                           | TypeScript         |         84 |         10 |         12 |        106 |
+| e:\wireup.ai - new\frontend\src\hooks\useIsMobile.ts                                                           | TypeScript         |         12 |          2 |          5 |         19 |
+| e:\wireup.ai - new\frontend\src\hooks\useMicRecorder.ts                                                        | TypeScript         |         85 |          7 |         14 |        106 |
+| e:\wireup.ai - new\frontend\src\hooks\useVoiceGuidance.ts                                                      | TypeScript         |        565 |         10 |        110 |        685 |
+| e:\wireup.ai - new\frontend\src\index.css                                                                      | PostCSS            |        185 |         35 |         33 |        253 |
+| e:\wireup.ai - new\frontend\src\lib\axios.ts                                                                   | TypeScript         |         15 |          2 |          1 |         18 |
+| e:\wireup.ai - new\frontend\src\lib\firebase.ts                                                                | TypeScript         |         19 |          3 |          5 |         27 |
+| e:\wireup.ai - new\frontend\src\main.tsx                                                                       | TypeScript JSX     |         32 |          1 |          4 |         37 |
+| e:\wireup.ai - new\frontend\src\pages\AssemblyPage.tsx                                                         | TypeScript JSX     |        417 |        249 |         26 |        692 |
+| e:\wireup.ai - new\frontend\src\pages\AuthPage.tsx                                                             | TypeScript JSX     |        174 |          6 |         21 |        201 |
+| e:\wireup.ai - new\frontend\src\pages\BuildNewPage.tsx                                                         | TypeScript JSX     |      1,296 |         70 |        110 |      1,476 |
+| e:\wireup.ai - new\frontend\src\pages\BuildPage.tsx                                                            | TypeScript JSX     |      1,256 |         49 |         56 |      1,361 |
+| e:\wireup.ai - new\frontend\src\pages\ComponentsPage.tsx                                                       | TypeScript JSX     |        713 |         29 |         39 |        781 |
+| e:\wireup.ai - new\frontend\src\pages\HeroPage.tsx                                                             | TypeScript JSX     |        255 |         17 |         29 |        301 |
+| e:\wireup.ai - new\frontend\src\pages\HomePage.tsx                                                             | TypeScript JSX     |        982 |          5 |         88 |      1,075 |
+| e:\wireup.ai - new\frontend\src\pages\IdeationPage.tsx                                                         | TypeScript JSX     |        586 |         24 |         30 |        640 |
+| e:\wireup.ai - new\frontend\src\pages\ShoppingPage.tsx                                                         | TypeScript JSX     |        282 |         13 |         19 |        314 |
+| e:\wireup.ai - new\frontend\src\pages\Simulator3DPage.tsx                                                      | TypeScript JSX     |        624 |         29 |         75 |        728 |
+| e:\wireup.ai - new\frontend\src\store\useAuthStore.ts                                                          | TypeScript         |        118 |          1 |         21 |        140 |
+| e:\wireup.ai - new\frontend\src\store\useProjectStore.ts                                                       | TypeScript         |        628 |         69 |         76 |        773 |
+| e:\wireup.ai - new\frontend\src\store\useSimulatorStore.ts                                                     | TypeScript         |        126 |         11 |         25 |        162 |
+| e:\wireup.ai - new\frontend\src\store\useThemeStore.ts                                                         | TypeScript         |         13 |          1 |          3 |         17 |
+| e:\wireup.ai - new\frontend\src\styles\desktop.css                                                             | PostCSS            |         20 |          2 |          6 |         28 |
+| e:\wireup.ai - new\frontend\src\styles\forge3d.css                                                             | PostCSS            |        384 |         15 |         58 |        457 |
+| e:\wireup.ai - new\frontend\src\styles\mobile.css                                                              | PostCSS            |         65 |          8 |         14 |         87 |
+| e:\wireup.ai - new\frontend\src\utils\physics.ts                                                               | TypeScript         |        247 |         45 |         62 |        354 |
+| e:\wireup.ai - new\frontend\tsconfig.app.json                                                                  | JSON               |         22 |          2 |          2 |         26 |
+| e:\wireup.ai - new\frontend\tsconfig.json                                                                      | JSON with Comments |          8 |          0 |          0 |          8 |
+| e:\wireup.ai - new\frontend\tsconfig.node.json                                                                 | JSON               |         21 |          2 |          2 |         25 |
+| e:\wireup.ai - new\frontend\vite.config.ts                                                                     | TypeScript         |         39 |          1 |          9 |         49 |
+| e:\wireup.ai - new\gemini.md                                                                                   | Markdown           |      3,703 |          0 |        537 |      4,240 |
+| e:\wireup.ai - new\index.html                                                                                  | HTML               |        899 |          0 |         78 |        977 |
+| e:\wireup.ai - new\package-lock.json                                                                           | JSON               |        843 |          0 |          1 |        844 |
+| e:\wireup.ai - new\package.json                                                                                | JSON               |         11 |          0 |          0 |         11 |
+| e:\wireup.ai - new\public\index.html                                                                           | HTML               |        240 |          0 |         97 |        337 |
+| e:\wireup.ai - new\scratch\comment_legacy.js                                                                   | JavaScript         |         23 |          2 |          7 |         32 |
+| e:\wireup.ai - new\scratch\inspect.js                                                                          | JavaScript         |         27 |          0 |          6 |         33 |
+| e:\wireup.ai - new\scratch\inspect_project.js                                                                  | JavaScript         |         19 |          0 |          6 |         25 |
+| e:\wireup.ai - new\scratch\search.js                                                                           | JavaScript         |          9 |          0 |          1 |         10 |
+| e:\wireup.ai - new\scripts\dev.cjs                                                                             | JavaScript         |         56 |          2 |         18 |         76 |
+| e:\wireup.ai - new\scripts\kill-ports.js                                                                       | JavaScript         |         61 |          3 |          9 |         73 |
+| e:\wireup.ai - new\server.js                                                                                   | JavaScript         |         36 |          0 |          7 |         43 |
+| e:\wireup.ai - new\shared\types\SimulationBundle.ts                                                            | TypeScript         |        100 |         12 |         19 |        131 |
+| e:\wireup.ai - new\virtual-playground\backend\index.js                                                         | JavaScript         |        222 |          6 |         40 |        268 |
+| e:\wireup.ai - new\virtual-playground\backend\package-lock.json                                                | JSON               |      1,224 |          0 |          1 |      1,225 |
+| e:\wireup.ai - new\virtual-playground\backend\package.json                                                     | JSON               |         24 |          0 |          0 |         24 |
+| e:\wireup.ai - new\virtual-playground\frontend\README.md                                                       | Markdown           |         60 |          1 |         14 |         75 |
+| e:\wireup.ai - new\virtual-playground\frontend\eslint.config.js                                                | JavaScript         |         21 |          1 |          2 |         24 |
+| e:\wireup.ai - new\virtual-playground\frontend\index.html                                                      | HTML               |         13 |          0 |          1 |         14 |
+| e:\wireup.ai - new\virtual-playground\frontend\package-lock.json                                               | JSON               |      3,959 |          0 |          1 |      3,960 |
+| e:\wireup.ai - new\virtual-playground\frontend\package.json                                                    | JSON               |         47 |          0 |          1 |         48 |
+| e:\wireup.ai - new\virtual-playground\frontend\postcss.config.js                                               | JavaScript         |          6 |          2 |          1 |          9 |
+| e:\wireup.ai - new\virtual-playground\frontend\public\favicon.svg                                              | XML                |          1 |          0 |          0 |          1 |
+| e:\wireup.ai - new\virtual-playground\frontend\public\icons.svg                                                | XML                |         24 |          0 |          1 |         25 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\App.css                                                     | PostCSS            |          7 |         10 |          3 |         20 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\App.tsx                                                     | TypeScript JSX     |        464 |         31 |         60 |        555 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\assets\react.svg                                            | XML                |          1 |          0 |          0 |          1 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\assets\vite.svg                                             | XML                |          1 |          0 |          1 |          2 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\behavior\BehaviorPlayground.tsx                  | TypeScript JSX     |      1,474 |         84 |        128 |      1,686 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\editor\CodeEditor.tsx                            | TypeScript JSX     |         98 |          6 |          9 |        113 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\BottomPanel.tsx                           | TypeScript JSX     |        139 |          7 |         12 |        158 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\RightSidebar.tsx                          | TypeScript JSX     |        163 |         13 |         19 |        195 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\Sidebar.tsx                               | TypeScript JSX     |        123 |          6 |         13 |        142 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\layout\Topbar.tsx                                | TypeScript JSX     |        272 |         22 |         23 |        317 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Arduino.tsx                                | TypeScript JSX     |        141 |         17 |         19 |        177 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Button.tsx                                 | TypeScript JSX     |        113 |         13 |         14 |        140 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\ErrorBoundary.tsx                          | TypeScript JSX     |         26 |          1 |          8 |         35 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\LCD16x2.tsx                                | TypeScript JSX     |         97 |          9 |         10 |        116 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\LED.tsx                                    | TypeScript JSX     |        108 |         13 |         13 |        134 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Resistor.tsx                               | TypeScript JSX     |         73 |         10 |         12 |         95 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Scene.tsx                                  | TypeScript JSX     |        310 |         17 |         38 |        365 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\SchematicView.tsx                          | TypeScript JSX     |        532 |          8 |         78 |        618 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\components\three\Wire.tsx                                   | TypeScript JSX     |        165 |         18 |         27 |        210 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\data\project.ts                                             | TypeScript         |         24 |          0 |          2 |         26 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\index.css                                                   | PostCSS            |         82 |         34 |         13 |        129 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\main.tsx                                                    | TypeScript JSX     |          9 |          1 |          2 |         12 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\SimulationEngine.ts                              | TypeScript         |        149 |          1 |         33 |        183 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\BehaviorConductor.ts                    | TypeScript         |        259 |         19 |         32 |        310 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\GPIOBus.ts                              | TypeScript         |         30 |          1 |          7 |         38 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\LogicEngine.ts                          | TypeScript         |         65 |          5 |         10 |         80 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\SimState.ts                             | TypeScript         |         11 |          1 |          2 |         14 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\SimulationManifest.ts                   | TypeScript         |         98 |          9 |         19 |        126 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\AudioPeripheral.ts          | TypeScript         |        195 |          7 |         35 |        237 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\BatteryPeripheral.ts        | TypeScript         |         44 |          2 |         12 |         58 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\BehaviorButtonPeripheral.ts | TypeScript         |         60 |          2 |         11 |         73 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\OLEDPeripheral.ts           | TypeScript         |         64 |         12 |         10 |         86 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\behavior\peripherals\VirtualFSPeripheral.ts      | TypeScript         |         45 |          1 |         10 |         56 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\compiler.ts                                      | TypeScript         |         43 |          1 |         10 |         54 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\cpu.worker.ts                                    | TypeScript         |        477 |          6 |        100 |        583 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\peripherals\ButtonPeripheral.ts                  | TypeScript         |         73 |          0 |         21 |         94 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\simulation\peripherals\LCDPeripheral.ts                     | TypeScript         |         44 |          0 |         12 |         56 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\store\useProjectStore.ts                                    | TypeScript         |        421 |         30 |         76 |        527 |
+| e:\wireup.ai - new\virtual-playground\frontend\src\types\project.ts                                            | TypeScript         |         53 |          2 |          5 |         60 |
+| e:\wireup.ai - new\virtual-playground\frontend\tailwind.config.js                                              | JavaScript         |         25 |          3 |          1 |         29 |
+| e:\wireup.ai - new\virtual-playground\frontend\tsconfig.app.json                                               | JSON               |         22 |          2 |          2 |         26 |
+| e:\wireup.ai - new\virtual-playground\frontend\tsconfig.json                                                   | JSON with Comments |          8 |          0 |          0 |          8 |
+| e:\wireup.ai - new\virtual-playground\frontend\tsconfig.node.json                                              | JSON               |         21 |          2 |          2 |         25 |
+| e:\wireup.ai - new\virtual-playground\frontend\vite.config.ts                                                  | TypeScript         |          9 |          2 |          2 |         13 |
+| e:\wireup.ai - new\virtual-playground\package.json                                                             | JSON               |         10 |          0 |          0 |         10 |
+| e:\wireup.ai - new\virtual-playground\scripts\dev.cjs                                                          | JavaScript         |         42 |          1 |         14 |         57 |
+| e:\wireup.ai - new\virtual-playground\shared\types\SimulationBundle.ts                                         | TypeScript         |        128 |         14 |         24 |        166 |
+| e:\wireup.ai - new\workflow\package-lock.json                                                                  | JSON               |         27 |          0 |          1 |         28 |
+| e:\wireup.ai - new\workflow\package.json                                                                       | JSON               |         10 |          0 |          1 |         11 |
+| e:\wireup.ai - new\workflow\progress.json                                                                      | JSON               |         26 |          0 |          0 |         26 |
+| e:\wireup.ai - new\workflow\workflow.js                                                                        | JavaScript         |        227 |         28 |         35 |        290 |
+| Total                                                                                                          |                    |    110,642 |      4,838 |     12,129 |    127,609 |
++----------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+

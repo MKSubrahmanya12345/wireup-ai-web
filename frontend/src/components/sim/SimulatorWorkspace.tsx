@@ -177,8 +177,20 @@ export default function SimulatorWorkspace({
         setCompiling(false);
         return;
       }
+      // ??$$$ newer code
       const hex = data.hex;
-      if (!hex) { setLog('Compile failed: missing HEX'); setCompiling(false); return; }
+      if (!hex) {
+        if (data.isESP32) {
+          setLog('ESP32 simulation manifest updated via Socket.io');
+          setCompiling(false);
+          setRunning(true);
+          return;
+        }
+        setLog('Compile failed: missing HEX');
+        setCompiling(false);
+        return;
+      }
+
 
       setLog('Running simulation...');
       runHandleRef.current = startAvr8jsRun({

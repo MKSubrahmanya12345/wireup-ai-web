@@ -19,12 +19,33 @@ export class GeminiAdapter implements LLMAdapter {
 
     const contents = messages.map(m => {
       if (m.role === "function") {
+        // Gemini requires functionResponse.response to be a plain object (Struct),
+        // never a JSON string. The history-pruning step stores content as
+        // JSON.stringify({...}), so we must parse it back here if needed.
+        let responseObj = m.content;
+        // ??$$$ newer code - robust double-serialization and object wrapping handler
+        while (typeof responseObj === "string") {
+          try {
+            const parsed = JSON.parse(responseObj);
+            if (parsed === responseObj) {
+              responseObj = { result: responseObj };
+              break;
+            }
+            responseObj = parsed;
+          } catch {
+            responseObj = { result: responseObj };
+            break;
+          }
+        }
+        if (responseObj === null || typeof responseObj !== "object") {
+          responseObj = { result: responseObj };
+        }
         return {
           role: "function",
           parts: [{
             functionResponse: {
               name: m.name,
-              response: m.content
+              response: responseObj
             }
           }]
         };
