@@ -9,7 +9,11 @@ export class GeminiAdapter implements LLMAdapter {
     this.apiKey = apiKey;
   }
 
+/* old code
   async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
+*/
+  // ??$$$ newer code
+  async chat(systemPrompt: string, messages: any[], activeToolNames?: string[]): Promise<LLMResponse> {
     const keys = Array.from(new Set([
       this.apiKey,
       process.env.GEMINI_API_KEY_1,
@@ -69,15 +73,28 @@ export class GeminiAdapter implements LLMAdapter {
       return { role, parts };
     });
 
+    // ??$$$ newer code
+    const activeDecls = activeToolNames
+      ? GEMINI_AGENT2_TOOLS.functionDeclarations.filter(t => activeToolNames.includes(t.name))
+      : GEMINI_AGENT2_TOOLS.functionDeclarations;
+
     let lastError: any = null;
     for (let i = 0; i < keys.length; i++) {
       const activeKey = keys[i];
       try {
         const genAI = new GoogleGenerativeAI(activeKey);
+        /* old code
         const model = genAI.getGenerativeModel({
           model: "gemini-2.5-flash",
           systemInstruction: systemPrompt,
           tools: [{ functionDeclarations: GEMINI_AGENT2_TOOLS.functionDeclarations }] as any
+        });
+        */
+        // ??$$$ newer code
+        const model = genAI.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          systemInstruction: systemPrompt,
+          tools: activeDecls.length > 0 ? [{ functionDeclarations: activeDecls }] as any : undefined
         });
 
         const result = await model.generateContent({ contents });

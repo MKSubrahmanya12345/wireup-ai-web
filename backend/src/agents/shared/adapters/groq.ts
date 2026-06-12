@@ -11,7 +11,11 @@ export class GroqAdapter implements LLMAdapter {
     this.directApiKey = directApiKey;
   }
 
+/* old code
   async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
+*/
+  // ??$$$ newer code
+  async chat(systemPrompt: string, messages: any[], activeToolNames?: string[]): Promise<LLMResponse> {
     let client: any;
     if (this.directApiKey) {
       const Groq = require("groq-sdk");
@@ -53,11 +57,26 @@ export class GroqAdapter implements LLMAdapter {
       })
     ];
 
+    // ??$$$ newer code
+    const activeTools = activeToolNames
+      ? GROQ_AGENT2_TOOLS.filter(t => activeToolNames.includes(t.function.name))
+      : GROQ_AGENT2_TOOLS;
+
+    /* old code
     const completion = await client.chat.completions.create({
       model: this.modelName,
       messages: groqMessages as any,
       tools: GROQ_AGENT2_TOOLS as any,
       tool_choice: "auto",
+      temperature: 0.2
+    });
+    */
+    // ??$$$ newer code
+    const completion = await client.chat.completions.create({
+      model: this.modelName,
+      messages: groqMessages as any,
+      tools: activeTools.length > 0 ? (activeTools as any) : undefined,
+      tool_choice: activeTools.length > 0 ? "auto" : undefined,
       temperature: 0.2
     });
 

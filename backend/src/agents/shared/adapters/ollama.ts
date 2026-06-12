@@ -11,6 +11,7 @@ export class OllamaAdapter implements LLMAdapter {
     this.baseUrl = baseUrl;
   }
 
+/* old code
   async chat(systemPrompt: string, messages: any[]): Promise<LLMResponse> {
     const tools = GROQ_AGENT2_TOOLS;
     const ollamaMessages = [
@@ -56,6 +57,55 @@ export class OllamaAdapter implements LLMAdapter {
         messages: ollamaMessages,
         tools: tools.length > 0 ? tools : undefined,
         tool_choice: tools.length > 0 ? "auto" : undefined,
+*/
+  // ??$$$ newer code
+  async chat(systemPrompt: string, messages: any[], activeToolNames?: string[]): Promise<LLMResponse> {
+    const activeTools = activeToolNames
+      ? GROQ_AGENT2_TOOLS.filter(t => activeToolNames.includes(t.function.name))
+      : GROQ_AGENT2_TOOLS;
+
+    const ollamaMessages = [
+      { role: "system", content: systemPrompt },
+      ...messages.map(m => {
+        if (m.role === "function") {
+          return {
+            role: "tool",
+            tool_call_id: m.tool_call_id || ("call_" + m.name),
+            name: m.name,
+            content: typeof m.content === "string" ? m.content : JSON.stringify(m.content)
+          };
+        }
+
+        const role = m.role === "model" || m.role === "assistant" ? "assistant" : "user";
+        const msgObj: any = {
+          role,
+          content: m.content || ""
+        };
+
+        if (m.functionCalls && m.functionCalls.length > 0) {
+          msgObj.tool_calls = m.functionCalls.map((fc: any) => ({
+            id: fc.id || ("call_" + fc.name),
+            type: "function",
+            function: {
+              name: fc.name,
+              arguments: JSON.stringify(fc.args)
+            }
+          }));
+        }
+
+        return msgObj;
+      })
+    ];
+
+    // ??$$$ newer code - Over-optimized Ollama parameters for prompt caching, token reduction, and active memory retention
+    const response = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: this.model,
+        messages: ollamaMessages,
+        tools: activeTools.length > 0 ? activeTools : undefined,
+        tool_choice: activeTools.length > 0 ? "auto" : undefined,
         temperature: 0.2,
         keep_alive: "24h", // Keeps model in memory for 24 hours to eliminate load/unload delay
         options: {

@@ -1,5 +1,6 @@
 
 // ??$$$ newer code
+/* old code
 export const SYSTEM_PROMPT = `You are an autonomous hardware project formulation agent.
 
 ## Your Role
@@ -33,9 +34,18 @@ Your job is ONLY to orchestrate, plan, and call tools. You call tools to search 
 11. CRITICAL: The partId field in save_progress for the BOM must be the exact database _id string returned by get_part_details (e.g. '6a13ec800c47f410601cfea7'), not the MPN string.
 
 ## You are running on a small local model. Stay focused, use tools, don't ramble.`;
+*/
+// ??$$$ newer code
+export const SYSTEM_PROMPT = `You are a hardware formulation orchestrator. Follow these 5 imperative rules:
+1. NEVER write code yourself; delegate code tasks to tools. Keep responses and thinking brief.
+2. Follow strict sequential formulation phases: BOM Sourcing (save_progress type bom) -> Wiring Design (save_progress type wiring) -> Milestones (generate_milestone & save_progress milestone per step) -> Diagram Layout (save_progress type diagram) -> Final Integrated Sketch.
+3. The microcontroller must always use the BOM key 'mcu' (never 'brain') across BOM, wiring, and diagram.
+4. When calling save_progress(type="bom"), pass a flat JSON array of component objects where partId is the database _id returned by get_part_details.
+5. Immediately save each milestone returned by generate_milestone using save_progress(type="milestone") before calling generate_milestone for the next one.`;
 
 import { determineActivePhase } from "./formulation.persistence";
 
+/* old code
 export function buildInitialPrompt(session: any, isResume: boolean): string {
   let contextBlock = "";
 
@@ -111,6 +121,97 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
       partsInvolved: m.partsInvolved,
       hasCode: !!(m.code && m.code.trim().length > 0)
     })), null, 2)}`;
+  }
+
+  const hasDiagram = session.diagram && Object.keys(session.diagram).length > 0;
+  let diagramDetails = "";
+  if (hasDiagram) {
+    diagramDetails = `\n\n### Saved Simulation Diagram:\n[Diagram layout JSON has been successfully saved]`;
+  }
+*/
+// ??$$$ newer code
+export function buildInitialPrompt(session: any, isResume: boolean, compact = false): string {
+  let contextBlock = "";
+
+  if (session.requirementsDoc && session.requirementsDoc.trim().length > 0) {
+    contextBlock = session.requirementsDoc;
+  } else if (session.context && Object.keys(session.context).length > 0) {
+    const ctx = session.context;
+    let subsystemsStr = "";
+    if (ctx.subsystems && typeof ctx.subsystems === "object") {
+      const s = ctx.subsystems;
+      const parts = [];
+      if (Array.isArray(s.inputs) && s.inputs.length > 0) parts.push(`Inputs: [${s.inputs.join(", ")}]`);
+      if (Array.isArray(s.outputs) && s.outputs.length > 0) parts.push(`Outputs: [${s.outputs.join(", ")}]`);
+      if (Array.isArray(s.communication) && s.communication.length > 0) parts.push(`Communication: [${s.communication.join(", ")}]`);
+      if (Array.isArray(s.storage) && s.storage.length > 0) parts.push(`Storage: [${s.storage.join(", ")}]`);
+      if (Array.isArray(s.power) && s.power.length > 0) parts.push(`Power: [${s.power.join(", ")}]`);
+      subsystemsStr = parts.join(" | ");
+    }
+    const constraints = Array.isArray(ctx.constraints) ? ctx.constraints.join(", ") : "";
+    const connectivityStr = Array.isArray(ctx.connectivity) ? ctx.connectivity.join(", ") : (ctx.connectivity || "");
+    
+    contextBlock = `Project Context:
+Core Purpose: ${ctx.corePurpose || ""}
+Compute Brain: ${ctx.mcu || ""}
+Subsystems: ${subsystemsStr}
+Constraints: ${constraints}
+Power Source: ${ctx.powerSource || ""}
+Connectivity: ${connectivityStr}
+Physical Form Factor: ${ctx.formFactor || ""}
+Estimated Budget: ${ctx.estimatedBudget || ""}
+Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", ") : ""}`;
+  } else {
+    contextBlock = `Project Idea: ${session.idea || "No idea provided"}\n\nNote: Full requirements document was not generated. Please formulate based on the idea above.`;
+  }
+
+  let blueprintBlock = "";
+  if (session.blueprint && Object.keys(session.blueprint).length > 0) {
+    blueprintBlock = compact
+      ? `\n\n## SYSTEM BLUEPRINT: [Blueprint details loaded]`
+      : `\n\n## SYSTEM BLUEPRINT (binding contract — you MUST satisfy this)\n${JSON.stringify(session.blueprint, null, 2)}\n\nRules: fill every "core" subsystem in the BOM. Choose an MCU that satisfies computeRequirements (pin count, peripherals, flash/RAM, voltage). Respect powerProfile. Use the simulation classes when generating the diagram.`;
+  }
+
+  const hasBOM = session.bom && session.bom.length > 0;
+  let bomDetails = "";
+  if (hasBOM) {
+    bomDetails = compact
+      ? `\n\n### Saved Bill of Materials (BOM):\n[BOM Saved: ${session.bom.length} items]`
+      : `\n\n### Saved Bill of Materials (BOM):\n${JSON.stringify(session.bom.map((b: any) => ({
+          key: b.key,
+          partId: b.partId,
+          mpn: b.mpn,
+          displayName: b.displayName,
+          purpose: b.purpose,
+          qty: b.qty
+        })), null, 2)}`;
+  }
+
+  const hasWiring = session.wiring && session.wiring.length > 0;
+  let wiringDetails = "";
+  if (hasWiring) {
+    wiringDetails = compact
+      ? `\n\n### Saved Wiring Connections:\n[Wiring Saved: ${session.wiring.length} connections]`
+      : `\n\n### Saved Wiring Connections:\n${JSON.stringify(session.wiring.map((w: any) => ({
+          from: w.from,
+          to: w.to,
+          net: w.net
+        })), null, 2)}`;
+  }
+
+  const hasMilestones = session.milestones && session.milestones.length > 0;
+  let milestoneDetails = "";
+  if (hasMilestones) {
+    milestoneDetails = compact
+      ? `\n\n### Saved Milestones:\n[Milestones Saved: ${session.milestones.length} milestones]`
+      : `\n\n### Saved Milestones:\n${JSON.stringify(session.milestones.map((m: any) => ({
+          id: m.id,
+          order: m.order,
+          title: m.title,
+          objective: m.objective,
+          partsInvolved: m.partsInvolved,
+          hasCode: !!(m.code && m.code.trim().length > 0)
+        })), null, 2)}`;
   }
 
   const hasDiagram = session.diagram && Object.keys(session.diagram).length > 0;

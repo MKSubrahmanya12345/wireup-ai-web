@@ -5,7 +5,11 @@ import NewFlowSession from "../../models/newFlowSession.model";
 import Project from "../../models/project.model";
 import Part from "../../models/part.model";
 import { executeTool } from "./tools/index";
+/* old code
 import { saveSessionProgress } from "./formulation.persistence";
+*/
+// ??$$$ newer code
+import { saveSessionProgress, determineActivePhase } from "./formulation.persistence";
 import { SYSTEM_PROMPT, buildInitialPrompt } from "./formulation.prompts";
 import { resolveAllPins } from "../../services/pinResolver.service";
 // ??$$$ newer code
@@ -122,23 +126,36 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
     pruned.push(msg);
   }
 
-  // Alternating role sanitization
+  // Alternating role sanitization (merging consecutive roles)
   const finalMessages: any[] = [];
   for (const msg of pruned) {
+    // ??$$$ newer code - Compact initial prompt if we are past turn 1
+    let currentMsg = msg;
+    if (finalMessages.length === 0 && msg.role === "user" && messages.length > 1 && session) {
+      currentMsg = {
+        ...msg,
+        content: buildInitialPrompt(session, false, true)
+      };
+    }
+
     if (finalMessages.length > 0) {
       const lastMsg = finalMessages[finalMessages.length - 1];
       const lastRole = (lastMsg.role === "assistant" || lastMsg.role === "model") ? "model" : lastMsg.role;
-      const currentRole = (msg.role === "assistant" || msg.role === "model") ? "model" : msg.role;
+      const currentRole = (currentMsg.role === "assistant" || currentMsg.role === "model") ? "model" : currentMsg.role;
 
       if (lastRole === currentRole) {
-        if (currentRole === "user") {
-          finalMessages.push({ role: "model", content: "Continuing..." });
-        } else if (currentRole === "model") {
-          finalMessages.push({ role: "user", content: "Please continue." });
+        // ??$$$ newer code - Merge instead of injecting synthetic messages
+        lastMsg.content = `${lastMsg.content || ""}\n${currentMsg.content || ""}`.trim();
+        if (currentMsg.functionCalls && currentMsg.functionCalls.length > 0) {
+          lastMsg.functionCalls = [
+            ...(lastMsg.functionCalls || []),
+            ...currentMsg.functionCalls
+          ];
         }
+        continue;
       }
     }
-    finalMessages.push(msg);
+    finalMessages.push(currentMsg);
   }
 
   // Restore/reassign tool call IDs
@@ -274,6 +291,14 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
   }
 
   const systemPrompt = SYSTEM_PROMPT;
+  // ??$$$ newer code
+  const PHASE_TOOLS: Record<string, string[]> = {
+    bom: ["select_compute", "search_library", "get_part_details", "check_compatibility", "search_datasheet", "save_progress"],
+    wiring: ["generate_wiring", "validate_pin_assignment", "save_progress"],
+    milestone: ["generate_milestone", "save_progress"],
+    diagram: ["get_wokwi_part_type", "check_simulation_support", "generate_diagram_json", "save_progress"],
+    firmware: ["generate_final_sketch"]
+  };
   const initialPrompt = buildInitialPrompt(session, isResume);
 
   // ??$$$ newer code
@@ -465,7 +490,10 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
             });
           }
 
-          response = await currentTryAdapter.chat(systemPrompt, sanitizedMessages);
+          // ??$$$ newer code
+          const activePhase = determineActivePhase(session);
+          const activeToolNames = PHASE_TOOLS[activePhase] || [];
+          response = await currentTryAdapter.chat(systemPrompt, sanitizedMessages, activeToolNames);
 
           if (currentTryAdapter !== adapter) {
             console.log(`[Agent2 Failover] Successfully failed over. Promoting ${providerName} to primary.`);
@@ -639,6 +667,7 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
       };
       messages.push(assistantMessage);
 
+      /* old code
       for (const call of calls) {
         console.log(`[Agent2 Debugger] Executing tool "${call.name}" with args:`, JSON.stringify(call.args, null, 2));
         await logAndEmit({
@@ -700,6 +729,82 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
           }
         }
 
+        messages.push({
+          role: "function",
+          name: call.name,
+          tool_call_id: (call as any).id,
+          content: result
+        });
+      }
+      */
+      // ??$$$ newer code - Run tool calls in parallel to reduce formulation round-trip latency
+      const toolResults = await Promise.all(
+        calls.map(async (call) => {
+          console.log(`[Agent2 Debugger] Executing tool "${call.name}" in parallel with args:`, JSON.stringify(call.args, null, 2));
+          await logAndEmit({
+            type: "tool_call",
+            name: call.name,
+            status: "running",
+            input: call.args
+          });
+
+          let result: any;
+          const argsStr = JSON.stringify(call.args || {});
+          const duplicateCount = callHistory.filter(h => h.name === call.name && h.argsStr === argsStr).length;
+          callHistory.push({ name: call.name, argsStr });
+
+          if (call.name === "select_compute" && duplicateCount >= 1) {
+            result = {
+              error: "Duplicate Tool Call: You have already called select_compute with these parameters. Please check the previous tool output for the recommended MCU (e.g., ESP32 DevKit v1 / Raspberry Pi Pico) and proceed to search and add other components in your BOM, then call save_progress(type=\"bom\"). Do not call select_compute again."
+            };
+            console.warn(`[Agent2 Debugger] Intercepted duplicate select_compute call to prevent infinite loop.`);
+          } else if (call.name === "search_library" && duplicateCount >= 3) {
+            result = {
+              error: "Duplicate Search: You have executed this library search query 3 times. Please proceed to fetch part details or save progress."
+            };
+            console.warn(`[Agent2 Debugger] Intercepted duplicate search_library call to prevent infinite loop.`);
+          }
+
+          if (result === undefined) {
+            try {
+              if (call.name === "save_progress") {
+                result = await saveSessionProgress(sessionId, call.args.type, call.args.data, call.args);
+              } else {
+                result = await executeTool(call.name, call.args, sessionId);
+              }
+
+              console.log(`[Agent2 Debugger] Tool "${call.name}" executed successfully. Output snippet:`, JSON.stringify(result).substring(0, 200));
+
+              await logAndEmit({
+                type: "tool_call",
+                name: call.name,
+                status: "done",
+                output: result
+              });
+            } catch (toolErr: any) {
+              console.error(`[Agent2 Debugger] Tool "${call.name}" execution failed:`, toolErr);
+              result = { error: toolErr.message || "Execution error" };
+              await logAndEmit({
+                type: "tool_call",
+                name: call.name,
+                status: "failed",
+                output: result
+              });
+            }
+          } else {
+            await logAndEmit({
+              type: "tool_call",
+              name: call.name,
+              status: "done",
+              output: result
+            });
+          }
+
+          return { call, result };
+        })
+      );
+
+      for (const { call, result } of toolResults) {
         messages.push({
           role: "function",
           name: call.name,

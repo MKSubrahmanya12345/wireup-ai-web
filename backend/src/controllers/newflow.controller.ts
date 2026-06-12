@@ -307,6 +307,7 @@ Reply ONLY with this JSON structure, no markdown wrap, no backticks:
 
 // ??$$$ newer code - Helper to call LLM for Discovery Agent with robust failover
 // ??$$$ newer code - QnA / Discovery Session default model uses Groq Llama 4 Scout with Ollama fallback
+/* old code
 async function executeDiscoveryCall(modelName: string, promptText: string): Promise<any> {
   const keys = [
     process.env.GROQ_API_KEY,
@@ -372,6 +373,45 @@ async function executeDiscoveryCall(modelName: string, promptText: string): Prom
     console.error(`[Discovery QnA Ollama Fallback failed]:`, ollamaErr);
     throw new Error(`Groq QnA call failed (${lastError?.message || 'No Groq keys'}) and Ollama fallback failed: ${ollamaErr.message || ollamaErr}`);
   }
+}
+*/
+// ??$$$ newer code
+async function executeDiscoveryCall(modelName: string, promptText: string): Promise<any> {
+  const keys = [
+    process.env.GROQ_API_KEY,
+    process.env.GROQ_API_FALLBACK,
+    process.env.GROQ_API_KEY_3
+  ].filter(Boolean) as string[];
+
+  let lastError: any = null;
+  const actualModel = "meta-llama/llama-4-scout-17b-16e-instruct";
+
+  if (keys.length > 0) {
+    for (const apiKey of keys) {
+      try {
+        console.log(`[Discovery QnA] Calling Groq with key starting: ${apiKey.substring(0, 8)}...`);
+        const client = new Groq({ apiKey });
+        const completion = await client.chat.completions.create({
+          model: actualModel,
+          messages: [
+            { role: "system", content: AGENT1_SYSTEM_PROMPT },
+            { role: "user", content: promptText }
+          ],
+          response_format: { type: "json_object" },
+          temperature: 0.7
+        });
+
+        const text = completion.choices[0]?.message?.content?.trim() || "";
+        const clean = text.replace(/```json|```/g, "").trim();
+        return JSON.parse(clean);
+      } catch (err) {
+        console.error(`[Discovery QnA Groq Attempt failed with key starting ${apiKey.substring(0, 8)}]:`, err);
+        lastError = err;
+      }
+    }
+  }
+
+  throw lastError || new Error("Discovery QnA failed: Groq keys missing or exhausted.");
 }
 
 // ??$$$ newer code - Helper to call LLM for Discovery Agent directly
@@ -521,9 +561,18 @@ export const answerQuestion = async (req: Request, res: Response) => {
 
     await session.save();
 
+    /* old code
     // Reconstruct entire prompt context with Q&A history
     let promptText = `Original Project Idea: ${session.idea}\n\nQ&A History:\n`;
     session.qaHistory.forEach((item, index) => {
+      promptText += `${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
+    });
+    promptText += `\nGenerate the next question based on history, or finalize and output the full Markdown requirementsDoc if done.`;
+    */
+    // ??$$$ newer code
+    const prunedHistory = session.qaHistory.slice(-3);
+    let promptText = `Original Project Idea: ${session.idea}\n\nQ&A History (Pruned to last 3 turns):\n`;
+    prunedHistory.forEach((item, index) => {
       promptText += `${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
     });
     promptText += `\nGenerate the next question based on history, or finalize and output the full Markdown requirementsDoc if done.`;
@@ -605,8 +654,17 @@ export const proceedSession = async (req: Request, res: Response) => {
     // ??$$$ newer code
     await ensureSessionOwnership(session, req);
 
+    /* old code
     let promptText = `Original Project Idea: ${session.idea}\n\nQ&A History:\n`;
     session.qaHistory.forEach((item, index) => {
+      promptText += `${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
+    });
+    promptText += `\nThe user has decided to skip further questions. Please compile and output the final Project Requirements Document (Markdown PRD) in requirementsDoc based on the idea and history so far. Set "done" to true.`;
+    */
+    // ??$$$ newer code
+    const prunedHistory = session.qaHistory.slice(-3);
+    let promptText = `Original Project Idea: ${session.idea}\n\nQ&A History (Pruned to last 3 turns):\n`;
+    prunedHistory.forEach((item, index) => {
       promptText += `${index + 1}. Q: ${item.question}\n   A: ${item.answer}\n`;
     });
     promptText += `\nThe user has decided to skip further questions. Please compile and output the final Project Requirements Document (Markdown PRD) in requirementsDoc based on the idea and history so far. Set "done" to true.`;
