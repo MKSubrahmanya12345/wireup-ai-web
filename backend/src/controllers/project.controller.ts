@@ -168,47 +168,29 @@ export const getProjectById = async (
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    // ??$$$ newer code — Merge pins, glbUrl and componentType from Part documents into BOM items
+    // ??$$$ newer code — Merge pins, glbUrl and componentType from Part documents into BOM items dynamically
     if (project.bom && Array.isArray(project.bom)) {
       project.bom = await Promise.all(project.bom.map(async (item: any) => {
+        const queryMpn = item.partId || item.mpn || item.key;
+        let partDoc: any = null;
         try {
-          const partDoc = await Part.findOne({ mpn: item.mpn }).lean() as any;
-          let componentType = item.type || "module";
-          if (partDoc) {
-            if (partDoc.componentType) {
-              componentType = partDoc.componentType;
-            }
-            return {
-              ...item,
-              pins: partDoc.pins || [],
-              glbUrl: partDoc.glbUrl || item.glbUrl || "",
-              type: componentType
-            };
-          }
+          partDoc = await Part.findOne({ mpn: queryMpn }).lean();
         } catch (e) {}
 
-        // Safety fallback: if no partDoc, infer from wokwiPartType or item details
-        let componentType = item.type || "module";
-        if (componentType === "module") {
-          const wokwiType = String(item.wokwiPartType || "").toLowerCase();
-          const displayName = String(item.displayName || "").toLowerCase();
-          if (wokwiType === "wokwi-servo" || displayName.includes("servo") || displayName.includes("motor")) {
-            componentType = "motor";
-          } else if (wokwiType.includes("led") || wokwiType.includes("neopixel") || displayName.includes("led") || displayName.includes("neopixel")) {
-            componentType = "led";
-          } else if (wokwiType.includes("button") || wokwiType.includes("pushbutton") || displayName.includes("button") || displayName.includes("switch")) {
-            componentType = "button";
-          } else if (wokwiType.includes("lcd") || wokwiType.includes("ssd1306") || displayName.includes("lcd") || displayName.includes("display") || displayName.includes("oled")) {
-            componentType = "display";
-          } else if (wokwiType.includes("dht") || wokwiType.includes("hc-sr04") || displayName.includes("sensor")) {
-            componentType = "sensor";
-          } else if (wokwiType.includes("arduino") || wokwiType.includes("esp32") || displayName.includes("arduino") || displayName.includes("mcu")) {
-            componentType = "microcontroller";
-          }
-        }
+        const displayName = partDoc?.name || item.displayName || item.key || "Unknown Component";
+        const componentType = partDoc?.componentType || item.type || item.role || "module";
+        const pins = partDoc?.pins || [];
+        const glbUrl = partDoc?.glbUrl || item.glbUrl || "";
+        const mpn = partDoc?.mpn || item.partId || item.mpn || "";
+
         return {
           ...item,
-          type: componentType
+          mpn,
+          displayName,
+          pins,
+          glbUrl,
+          type: componentType,
+          wokwiPartType: partDoc?.wokwiPartType || item.wokwiPartType || ""
         };
       }));
     }

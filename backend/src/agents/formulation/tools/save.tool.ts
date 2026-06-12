@@ -76,22 +76,43 @@ export async function executeSaveProgress(args: any, sessionId: string) {
 
 export async function executeGenerateFinalSketch(args: any, sessionId?: string) {
   const objective = args.objective;
-  const mcu = args.mcu;
-  const allMilestones = parseIfString(args.allMilestones);
-  const bom = parseIfString(args.bom);
-  const wiring = parseIfString(args.wiring);
+  let mcu = args.mcu;
+  let allMilestones = parseIfString(args.allMilestones);
+  let bom = parseIfString(args.bom);
+  let wiring = parseIfString(args.wiring);
 
+  let session: any = null;
   if (sessionId) {
     try {
-      const session = await NewFlowSession.findById(sessionId);
-      if (session?.finalSketch && session.finalSketch.trim().length > 0) {
-        console.log("[Agent2] Final sketch already generated. Returning cached.");
-        return { success: true, code: session.finalSketch };
+      session = await NewFlowSession.findById(sessionId);
+      if (session) {
+        if (session.finalSketch && session.finalSketch.trim().length > 0) {
+          console.log("[Agent2] Final sketch already generated. Returning cached.");
+          return { success: true, code: session.finalSketch };
+        }
+
+        // ??$$$ newer code - resolve from DB to prevent context compaction loss
+        if (session.bom && session.bom.length > 0) {
+          bom = session.bom;
+        }
+        if (session.wiring && session.wiring.length > 0) {
+          wiring = session.wiring;
+        }
+        if (session.milestones && session.milestones.length > 0) {
+          allMilestones = session.milestones;
+        }
+        if (!mcu && session.blueprint?.computeRequirements?.mcu) {
+          mcu = session.blueprint.computeRequirements.mcu;
+        }
+        if (!mcu && session.context?.mcu) {
+          mcu = session.context.mcu;
+        }
       }
     } catch (e) {
-      console.error("[Agent2] Failed to check for existing final sketch:", e);
+      console.error("[Agent2] Failed to check for existing final sketch or load DB values:", e);
     }
   }
+
   try {
     const systemPrompt = "Return ONLY valid Arduino .ino code. No markdown, no prose, no <think>. Only code.";
     const userPrompt = `You are an embedded systems expert. Given the following project objective, components, wiring, and milestone codes, generate a single final complete Arduino sketch that integrates all functionality.
@@ -121,7 +142,9 @@ export async function executeGenerateFinalSketch(args: any, sessionId?: string) 
     }
 
     if (sessionId) {
-      const session = await NewFlowSession.findById(sessionId);
+      if (!session) {
+        session = await NewFlowSession.findById(sessionId);
+      }
       if (session) {
         session.finalSketch = generatedCode;
         // ??$$$ newer code

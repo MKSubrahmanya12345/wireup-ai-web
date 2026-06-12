@@ -65,22 +65,75 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
     }
   }
 
+  // ??$$$ newer code - DB-backed fallback resolution to prevent context compaction loss
+  let resolvedPartsInvolved = partsInvolved;
+  let resolvedWiringSubset = wiringSubset;
+  let resolvedMcu = mcu;
+
+  if (sessionId) {
+    try {
+      const session = await NewFlowSession.findById(sessionId);
+      if (session) {
+        if (!resolvedMcu && session.blueprint?.computeRequirements?.mcu) {
+          resolvedMcu = session.blueprint.computeRequirements.mcu;
+        }
+        if (!resolvedMcu && session.context?.mcu) {
+          resolvedMcu = session.context.mcu;
+        }
+        if (!resolvedMcu) {
+          resolvedMcu = "ESP32";
+        }
+
+        // If partsInvolved is empty or invalid, pull from BOM
+        if (!Array.isArray(resolvedPartsInvolved) || resolvedPartsInvolved.length === 0) {
+          const matchedParts = (session.bom || []).filter((b: any) => 
+            b.key === "mcu" || 
+            (subsystem && b.subsystem?.toLowerCase().includes(subsystem.toLowerCase())) ||
+            (title && b.purpose?.toLowerCase().includes(title.toLowerCase())) ||
+            (objective && b.purpose?.toLowerCase().includes(objective.toLowerCase()))
+          );
+          if (matchedParts.length > 0) {
+            resolvedPartsInvolved = matchedParts.map((p: any) => p.key);
+          } else {
+            resolvedPartsInvolved = (session.bom || []).map((p: any) => p.key);
+          }
+        }
+
+        // If wiringSubset is empty or invalid, filter connection list based on resolvedPartsInvolved
+        if (!Array.isArray(resolvedWiringSubset) || resolvedWiringSubset.length === 0) {
+          const partsSet = new Set(resolvedPartsInvolved);
+          resolvedWiringSubset = (session.wiring || []).filter((w: any) => {
+            const fromKey = w.from?.split(".")[0];
+            const toKey = w.to?.split(".")[0];
+            return partsSet.has(fromKey) || partsSet.has(toKey);
+          });
+        }
+        // If still empty, fall back to entire session.wiring
+        if (!Array.isArray(resolvedWiringSubset) || resolvedWiringSubset.length === 0) {
+          resolvedWiringSubset = session.wiring || [];
+        }
+      }
+    } catch (e) {
+      console.error("[Agent2] Failed to resolve DB-backed arguments:", e);
+    }
+  }
+
   try {
-    // Enforce data integrity: reject generation if wiringSubset is empty
-    if (!Array.isArray(wiringSubset) || wiringSubset.length === 0) {
+    // Enforce data integrity: reject generation if resolvedWiringSubset is empty
+    if (!Array.isArray(resolvedWiringSubset) || resolvedWiringSubset.length === 0) {
       throw new Error("wiringSubset cannot be empty. You must specify the relevant wiring connections for this milestone.");
     }
 
-    const wiringText = JSON.stringify(wiringSubset, null, 2);
+    const wiringText = JSON.stringify(resolvedWiringSubset, null, 2);
     const prevText = previousMilestones ? previousMilestones.join(", ") : "None";
 
     const systemPrompt = "Return ONLY valid JSON. No markdown. No prose. No <think>. Keep compile errors out.";
     const userPrompt = `You are writing firmware for a hardware project milestone.
   
-  MCU: ${mcu}
+  MCU: ${resolvedMcu}
   Milestone: ${title}
   Objective: ${objective}
-  Parts involved: ${partsInvolved.join(", ")}
+  Parts involved: ${resolvedPartsInvolved.join(", ")}
   Wiring for this milestone: ${wiringText}
   Previous milestones completed: ${prevText}
   Is first milestone: ${isFirstMilestone || false}
@@ -175,8 +228,8 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
       title,
       objective,
       subsystem,
-      partsInvolved,
-      wiringInstructions: wiringSubset.map((w: any) => `${w.from} -> ${w.to} (${w.net})`).join(", "),
+      partsInvolved: resolvedPartsInvolved,
+      wiringInstructions: resolvedWiringSubset.map((w: any) => `${w.from} -> ${w.to} (${w.net})`).join(", "),
       ...parsed
     };
     if (sessionId) {
@@ -187,7 +240,7 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
         title,
         objective,
         subsystem,
-        partsInvolved,
+        partsInvolved: resolvedPartsInvolved,
         codeGenerated: true,
         simulatable: parsed.simulatable !== false,
         requiredLibraries: parsed.requiredLibraries || [],
@@ -213,9 +266,9 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
       title,
       objective,
       subsystem,
-      partsInvolved,
-      wiringInstructions: wiringSubset && wiringSubset.length > 0
-        ? wiringSubset.map((w: any) => `${w.from} -> ${w.to} (${w.net})`).join(", ")
+      partsInvolved: resolvedPartsInvolved,
+      wiringInstructions: resolvedWiringSubset && resolvedWiringSubset.length > 0
+        ? resolvedWiringSubset.map((w: any) => `${w.from} -> ${w.to} (${w.net})`).join(", ")
         : "mcu.GPIO13 -> led.A",
       code: "void setup() {\n  Serial.begin(115200);\n}\nvoid loop() {\n  delay(1000);\n}",
       explanation: "Fallback milestone created due to generation failure.",

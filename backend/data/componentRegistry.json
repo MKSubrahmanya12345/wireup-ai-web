@@ -556,5 +556,42 @@
       { "name": "VCC", "signals": [{ "type": "power", "role": "VCC" }] }
     ],
     "category": "input"
+  },
+  "ESP32-DEVKIT-V1": {
+    "wokwiType": "wokwi-esp32-devkit-v1",
+    "attrs": {},
+    "pins": [
+      { "name": "3V3", "signals": [{ "type": "power", "role": "3V3" }] },
+      { "name": "GND", "signals": [{ "type": "power", "role": "GND" }] },
+      { "name": "GND.1", "signals": [{ "type": "power", "role": "GND" }] },
+      { "name": "GND.2", "signals": [{ "type": "power", "role": "GND" }] },
+      { "name": "5V", "signals": [{ "type": "power", "role": "5V" }] },
+      { "name": "GPIO21", "signals": [{ "type": "i2c", "role": "SDA" }] },
+      { "name": "GPIO22", "signals": [{ "type": "i2c", "role": "SCL" }, { "type": "i2s", "role": "DIN" }] },
+      { "name": "GPIO25", "signals": [{ "type": "i2s", "role": "LRC" }] },
+      { "name": "GPIO26", "signals": [{ "type": "i2s", "role": "BCLK" }] },
+      { "name": "GPIO23", "signals": [{ "type": "spi", "role": "MOSI" }] },
+      { "name": "GPIO19", "signals": [{ "type": "spi", "role": "MISO" }] },
+      { "name": "GPIO18", "signals": [{ "type": "spi", "role": "SCK" }] },
+      { "name": "GPIO5", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO17", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO16", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO4", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO2", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO15", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO12", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO13", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO14", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO27", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO32", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO33", "signals": [{ "type": "digital" }] },
+      { "name": "GPIO34", "signals": [{ "type": "analog" }] },
+      { "name": "GPIO35", "signals": [{ "type": "analog" }] },
+      { "name": "GPIO36", "signals": [{ "type": "analog" }] },
+      { "name": "GPIO39", "signals": [{ "type": "analog" }] },
+      { "name": "TX", "signals": [{ "type": "uart", "role": "TX" }] },
+      { "name": "RX", "signals": [{ "type": "uart", "role": "RX" }] }
+    ],
+    "category": "controller"
   }
 }

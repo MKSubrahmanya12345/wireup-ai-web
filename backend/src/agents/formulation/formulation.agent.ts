@@ -13,10 +13,16 @@ import { saveSessionProgress, determineActivePhase } from "./formulation.persist
 import { SYSTEM_PROMPT, buildInitialPrompt } from "./formulation.prompts";
 import { resolveAllPins } from "../../services/pinResolver.service";
 // ??$$$ newer code
+import { routeGraphWiring } from "../../services/wiringRouter.service";
+// ??$$$ newer code
 import { runArchitect } from "../architect";
 import rotationService from "../../services/keyRotation.service";
 // ??$$$ newer code
+/* old code
 import { providerCooldowns } from "./tools/utils";
+*/
+// ??$$$ newer code
+import { providerCooldowns, unifiedLlmCall } from "./tools/utils";
 import {
   LLMAdapter,
   LLMResponse,
@@ -229,6 +235,271 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
   }
 
   return finalMessages;
+}
+
+// ??$$$ newer code - Unified Formulation Pipeline (Single-Pass, Deterministic Flow)
+async function runUnifiedPipeline(sessionId: string, session: any, logAndEmit: Function, io: any): Promise<boolean> {
+  // Step 0: Engineering Design Document Generation
+  const hasDetailedPRD = session.requirementsDoc &&
+    session.requirementsDoc.includes("System Architecture") &&
+    session.requirementsDoc.includes("Component Selection") &&
+    session.requirementsDoc.includes("Signal Flow");
+
+  if (!hasDetailedPRD) {
+    console.log("[Pipeline] Generating detailed Engineering Design Document...");
+    await logAndEmit({
+      type: "thinking",
+      text: "Generating the comprehensive Engineering Design Document first..."
+    });
+
+    const docPrompt = `You are a Hardware Systems Architect. Your task is to produce a complete Engineering Design Document describing the project in natural language.
+    
+    Project Idea: ${session.idea}
+    System Blueprint: ${JSON.stringify(session.blueprint)}
+    
+    The document must contain enough information that another AI could generate the BOM, wiring, milestones, and firmware without seeing the original project request.
+    
+    Do NOT output JSON.
+    Do NOT output code.
+    Do NOT output wiring arrays.
+    Do NOT output BOM schemas.
+    
+    The document must fully describe:
+    1. Project Goal
+       - What the project does
+       - User interaction flow
+       - Expected behavior
+    2. System Architecture
+       - All major subsystems
+       - How subsystems communicate
+       - Why each subsystem exists
+    3. Component Selection
+       - Component name
+       - Purpose
+       - Why it was selected
+       - Alternative options considered
+    4. Signal Flow
+       - Describe signal flow in plain English (e.g. MCU reads data -> converts -> sends).
+    5. User Controls
+       - Buttons, sliders, switches and their exact functions.
+    6. Communication Protocols
+       - I2S, SPI, I2C, UART and their uses.
+    7. Power Distribution
+       - Voltage regulators, battery, charging and power rails.
+    8. Firmware Responsibilities
+       - Main loop tasks, state machines, interrupt handling.
+    9. Wiring Description
+       - Plain English explanation of what connects to what (e.g., DAC DIN to MCU I2S Data Out).
+    10. Implementation Notes
+       - Specialized libraries, potential pitfalls, and constraints.`;
+
+    const edd = await unifiedLlmCall("Return ONLY Markdown content. No code blocks or JSON.", docPrompt);
+    
+    session.requirementsDoc = edd;
+    await NewFlowSession.updateOne({ _id: sessionId }, { $set: { requirementsDoc: edd } });
+    await logAndEmit({
+      type: "context_received",
+      text: "Engineering Design Document generated successfully.",
+      input: { requirementsDoc: edd }
+    });
+    
+    // Sync to disk
+    try {
+      const exportDir = path.join("E:", "wireup_formulation_exports", `session_${sessionId}`);
+      if (!fs.existsSync(exportDir)) {
+        fs.mkdirSync(exportDir, { recursive: true });
+      }
+      fs.writeFileSync(path.join(exportDir, "requirements.md"), edd || "", "utf8");
+    } catch (err: any) {
+      console.error("[Pipeline] Failed to sync requirements.md to disk:", err);
+    }
+  }
+
+  // Step 1: BOM and Milestones generation
+  console.log("[Pipeline] Sourcing BOM and Milestones...");
+  await logAndEmit({
+    type: "thinking",
+    text: "Sourcing components (BOM) and milestones from the Design Document..."
+  });
+
+  const mcuChoice = session.blueprint?.computeRequirements?.mcu || session.context?.mcu || "ESP32";
+
+  const structurePrompt = `You are a hardware systems parser. Based on the Engineering Design Document and the system blueprint, produce a structured list of parts and milestones.
+  
+  Engineering Design Document:
+  \n\n${session.requirementsDoc}\n\n
+  
+  System Blueprint:
+  \n\n${JSON.stringify(session.blueprint)}\n\n
+  
+  RULES FOR COMPONENTS (BOM):
+  - Identify the primary MCU first (use 'mcu' as the key). Min MCU choice: ${mcuChoice}.
+  - List all other required components (display, sensors, DACs, amplifiers, buttons, etc.).
+  - For each component, specify:
+    * 'role': e.g., 'mcu', 'audio_dac', 'audio_amplifier', 'audio_sink', 'sensor', 'display', 'button', 'led'
+    * 'desiredPart': a specific, standard part name (e.g. 'MAX98357A', 'SSD1306', 'DHT22', 'SG90', 'Tactile Button')
+    * 'purpose': short sentence explaining its role
+    * 'subsystem': the subsystem name it belongs to (e.g. 'Audio', 'UI', 'Power', 'Sensors')
+  
+  RULES FOR MILESTONES:
+  - Define 3-5 incremental milestones to build the project.
+  - The first milestone MUST focus on basic MCU verification and serial communication (no external libraries).
+  - Each milestone must have:
+    * 'order': number (1, 2, 3...)
+    * 'title': short title
+    * 'objective': clear goal
+    * 'subsystem': subsystem name
+    * 'partsInvolved': array of BOM keys involved (e.g. ['mcu', 'oled'])
+  
+  Return ONLY valid JSON matching this schema:
+  {
+    "components": [
+      { "role": "mcu", "desiredPart": "ESP32", "purpose": "Main controller", "subsystem": "Compute" },
+      ...
+    ],
+    "milestones": [
+      { "order": 1, "title": "Setup", "objective": "Verify serial communication", "subsystem": "Compute", "partsInvolved": ["mcu"] },
+      ...
+    ]
+  }`;
+
+  const structuredResponse = await unifiedLlmCall(
+    "Return ONLY valid JSON. No markdown, no prose, no ```json wrapper.",
+    structurePrompt
+  );
+
+  let parsed: any;
+  try {
+    parsed = JSON.parse(structuredResponse.replace(/```json|```/g, "").trim());
+  } catch (e) {
+    console.error("[Pipeline] JSON parse failed for structured components/milestones. Retrying with repair...", e);
+    const cleanJSON = structuredResponse.replace(/```json|```/g, "").trim();
+    const { safeParse } = require("../shared/jsonRepair");
+    parsed = safeParse(cleanJSON);
+  }
+
+  if (!parsed || !Array.isArray(parsed.components) || parsed.components.length === 0) {
+    throw new Error("Failed to generate a valid components list. Please retry.");
+  }
+
+  // Save BOM progress - this dynamically resolves DB parts
+  const bomSaveResult = await saveSessionProgress(sessionId, "bom", { components: parsed.components });
+  if (!bomSaveResult.saved) {
+    throw new Error(`Failed to save BOM: ${bomSaveResult.error}`);
+  }
+
+  // Fetch updated session BOM
+  let updatedSession = await NewFlowSession.findById(sessionId);
+  if (!updatedSession) throw new Error("Session not found");
+  
+  // Step 2: Route Graph Wiring (System-level Deterministic Router)
+  console.log("[Pipeline] Routing graph wiring...");
+  await logAndEmit({
+    type: "thinking",
+    text: "Routing electrical connections dynamically based on registry capabilities..."
+  });
+
+  const partsForRouting = updatedSession.bom.map((b: any) => ({
+    key: b.key,
+    partId: b.partId || b.mpn || "",
+    name: b.displayName || b.key,
+    role: b.role || ""
+  }));
+
+  const wiringResult = await routeGraphWiring(partsForRouting, mcuChoice);
+  if (!wiringResult || wiringResult.length === 0) {
+    throw new Error("System router failed to generate any wiring connections.");
+  }
+
+  // Save wiring progress
+  const wiringSaveResult = await saveSessionProgress(sessionId, "wiring", wiringResult);
+  if (!wiringSaveResult.saved) {
+    throw new Error(`Failed to save wiring: ${wiringSaveResult.error}`);
+  }
+
+  // Fetch updated session wiring
+  updatedSession = await NewFlowSession.findById(sessionId);
+  if (!updatedSession) throw new Error("Session not found");
+
+  // Step 3: Wokwi Diagram generation
+  console.log("[Pipeline] Generating Wokwi diagram...");
+  const diagramResult = await executeTool("generate_diagram_json", {
+    parts: updatedSession.bom.map(b => ({ key: b.key, id: b.key, wokwiPartType: b.partId })),
+    connections: updatedSession.wiring
+  }, sessionId);
+
+  if (diagramResult && diagramResult.diagramJson) {
+    const diagSaveResult = await saveSessionProgress(sessionId, "diagram", diagramResult.diagramJson);
+    if (!diagSaveResult.saved) {
+      console.warn("[Pipeline] Failed to save diagram:", diagSaveResult.error);
+    }
+  }
+
+  // Step 4: Milestone code generation (Parallel)
+  console.log("[Pipeline] Generating code for all milestones in parallel...");
+  await logAndEmit({
+    type: "thinking",
+    text: "Generating firmware code for each building milestone..."
+  });
+
+  const milestonesToGenerate = parsed.milestones || [];
+  const generatedMilestones = await Promise.all(
+    milestonesToGenerate.map(async (m: any) => {
+      try {
+        console.log(`[Pipeline] Generating milestone: ${m.title}`);
+        const result = await executeTool("generate_milestone", {
+          title: m.title,
+          objective: m.objective,
+          subsystem: m.subsystem,
+          mcu: mcuChoice,
+          isFirstMilestone: m.order === 1,
+          partsInvolved: m.partsInvolved,
+          wiringSubset: updatedSession!.wiring,
+          order: m.order
+        }, sessionId);
+        return result;
+      } catch (err: any) {
+        console.error(`[Pipeline] Failed to generate milestone ${m.title}:`, err);
+        return null;
+      }
+    })
+  );
+
+  // Save each generated milestone
+  for (const gm of generatedMilestones) {
+    if (gm && gm.id) {
+      const milSaveResult = await saveSessionProgress(sessionId, "milestone", gm, { milestoneId: gm.id });
+      if (!milSaveResult.saved) {
+        console.error(`[Pipeline] Failed to save milestone ${gm.title}:`, milSaveResult.error);
+      }
+    }
+  }
+
+  // Fetch updated milestones
+  updatedSession = await NewFlowSession.findById(sessionId);
+  if (!updatedSession) throw new Error("Session not found");
+
+  // Step 5: Final Sketch generation
+  console.log("[Pipeline] Generating final integrated sketch...");
+  await logAndEmit({
+    type: "thinking",
+    text: "Generating the final integrated firmware sketch..."
+  });
+
+  const sketchResult = await executeTool("generate_final_sketch", {
+    objective: session.idea,
+    mcu: mcuChoice,
+    allMilestones: updatedSession.milestones,
+    bom: updatedSession.bom,
+    wiring: updatedSession.wiring
+  }, sessionId);
+
+  if (!sketchResult || !sketchResult.success) {
+    throw new Error(`Failed to generate final integrated sketch: ${sketchResult?.error || 'Unknown error'}`);
+  }
+
+  console.log("[Pipeline] Unified Formulation Pipeline complete!");
+  return true;
 }
 
 // ??$$$ newer code - per-session execution lock
@@ -558,6 +829,15 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
         } catch (err: any) {
           console.error(`[Agent2 Failover] ${providerName} attempt failed:`, err.message || err);
           lastError = err;
+          // ??$$$ newer code - rotate Groq API key on rate limit/failure
+          if (providerName === "GroqAdapter") {
+            try {
+              console.log("[Agent2 Failover] Groq failure detected. Rotating key...");
+              await rotationService.handleRateLimit();
+            } catch (rotErr) {
+              console.error("[Agent2 Failover] Failed to rotate Groq API key:", rotErr);
+            }
+          }
           await new Promise(resolve => setTimeout(resolve, 1500));
         }
       }
@@ -702,76 +982,6 @@ export async function runAgent2(sessionId: string, modelName: string, isResume =
       };
       messages.push(assistantMessage);
 
-      /* old code
-      for (const call of calls) {
-        console.log(`[Agent2 Debugger] Executing tool "${call.name}" with args:`, JSON.stringify(call.args, null, 2));
-        await logAndEmit({
-          type: "tool_call",
-          name: call.name,
-          status: "running",
-          input: call.args
-        });
-
-        let result: any;
-        const argsStr = JSON.stringify(call.args || {});
-        const duplicateCount = callHistory.filter(h => h.name === call.name && h.argsStr === argsStr).length;
-        callHistory.push({ name: call.name, argsStr });
-
-        if (call.name === "select_compute" && duplicateCount >= 1) {
-          result = {
-            error: "Duplicate Tool Call: You have already called select_compute with these parameters. Please check the previous tool output for the recommended MCU (e.g., ESP32 DevKit v1 / Raspberry Pi Pico) and proceed to search and add other components in your BOM, then call save_progress(type=\"bom\"). Do not call select_compute again."
-          };
-          console.warn(`[Agent2 Debugger] Intercepted duplicate select_compute call to prevent infinite loop.`);
-        } else if (call.name === "search_library" && duplicateCount >= 3) {
-          result = {
-            error: "Duplicate Search: You have executed this library search query 3 times. Please proceed to fetch part details or save progress."
-          };
-          console.warn(`[Agent2 Debugger] Intercepted duplicate search_library call to prevent infinite loop.`);
-        }
-
-        if (result !== undefined) {
-          await logAndEmit({
-            type: "tool_call",
-            name: call.name,
-            status: "done",
-            output: result
-          });
-        } else {
-          try {
-            if (call.name === "save_progress") {
-              result = await saveSessionProgress(sessionId, call.args.type, call.args.data, call.args);
-            } else {
-              result = await executeTool(call.name, call.args, sessionId);
-            }
-
-            console.log(`[Agent2 Debugger] Tool "${call.name}" executed successfully. Output snippet:`, JSON.stringify(result).substring(0, 200));
-
-            await logAndEmit({
-              type: "tool_call",
-              name: call.name,
-              status: "done",
-              output: result
-            });
-          } catch (toolErr: any) {
-            console.error(`[Agent2 Debugger] Tool "${call.name}" execution failed:`, toolErr);
-            result = { error: toolErr.message || "Execution error" };
-            await logAndEmit({
-              type: "tool_call",
-              name: call.name,
-              status: "failed",
-              output: result
-            });
-          }
-        }
-
-        messages.push({
-          role: "function",
-          name: call.name,
-          tool_call_id: (call as any).id,
-          content: result
-        });
-      }
-      */
       // ??$$$ newer code - Run tool calls in parallel to reduce formulation round-trip latency
       const toolResults = await Promise.all(
         calls.map(async (call) => {

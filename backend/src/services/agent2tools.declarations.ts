@@ -382,6 +382,7 @@ export const GEMINI_AGENT2_TOOLS = {
             type: SchemaType.STRING,
             description: "MCU name"
           },
+          /* old code
           allMilestones: {
             type: SchemaType.ARRAY,
             description: "List of milestones with their title and code",
@@ -416,6 +417,20 @@ export const GEMINI_AGENT2_TOOLS = {
                 to: { type: SchemaType.STRING }
               }
             }
+          }
+          */
+          // ??$$$ newer code
+          allMilestones: {
+            type: SchemaType.STRING,
+            description: "List of milestones with their title and code as serialized JSON string"
+          },
+          bom: {
+            type: SchemaType.STRING,
+            description: "Bill of materials array as serialized JSON string"
+          },
+          wiring: {
+            type: SchemaType.STRING,
+            description: "Wiring connections list as serialized JSON string"
           }
         },
         required: ["objective", "mcu", "allMilestones"]

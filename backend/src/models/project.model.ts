@@ -289,6 +289,7 @@ const generationProfileSchema = new Schema<IGenerationProfile>(
 // ??$$$ newer code
 interface IBomItem {
   key: string;
+  role?: string; // ??$$$ newer code
   wokwiPartType: string;
   displayName: string;
   qty: number;
@@ -320,6 +321,7 @@ interface IBomItem {
 const bomItemSchema = new Schema<IBomItem>(
   {
     key: { type: String, default: "" },
+    role: { type: String, default: "" }, // ??$$$ newer code
     wokwiPartType: { type: String, default: "" },
     displayName: { type: String, default: "" },
     qty: { type: Number, default: 1 },

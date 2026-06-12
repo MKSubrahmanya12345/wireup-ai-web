@@ -165,23 +165,42 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
     contextBlock = `Project Idea: ${session.idea || "No idea provided"}\n\nNote: Full requirements document was not generated. Please formulate based on the idea above.`;
   }
 
-  // ??$$$ newer code - truncate the requirements doc once the BOM is saved to cut per-turn prompt tokens
-  if (compact && session.bom && session.bom.length > 0 && contextBlock.length > 800) {
-    contextBlock = `${contextBlock.slice(0, 600)}\n\n[Full requirements document truncated — the BOM has already been derived from it]`;
+  // ??$$$ newer code - truncate requirements doc but keep larger buffer (1200 characters)
+  if (compact && session.bom && session.bom.length > 0 && contextBlock.length > 1500) {
+    contextBlock = `${contextBlock.slice(0, 1200)}\n\n[Full requirements document truncated — active BOM/Wiring details are provided below]`;
   }
 
   let blueprintBlock = "";
   if (session.blueprint && Object.keys(session.blueprint).length > 0) {
+    /* old code
     blueprintBlock = compact
       ? `\n\n## SYSTEM BLUEPRINT: [Blueprint details loaded]`
+      : `\n\n## SYSTEM BLUEPRINT (binding contract — you MUST satisfy this)\n${JSON.stringify(session.blueprint, null, 2)}\n\nRules: fill every "core" subsystem in the BOM. Choose an MCU that satisfies computeRequirements (pin count, peripherals, flash/RAM, voltage). Respect powerProfile. Use the simulation classes when generating the diagram.`;
+    */
+    // ??$$$ newer code
+    blueprintBlock = compact
+      ? `\n\n## SYSTEM BLUEPRINT (Summary):\nArchetype: ${session.blueprint.archetype || "generic-io"}\nSubsystems: ${session.blueprint.subsystems?.map((s: any) => `${s.name} (${s.role}, ${s.criticality})`).join(", ") || ""}`
       : `\n\n## SYSTEM BLUEPRINT (binding contract — you MUST satisfy this)\n${JSON.stringify(session.blueprint, null, 2)}\n\nRules: fill every "core" subsystem in the BOM. Choose an MCU that satisfies computeRequirements (pin count, peripherals, flash/RAM, voltage). Respect powerProfile. Use the simulation classes when generating the diagram.`;
   }
 
   const hasBOM = session.bom && session.bom.length > 0;
   let bomDetails = "";
   if (hasBOM) {
+    /* old code
     bomDetails = compact
       ? `\n\n### Saved Bill of Materials (BOM):\n[BOM Saved: ${session.bom.length} items]`
+      : `\n\n### Saved Bill of Materials (BOM):\n${JSON.stringify(session.bom.map((b: any) => ({
+          key: b.key,
+          partId: b.partId,
+          mpn: b.mpn,
+          displayName: b.displayName,
+          purpose: b.purpose,
+          qty: b.qty
+        })), null, 2)}`;
+    */
+    // ??$$$ newer code
+    bomDetails = compact
+      ? `\n\n### Saved BOM (Summary):\n${session.bom.map((b: any) => `${b.key}: ${b.displayName || b.mpn} (subsystem: ${b.subsystem || "Main"})`).join(", ")}`
       : `\n\n### Saved Bill of Materials (BOM):\n${JSON.stringify(session.bom.map((b: any) => ({
           key: b.key,
           partId: b.partId,
@@ -195,6 +214,7 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
   const hasWiring = session.wiring && session.wiring.length > 0;
   let wiringDetails = "";
   if (hasWiring) {
+    /* old code
     wiringDetails = compact
       ? `\n\n### Saved Wiring Connections:\n[Wiring Saved: ${session.wiring.length} connections]`
       : `\n\n### Saved Wiring Connections:\n${JSON.stringify(session.wiring.map((w: any) => ({
@@ -202,7 +222,17 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
           to: w.to,
           net: w.net
         })), null, 2)}`;
+    */
+    // ??$$$ newer code
+    wiringDetails = compact
+      ? `\n\n### Saved Wiring (Summary):\n${session.wiring.map((w: any) => `${w.from} -> ${w.to}`).join(", ")}`
+      : `\n\n### Saved Wiring Connections:\n${JSON.stringify(session.wiring.map((w: any) => ({
+          from: w.from,
+          to: w.to,
+          net: w.net
+        })), null, 2)}`;
   }
+
 
   const hasMilestones = session.milestones && session.milestones.length > 0;
   let milestoneDetails = "";

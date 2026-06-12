@@ -39,6 +39,7 @@ export interface IAgentLog {
 export interface INewFlowBomItem {
   key: string;
   partId: string;
+  role?: string; // ??$$$ newer code
   mpn: string;
   displayName: string;
   purpose: string;
@@ -157,19 +158,29 @@ const agentLogSchema = new Schema<IAgentLog>({
   timestamp: { type: Date, default: Date.now }
 }, { _id: false });
 
+// ??$$$ newer code - Refactored bomItemSchema to avoid duplicating canonical data in session
 const bomItemSchema = new Schema<INewFlowBomItem>({
   key: { type: String, required: true },
   partId: { type: String, required: true },
+  role: { type: String, default: "" }, // ??$$$ newer code
+  /* old code
   mpn: { type: String, required: true },
   displayName: { type: String, required: true },
   purpose: { type: String, required: true },
+  */
+  mpn: { type: String, default: "" }, // ??$$$ newer code
+  displayName: { type: String, default: "" }, // ??$$$ newer code
+  purpose: { type: String, default: "" }, // ??$$$ newer code
   qty: { type: Number, default: 1 },
   price: { type: Number, default: 0 },
+  /* old code
   subsystem: { type: String, required: true },
+  */
+  subsystem: { type: String, default: "Main" }, // ??$$$ newer code
   interfaces: [{ type: String }],
   pinConnections: [{
-    pin: { type: String, required: true },
-    connectsTo: { type: String, required: true }
+    pin: { type: String, default: "" },
+    connectsTo: { type: String, default: "" }
   }],
   // ??$$$ NEW FLOW — SnapEDA 3D fields
   glbUrl: { type: String, default: "" },

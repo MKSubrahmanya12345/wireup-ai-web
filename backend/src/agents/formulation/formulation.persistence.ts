@@ -9,6 +9,7 @@ import { getCachedMilestone } from "./tools/utils";
 import fs from "fs";
 import path from "path";
 import Part from "../../models/part.model";
+import { resolvePartByDesiredPart, detectCapabilities } from "../../services/registry.services"; // ??$$$ newer code
 
 // ??$$$ newer code - Determine active phase of formulation
 export function determineActivePhase(session: any): "bom" | "wiring" | "milestone" | "diagram" | "firmware" {
@@ -85,76 +86,51 @@ export async function saveSessionProgress(sessionId: string, type: string, data:
       }
     }
 
-    // ??$$$ newer code - validate and default missing properties for BOM items (rejecting empty keys/partIds/mpns)
+    // ??$$$ newer code - Refactored BOM validation to support role + desiredPart proposals
     const rawItems = Array.isArray(bomList) ? bomList : [bomList];
     const validRawItems = rawItems.filter((item: any) => {
       if (!item || typeof item !== "object") return false;
-      const key = String(item.key || item.id || "").trim();
-      const partId = String(item.partId || item.id || "").trim();
-      const mpn = String(item.mpn || item.partId || "").trim();
-      return key.length > 0 && partId.length > 0 && mpn.length > 0;
+      const desiredPart = String(item.desiredPart || item.partId || item.mpn || item.name || "").trim();
+      return desiredPart.length > 0;
     });
 
     if (validRawItems.length === 0) {
-      throw new Error("BOM list is empty or invalid. Please ensure the components/BOM array is provided in your tool arguments with valid key, partId, and mpn fields.");
+      throw new Error("BOM list is empty or invalid. Please ensure the components/BOM array is provided in your tool arguments with valid desiredPart or partId fields.");
     }
 
-    // ??$$$ newer code - resolve componentType from DB async
+    // ??$$$ newer code - resolve components from DB and keep session BOM clean
     const normalizedBOM = await Promise.all(validRawItems.map(async (item: any) => {
-      let key = item.key || item.id || "unknown_key";
-      if (key.toLowerCase() === "brain" || key.toLowerCase() === "mcu") {
-        key = "mcu";
+      let key = String(item.key || item.id || "").trim();
+      const role = String(item.role || item.category || "").trim();
+      const desiredPart = String(item.desiredPart || item.partId || item.mpn || item.name || "").trim();
+
+      // Resolve actual part from DB
+      const resolved = await resolvePartByDesiredPart(desiredPart);
+      const computedRole = role || detectCapabilities(resolved)[0] || "module";
+
+      // Default key if not provided
+      if (!key) {
+        key = (computedRole || desiredPart || "component").toLowerCase().replace(/[^a-z0-9]/g, "_");
       }
-
-      let partId = item.partId || item.id || "unknown_part";
-      let mpn = item.mpn || item.partId || "unknown_mpn";
-
-      const displayName = item.displayName || item.name || mpn || "Unknown Component";
-      const purpose = item.purpose || item.description || "Auxiliary component";
-      const subsystem = item.subsystem || "Main";
-      const qty = typeof item.qty === "number" ? item.qty : 1;
-      const price = typeof item.price === "number" ? item.price : 0;
-      const interfaces = Array.isArray(item.interfaces) ? item.interfaces : [];
-      const pinConnections = Array.isArray(item.pinConnections)
-        ? item.pinConnections
-          .map((pc: any) => {
-            // ??$$$ Defensive coercion: LLM sometimes emits strings instead of {pin, connectsTo}
-            if (typeof pc === "string") {
-              const parts = pc.split(/->|→|:|=>/).map((s: string) => s.trim());
-              return { pin: parts[0] || pc.trim(), connectsTo: parts[1] || "" };
-            }
-            if (pc && typeof pc === "object") {
-              return { pin: pc.pin || "", connectsTo: pc.connectsTo || "" };
-            }
-            return { pin: "", connectsTo: "" };
-          })
-          .filter((pc: any) => pc.pin && pc.connectsTo)
-        : [];
-
-      let componentType = "module";
-      try {
-        const partDoc = await Part.findOne({ mpn }).lean();
-        if (partDoc && (partDoc as any).componentType) {
-          componentType = (partDoc as any).componentType;
-        }
-      } catch (err) {
-        console.error(`Error fetching componentType for MPN ${mpn}:`, err);
+      if (key.toLowerCase() === "mcu" || key.toLowerCase() === "brain" || computedRole.toLowerCase() === "mcu" || computedRole.toLowerCase() === "microcontroller") {
+        key = "mcu";
       }
 
       return {
         key,
-        partId,
-        mpn,
-        displayName,
-        purpose,
-        qty,
-        price,
-        subsystem,
-        interfaces,
-        pinConnections,
-        glbUrl: item.glbUrl || "",
-        pins: Array.isArray(item.pins) ? item.pins : [],
-        type: componentType
+        partId: resolved.mpn, // MPN is the canonical ID in the DB
+        role: computedRole,
+        mpn: "", // Do not duplicate
+        displayName: "", // Do not duplicate
+        purpose: item.purpose || resolved.description || "Auxiliary component",
+        qty: typeof item.qty === "number" ? item.qty : 1,
+        price: 0, // Do not duplicate
+        subsystem: item.subsystem || "Main",
+        interfaces: [], // Do not duplicate
+        pinConnections: [], // Updated during wiring phase
+        glbUrl: "", // Do not duplicate
+        pins: [], // Do not duplicate
+        type: "" // Do not duplicate
       };
     }));
 
@@ -471,37 +447,24 @@ async function syncSessionToProject(session: any) {
     if (!project) return;
 
     // Map BOM
-    project.bom = await Promise.all((session.bom || []).map(async (b: any) => {
-      let glbUrl = "";
-      let componentType = b.type || "module";
-      try {
-        const partDoc = await Part.findOne({ mpn: b.mpn }).lean() as any;
-        if (partDoc) {
-          if (partDoc.isCurated && partDoc.glbUrl) {
-            glbUrl = partDoc.glbUrl;
-          }
-          if (partDoc.componentType) {
-            componentType = partDoc.componentType;
-          }
-        }
-      } catch (e) { /* non-blocking */ }
-
+    project.bom = (session.bom || []).map((b: any) => {
       return {
         key: b.key,
-        wokwiPartType: b.partId,
-        displayName: b.displayName,
+        role: b.role || "", // ??$$$ newer code
+        wokwiPartType: "", // ??$$$ newer code - Do not duplicate
+        displayName: "", // ??$$$ newer code - Do not duplicate
         qty: b.qty,
         purpose: b.purpose,
-        price: b.price || 0,
-        storeUrl: "",
-        mpn: b.mpn || "",
+        price: 0, // ??$$$ newer code - Do not duplicate
+        storeUrl: "", // ??$$$ newer code - Do not duplicate
+        mpn: "", // ??$$$ newer code - Do not duplicate
         partId: b.partId || "",
         pinConnections: b.pinConnections || [],
-        glbUrl,
-        pins: [],
-        type: componentType
+        glbUrl: "", // ??$$$ newer code - Do not duplicate
+        pins: [], // ??$$$ newer code - Do not duplicate
+        type: "" // ??$$$ newer code - Do not duplicate
       };
-    }));
+    });
 
     // Map wiring
     project.wiring = session.wiring || [];

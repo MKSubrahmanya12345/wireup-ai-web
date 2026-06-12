@@ -2,7 +2,10 @@
 import mongoose from "mongoose";
 import Part from "../../../models/part.model";
 import { getRegistry } from "../../../services/registry.services";
-import { resolveWiring } from "../../../services/pinResolver.service";
+// /* old code */
+// import { resolveWiring } from "../../../services/pinResolver.service";
+// ??$$$ newer code
+import { routeGraphWiring } from "../../../services/wiringRouter.service";
 import { parseIfString } from "./utils";
 // ??$$$ newer code
 import { MCU_CATALOG } from "../../architect/mcu.catalog";
@@ -572,6 +575,7 @@ export async function executeGenerateWiring(args: any) {
   const parts = parseIfString(args.parts);
 
   try {
+    /* old code
     const mcuLower = String(mcu || "").toLowerCase();
     const matchedSpec = MCU_CATALOG.find(spec =>
       mcuLower.includes(spec.key.toLowerCase()) ||
@@ -586,6 +590,9 @@ export async function executeGenerateWiring(args: any) {
     } else {
       connections = resolveWiring(parts, mcu);
     }
+    */
+    // ??$$$ newer code - Use 3-phase graph-based router
+    const connections = await routeGraphWiring(parts, mcu);
 
     const pinUsage: Record<string, any> = {};
     connections.forEach((conn) => {

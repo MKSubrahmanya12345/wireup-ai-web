@@ -118,12 +118,13 @@ export async function unifiedLlmCall(systemPrompt: string, userPrompt: string): 
   const adapters: { name: string; type: string; getAdapter: () => Promise<LLMAdapter> }[] = [];
 
   // ??$$$ newer code - failover adapter chain instantiation
-  if (process.env.GROQ_API_KEY) {
-    const key = process.env.GROQ_API_KEY;
+  // ??$$$ newer code - use key rotation for Groq in unifiedLlmCall
+  const hasGroqKey = process.env.GROQ_API_KEY || process.env.GROQ_API_KEY_2 || process.env.GROQ_API_KEY_3;
+  if (hasGroqKey) {
     adapters.push({
       name: "Groq",
       type: "groq",
-      getAdapter: async () => new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct", key)
+      getAdapter: async () => new GroqAdapter("meta-llama/llama-4-scout-17b-16e-instruct")
     });
   }
   if (process.env.GEMINI_API_KEY) {
@@ -174,6 +175,27 @@ export async function unifiedLlmCall(systemPrompt: string, userPrompt: string): 
       throw new Error(`Empty response from ${provider.name}`);
     } catch (err: any) {
       lastError = err;
+
+      // ??$$$ newer code - Groq key rotation & immediate retry in unifiedLlmCall
+      if (provider.type === "groq") {
+        try {
+          console.warn(`[unifiedLlmCall] Groq provider failed: ${err.message || err}. Rotating key...`);
+          const rotService = require("../../shared/keyRotation.service").default;
+          await rotService.handleRateLimit();
+          
+          console.warn("[unifiedLlmCall] Retrying with new Groq key...");
+          const adapter = await provider.getAdapter();
+          const response = await adapter.chat(systemPrompt, [{ role: "user", content: userPrompt }]);
+          const text = typeof response.text === "function" ? response.text() : (response as any).text;
+          if (text) {
+            return text;
+          }
+        } catch (retryErr: any) {
+          console.error("[unifiedLlmCall] Groq key rotation retry also failed:", retryErr.message || retryErr);
+          lastError = retryErr;
+        }
+      }
+
       const delay = getRateLimitDelay(err);
       if (delay > 0) {
         if (delay > 15) {

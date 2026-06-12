@@ -13,6 +13,7 @@ import rotationService from "../services/keyRotation.service";
 import NewFlowSession from "../models/newFlowSession.model";
 import Project from "../models/project.model";
 import { runAgent2 } from "../services/newflow.agent";
+import { resolvePartByDesiredPart } from "../services/registry.services"; // ??$$$ newer code
 
 const safeId = (value: any, fallback: string) => {
   const normalized = String(value || "").trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "-");
@@ -141,8 +142,29 @@ const normalizeMcuPin = (pinStr: string): string => {
   return pinStr;
 };
 
-const mapSessionToVirtualProject = (session: any) => {
-  const bom = Array.isArray(session?.bom) ? session.bom : [];
+// ??$$$ newer code - resolve full details from MongoDB for legacy representation
+const populateBomDetails = async (bomItems: any[]): Promise<any[]> => {
+  if (!Array.isArray(bomItems)) return [];
+  return await Promise.all(bomItems.map(async (item: any) => {
+    const resolved = await resolvePartByDesiredPart(item.partId || item.mpn || item.key);
+    return {
+      ...item,
+      mpn: resolved.mpn || item.mpn || "",
+      displayName: resolved.name || item.displayName || "",
+      purpose: item.purpose || resolved.description || "Auxiliary component",
+      pins: resolved.pins || [],
+      wokwiPartType: resolved.wokwiPartType || "",
+      glbUrl: resolved.glbUrl || item.glbUrl || "",
+      type: resolved.category || item.type || "module"
+    };
+  }));
+};
+
+// const mapSessionToVirtualProject = (session: any) => { // ??$$$ old code
+//   const bom = Array.isArray(session?.bom) ? session.bom : []; // ??$$$ old code
+const mapSessionToVirtualProject = async (session: any) => { // ??$$$ newer code
+  const rawBom = Array.isArray(session?.bom) ? session.bom : []; // ??$$$ newer code
+  const bom = await populateBomDetails(rawBom); // ??$$$ newer code
   const wiring = Array.isArray(session?.wiring) ? session.wiring : [];
   const milestones = Array.isArray(session?.milestones) ? session.milestones : [];
   const context = session?.context || {};
@@ -993,8 +1015,10 @@ export const exportLocalSession = async (req: Request, res: Response) => {
       fs.mkdirSync(exportDir, { recursive: true });
     }
 
-    // ??$$$ newer code
-    fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8");
+    // fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(session.bom || [], null, 2), "utf8"); // ??$$$ old code
+    // ??$$$ newer code - populate BOM details dynamically before local export
+    const populatedBom = await populateBomDetails(session.bom || []);
+    fs.writeFileSync(path.join(exportDir, "bom.json"), JSON.stringify(populatedBom, null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "wiring.json"), JSON.stringify(session.wiring || [], null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "milestones.json"), JSON.stringify(session.milestones || [], null, 2), "utf8");
     fs.writeFileSync(path.join(exportDir, "diagram.json"), JSON.stringify(session.diagram || {}, null, 2), "utf8");
@@ -1038,7 +1062,8 @@ export const getVirtualProjectData = async (req: Request, res: Response) => {
       return res.status(404).json({ error: "Session not found." });
     }
 
-    const payload = mapSessionToVirtualProject(session);
+    // const payload = mapSessionToVirtualProject(session); // ??$$$ old code
+    const payload = await mapSessionToVirtualProject(session); // ??$$$ newer code
     return res.json({ success: true, project: payload });
   } catch (err: any) {
     console.error("getVirtualProjectData failed:", err);
