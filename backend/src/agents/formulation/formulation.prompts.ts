@@ -165,6 +165,11 @@ Open Questions: ${Array.isArray(ctx.openQuestions) ? ctx.openQuestions.join(", "
     contextBlock = `Project Idea: ${session.idea || "No idea provided"}\n\nNote: Full requirements document was not generated. Please formulate based on the idea above.`;
   }
 
+  // ??$$$ newer code - truncate the requirements doc once the BOM is saved to cut per-turn prompt tokens
+  if (compact && session.bom && session.bom.length > 0 && contextBlock.length > 800) {
+    contextBlock = `${contextBlock.slice(0, 600)}\n\n[Full requirements document truncated — the BOM has already been derived from it]`;
+  }
+
   let blueprintBlock = "";
   if (session.blueprint && Object.keys(session.blueprint).length > 0) {
     blueprintBlock = compact

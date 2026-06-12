@@ -129,6 +129,8 @@ function sanitizeMessageHistory(messages: any[], session?: any): any[] {
     if (msg.role === "assistant" || msg.role === "model") {
       const newFc = (msg.functionCalls || []).filter((fc: any) => {
         if (toolsToPrune.has(fc.name)) return false;
+        // ??$$$ newer code - drop generate_milestone calls for milestones already saved with code
+        if (fc.name === "generate_milestone" && isMilestonePersisted(fc.args)) return false;
         if (fc.name === "save_progress" && fc.args?.type) {
           if (latestSaveIdx[fc.args.type] !== undefined && latestSaveIdx[fc.args.type] > i) {
             return false;

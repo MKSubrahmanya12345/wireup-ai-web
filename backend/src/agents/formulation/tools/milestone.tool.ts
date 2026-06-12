@@ -167,7 +167,9 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
     }
     const order = typeof args.order === "number" ? args.order : dbMilestonesCount + 1;
 
-    return {
+    // ??$$$ newer code - cache the full milestone server-side and return only a compact reference to the LLM.
+    // The full code is persisted via save_progress(type="milestone", milestoneId=...) without re-sending it.
+    const fullMilestone = {
       id: `milestone_${order}_${Date.now()}`,
       order,
       title,
@@ -177,6 +179,22 @@ export async function executeGenerateMilestone(args: any, sessionId?: string) {
       wiringInstructions: wiringSubset.map((w: any) => `${w.from} -> ${w.to} (${w.net})`).join(", "),
       ...parsed
     };
+    if (sessionId) {
+      cacheMilestone(sessionId, fullMilestone);
+      return {
+        id: fullMilestone.id,
+        order,
+        title,
+        objective,
+        subsystem,
+        partsInvolved,
+        codeGenerated: true,
+        simulatable: parsed.simulatable !== false,
+        requiredLibraries: parsed.requiredLibraries || [],
+        note: `Full code stored server-side. Save NOW with save_progress(type="milestone", milestoneId="${fullMilestone.id}") — do NOT re-send the code.`
+      };
+    }
+    return fullMilestone;
   } catch (err: any) {
     console.error("executeGenerateMilestone failed:", err);
     let dbMilestonesCount = 0;

@@ -756,8 +756,9 @@ export const useProjectStore = create<ProjectState>((set, get) => ({
         files: updatedFiles,
         activeFile: file.name,
       }, { withCredentials: true });
-    } catch {
-      // silently fail
+    } catch (err) {
+      // ??$$$ newer code - surface persistence failures instead of swallowing them
+      console.error(`[useProjectStore] addFile("${file.name}") failed to persist to /project/${projectId}:`, err);
     }
   },
 
